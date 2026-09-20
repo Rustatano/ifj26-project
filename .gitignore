@@ -1,0 +1,9 @@
+# TEX build files
+doc/build
+*.pdf
+
+# archive files
+*.zip
+
+# binaries
+ifj26
