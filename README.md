@@ -18,7 +18,7 @@ Locate at bottom left corner of the IDE is a small icon that looks simillar to t
 Click on the button and select option "Reopen in container".
 
 ## Step 6
-Wait. It might take few minutes (depends on your internet speed). It's initial setup, next time it will be instant.
+Wait. It might take a few minutes (depends on your internet speed). It's initial setup, next time it will be instant.
 
 ## Step 7
 Should be good to go.
