@@ -4,7 +4,7 @@ DOC_MAIN = main
 DOC_BUILD_DIR = build
 
 # archivation variables
-ARCHIVE = ifj26_xsvoboj01_xzobals00_xmatejt00_xondrus00.zip
+ARCHIVE = ifj26_xsvoboj01_xzobals00_xtajovm00_xondrus00.zip
 
 # source code variables
 CC = gcc-16
@@ -12,6 +12,9 @@ CFLAGS = -Wall -Wextra -Werror -pedantic -std=c11
 SRC_DIR = src
 SRC_MAIN = main
 OUT = ifj26
+
+# testing variables
+TEST_DIR = tests
 
 .PHONY: all build doc archive clean
 
@@ -29,11 +32,15 @@ doc:
 # build archive
 archive:
 	rm -rf $(ARCHIVE)
-	zip $(ARCHIVE) -r $(SRC_DIR)/ $(DOC_MAIN).pdf Makefile rozdeleni
+	zip $(ARCHIVE) -r $(SRC_DIR)/ $(TEST_DIR)/ $(DOC_MAIN).pdf Makefile rozdeleni
 
 # check pre-commit and commit-msg hooks
 check:
 	pre-commit run --all-files
+
+test:
+	$(CC) -o test $(TEST_DIR)/*.c -lcmocka
+	./test
 
 # clean project from generated files
 clean:

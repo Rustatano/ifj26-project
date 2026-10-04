@@ -8,7 +8,7 @@ on:
   workflow_call:
 
 jobs:
-  build-c:
+  build-c-archive:
 
     runs-on: ubuntu-latest
 
@@ -26,11 +26,14 @@ jobs:
     - name: Build
       run: make build
 
-    - name: Upload build artifact
+    - name: Archive
+      run: make archive
+
+    - name: Upload archive artifact
       uses: actions/upload-artifact@v4
       with:
-        name: release-asset-c
-        path: ifj26
+        name: release-asset-archive
+        path: ifj26_xsvoboj01_xzobals00_xtajovm00_xondrus00.zip
 
   build-doc:
     runs-on: ubuntu-latest
@@ -44,9 +47,3 @@ jobs:
           working_directory: doc
           compiler: latexmk
           args: -pdf -outdir=build
-
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-asset-doc
-          path: doc/build/main.pdf

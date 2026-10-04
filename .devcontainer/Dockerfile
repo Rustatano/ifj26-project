@@ -12,6 +12,9 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     latexmk \
     openssh-client \
     git \
+    libcmocka-dev \
+    cmocka-doc \
+    cmake \
     && add-apt-repository -y ppa:ubuntu-toolchain-r/test \
     && apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y gcc-16 g++-16 \

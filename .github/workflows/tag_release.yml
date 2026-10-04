@@ -18,20 +18,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download C build artifact
+      - name: Download archive artifact
         uses: actions/download-artifact@v4
         with:
-          name: release-asset-c
-
-      - name: Download doc build artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: release-asset-doc
+          name: release-asset-archive
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            ifj26
-            main.pdf
+            ifj26_xsvoboj01_xzobals00_xtajovm00_xondrus00.zip
           generate_release_notes: true
