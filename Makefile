@@ -13,6 +13,9 @@ SRC_DIR = src
 SRC_MAIN = main
 OUT = ifj26
 
+# testing variables
+TEST_DIR = tests
+
 .PHONY: all build doc archive clean
 
 all: build doc archive
@@ -34,6 +37,10 @@ archive:
 # check pre-commit and commit-msg hooks
 check:
 	pre-commit run --all-files
+
+test:
+	$(CC) -o test $(TEST_DIR)/*.c -lcmocka
+	./test
 
 # clean project from generated files
 clean:
