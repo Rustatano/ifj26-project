@@ -4,7 +4,7 @@ DOC_MAIN = main
 DOC_BUILD_DIR = build
 
 # archivation variables
-ARCHIVE = ifj26_xsvoboj01_xzobals00_xmatejt00_xondrus00.zip
+ARCHIVE = ifj26_xsvoboj01_xzobals00_xtajovm00_xondrus00.zip
 
 # source code variables
 CC = gcc-16
