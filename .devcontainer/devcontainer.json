@@ -33,7 +33,7 @@
         "latex-workshop.formatting.latex": "latexindent",
         "editor.formatOnSave": true,
         "[latex]": {
-          "editor.defaultFormatter": "James-Yu.latex-workshop",
+          "editor.defaultFormatter": "James-Yu.latex-workshop"
         },
         "[c]": {
           "editor.defaultFormatter": "ms-vscode.cpptools"
