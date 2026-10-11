@@ -44,4 +44,4 @@ test:
 
 # clean project from generated files
 clean:
-	rm -rf $(DOC_DIR)/$(DOC_BUILD_DIR) $(ARCHIVE) $(OUT) $(DOC_MAIN).pdf
+	rm -rf $(DOC_DIR)/$(DOC_BUILD_DIR) $(ARCHIVE) $(OUT) $(DOC_MAIN).pdf test
