@@ -12,6 +12,7 @@ Description: Header file for the parser
 #ifndef PARSER_H
 #define PARSER_H
 
+#include "symbol_table.h"
 #include <stdbool.h>
 #include <stdio.h>
 
@@ -32,12 +33,7 @@ typedef struct {
 // Forward declaration of AST node
 typedef struct ast_node ast_node_t;
 
-/**
- * Runs syntax analysis.
- *
- * @param ast_root Pointer to the AST root pointer where the created tree will be stored.
- * @return parse_result_t Status of analysis, error code, line number, and error message.
- */
-parse_result_t parse(ast_node_t **ast_root);
+// Start the parsing process. Will call the scanner get_token function and create a AST and symbol_table
+parse_result_t parse(ast_node_t **ast_root, symbol_table_stack_t **symbol_table);
 
 #endif
