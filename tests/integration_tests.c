@@ -10,8 +10,9 @@ Description: Test cases for the compiler as a whole.
 -------------------------------------------------------
 */
 
-#include <cmocka.h>
 #include <setjmp.h>
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
+
+#include <cmocka.h> // must be under std includes
