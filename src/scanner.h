@@ -14,10 +14,14 @@ Description: Header file for Lexical analyzator of the translator, which scans l
 #ifndef SCANNER_H
 #define SCANNER_H
 
-// Libraries:
+// Libraries
 #include <stdio.h>
 
-// Enums:
+// Macros
+#define UNREAD_CHARS_SIZE 10
+#define INDENT_STACK_SIZE 100
+
+// Enums
 typedef enum {
     // Datatypes
     TOKEN_ID,
@@ -84,16 +88,30 @@ typedef union {
     double double_val;
     int int_val;
     char *str_val;
-} token_value_t;
+} token_attr_t;
 
-// Structs:
+// Structs
 typedef struct {
     token_type_t type;
-    token_value_t value;
+    token_attr_t attr;
     int line;
 } token_t;
 
-// Functions:
-token_t get_token();
+typedef struct {
+    FILE *source_file;
+    int unread_chars_stack[UNREAD_CHARS_SIZE];
+    int unread_top;
+    int indent_stack[INDENT_STACK_SIZE];
+    int indent_top;
+
+} scanner_conf_t;
+
+// Functions
+
+// Initializes scanner structures needed for reading file and making tokens
+void scanner_init(scanner_conf_t *conf, FILE *file);
+
+// Reads characters from file pointer and gathers them into a token
+token_t get_token(scanner_conf_t *conf);
 
 #endif
