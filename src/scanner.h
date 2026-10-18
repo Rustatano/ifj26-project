@@ -100,9 +100,9 @@ typedef struct {
 typedef struct {
     FILE *source_file;
     int unread_chars_stack[UNREAD_CHARS_SIZE];
-    int unread_top;
+    int unread_top; // First unoccupied space
     int indent_stack[INDENT_STACK_SIZE];
-    int indent_top;
+    int indent_top; // First unoccupied space
 
 } scanner_conf_t;
 

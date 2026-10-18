@@ -24,6 +24,23 @@ void scanner_init(scanner_conf_t *conf, FILE *file) {
     conf->unread_top = 0;
 }
 
+// Reads next char, if there is chars on stack it will read them first before reading from input
+int get_char(scanner_conf_t *conf) {
+    if (conf->unread_top > 0) {
+        conf->unread_top--;
+        return conf->unread_chars_stack[conf->unread_top];
+    }
+    return fgetc(conf->source_file);
+}
+
+// Stores chars to be proccesed for the next token
+void store_char(scanner_conf_t *conf, int ch) {
+    if (conf->unread_top < UNREAD_CHARS_SIZE) {
+        conf->unread_chars_stack[conf->unread_top] = ch;
+        conf->unread_top++;
+    }
+}
+
 token_t get_token(scanner_conf_t *conf) {
 
     // Creates variables for further use
@@ -32,16 +49,43 @@ token_t get_token(scanner_conf_t *conf) {
 
     // State automaton
     while (1) {
-        int ch = fgetc(conf->source_file);
+        int ch = get_char(conf);
 
         switch (state) {
         case STATE_START:
             if (ch == EOF) {
                 token.type = TOKEN_EOF;
                 return token;
-            } else if (ch == '+') {
+            }
+
+            // Ignore white spaces
+            else if (ch == ' ' || ch == '\r') {
+                continue;
+            }
+            // Operators
+            else if (ch == '+') {
                 token.type = TOKEN_PLUS;
                 return token;
+            } else if (ch == '-') {
+                token.type = TOKEN_MINUS;
+                return token;
+            } else if (ch == '*') {
+                token.type = TOKEN_MUL;
+                return token;
+            } else if (ch == '(') {
+                token.type = TOKEN_LPAREN;
+                return token;
+            } else if (ch == ')') {
+                token.type = TOKEN_RPAREN;
+                return token;
+            }
+
+            // Errors
+            else if (ch == '\t') {
+                fprintf(
+                    stderr,
+                    "Lexical analysis Error, Tabulator at the beggining of then not empty line\n");
+                exit(1); // Scanner error exit code
             }
             break;
 
