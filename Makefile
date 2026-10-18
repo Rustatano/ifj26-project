@@ -8,7 +8,7 @@ ARCHIVE = ifj26_xsvoboj01_xzobals00_xtajovm00_xondrus00.zip
 
 # source code variables
 CC = gcc-16
-CFLAGS = -Wall -Wextra -Werror -pedantic -std=c11
+CFLAGS = -Wall -Wextra -Werror -pedantic -std=c11 -Isrc
 SRC_DIR = src
 SRC_FILES = $(filter-out $(SRC_DIR)/main.c, $(wildcard $(SRC_DIR)/*.c))
 OUT = ifj26
@@ -39,8 +39,10 @@ archive:
 check:
 	pre-commit run --all-files
 
-test:
+test-build:
 	$(CC) $(CFLAGS) -o $(TEST_OUT) $(TEST_DIR)/run_all_tests.c $(TEST_DIR)/scanner_bbox_tests.c $(SRC_FILES) -lcmocka
+
+test: test-build
 	./$(TEST_OUT)
 
 # clean project from generated files

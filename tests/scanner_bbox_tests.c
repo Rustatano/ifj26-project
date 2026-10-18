@@ -17,7 +17,7 @@ Description: Black-box scanner tests.
 
 #include <cmocka.h> // must be under std includes
 
-#include "../src/scanner.h"
+#include "scanner.h"
 
 // Test scanner initialization struct
 void scanner_init_test(void **state) {
