@@ -38,22 +38,12 @@ bool symbol_table_create_avl(symbol_table_stack_t *stack) {
     return true;
 }
 
-int max_height(symbol_table_node_t *left, symbol_table_node_t *right) {
-    int l = 0;
-    int r = 0;
-
-    if (left != NULL) {
-        l = left->height;
-    }
-    if (right != NULL) {
-        r = right->height;
+int max(int left, int right) {
+    if (left < right) {
+        return right;
     }
 
-    if (l < r) {
-        return r;
-    }
-
-    return l;
+    return left;
 }
 
 symbol_table_node_t *insert_node(symbol_table_node_t *root, symbol_table_type_t type, char *id,
@@ -94,10 +84,27 @@ symbol_table_node_t *insert_node(symbol_table_node_t *root, symbol_table_type_t 
         *success = false;
     }
 
-    // Update height
-    root->height = max_height(root->left, root->right) + 1;
+    // Get height of left and right subtrees
+    int left_h = 0;
+    int right_h = 0;
 
-    return root; // return root without change
+    if (root->left != NULL) {
+        left_h = root->right->height;
+    }
+    if (root->right != NULL) {
+        right_h = root->right->height;
+    }
+
+    // Update height
+    root->height = max_height(left_h, right_h) + 1;
+
+    // Calculate balance factor of current node
+    int balance = left_h - right_h;
+
+    // Decide which method of rotation to use
+    // TODO
+
+    return root; // Return root without change
 }
 
 bool symbol_table_insert_item(symbol_table_stack_t *stack, symbol_table_type_t type, char *id,
