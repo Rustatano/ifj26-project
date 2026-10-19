@@ -59,7 +59,7 @@ typedef struct {
 
 // Node of AVL
 typedef struct symbol_table_node {
-    char *key; // Search key will be Prefix (VAR_ or FUN_) and identifier passed be token
+    char *key; // Search key will be Prefix (VAR_ or FUN_) and identifier passed by token
     symbol_table_data_t data;
 
     int height;                      // Height of the AVL for rotation purpose
@@ -75,12 +75,12 @@ typedef struct symbol_table_stack_item {
 
 // Stack of AVL trees implemented as Linked list
 typedef struct symbol_table_stack {
-    symbol_table_stack_item_t *top;    // Representing the deepest scope
-    symbol_table_stack_item_t *global; // Bottom of stack representing global (highest) scope
+    symbol_table_stack_item_t *top; // Representing the deepest scope
+    // symbol_table_node_t *global; // Bottom of stack representing global (highest) scope
 } symbol_table_stack_t;
 
 // Allocate memory for Symbol table and created first AVL for global scope
-bool symbol_table_init(symbol_table_stack_t **stack);
+bool symbol_table_init(symbol_table_stack_t *stack);
 
 // Create new empty AVL and push it on top of symbol table stack
 bool symbol_table_create_avl(symbol_table_stack_t *stack);
@@ -89,8 +89,8 @@ bool symbol_table_create_avl(symbol_table_stack_t *stack);
 void symbol_table_pop_avl(symbol_table_stack_t *stack);
 
 // Insert item to highest AVL
-bool symbol_table_insert_item(symbol_table_stack_t *stack, symbol_table_type_t type,
-                              char *identifier, symbol_table_data_t data);
+bool symbol_table_insert_item(symbol_table_stack_t *stack, symbol_table_type_t type, char *id,
+                              symbol_table_data_t data);
 
 // Search item through every scope from top to bottom/global
 symbol_table_node_t *symbol_table_search(symbol_table_stack_t *stack, symbol_table_type_t type,
@@ -101,6 +101,6 @@ symbol_table_node_t *sym_stack_search_current(symbol_table_stack_t *stack, symbo
                                               char *identifier);
 
 // Delete whole symbol table and free all the memory
-void sym_stack_delete(symbol_table_stack_t **stack);
+void sym_stack_delete(symbol_table_stack_t *stack);
 
 #endif
