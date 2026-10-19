@@ -162,7 +162,7 @@ symbol_table_node_t *insert_node(symbol_table_node_t *root, symbol_table_type_t 
     int right_h = get_height(root->right);
 
     // Update height
-    root->height = max_height(left_h, right_h) + 1;
+    root->height = max(left_h, right_h) + 1;
 
     // Calculate balance factor of current node
     int balance = left_h - right_h;

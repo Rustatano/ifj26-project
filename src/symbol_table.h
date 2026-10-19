@@ -14,6 +14,7 @@ Description: Header file for symbol table as a stack of height-balanced AVL tree
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdlib.h>
 #include <string.h>
 
 // Prefixes used in keys for variable nad function
