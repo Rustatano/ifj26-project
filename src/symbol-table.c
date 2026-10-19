@@ -9,8 +9,6 @@ Description: Implementation file for symbol table as a stack of height-balanced 
 -------------------------------------------------------
 */
 
-#include <string.h>
-
 #include "symbol_table.h"
 
 bool symbol_table_init(symbol_table_stack_t *stack) {
@@ -38,12 +36,87 @@ bool symbol_table_create_avl(symbol_table_stack_t *stack) {
     return true;
 }
 
+// Get higher number from two
 int max(int left, int right) {
     if (left < right) {
         return right;
     }
 
     return left;
+}
+
+// Returns height of subtree, 0 if empty
+int get_height(symbol_table_node_t *node) {
+    if (node == NULL) {
+        return 0;
+    }
+    return node->height;
+}
+
+// Right rotation
+symbol_table_node_t *rotate_ll(symbol_table_node_t *root) {
+    symbol_table_node_t *l_child = root->left;
+    symbol_table_node_t *l_child_r_subtree = root->left->right;
+
+    // Swap nodes
+    l_child->right = root;
+    root->left = l_child_r_subtree;
+
+    // Get heights of children
+    int left_h = get_height(root->right);
+    int right_h = get_height(root->left);
+
+    // Assign new heights
+    root->height = max(left_h, right_h) + 1;
+
+    // Calculate new heights
+    left_h = get_height(l_child->left);
+    right_h = get_height(l_child->right);
+
+    l_child->height = max(left_h, right_h) + 1;
+
+    return l_child;
+}
+
+// Left rotation
+symbol_table_node_t *rotate_rr(symbol_table_node_t *root) {
+    symbol_table_node_t *r_child = root->right;
+    symbol_table_node_t *r_child_l_subtree = root->right->left;
+
+    // Swap nodes
+    r_child->left = root;
+    root->right = r_child_l_subtree;
+
+    // Get heights of children
+    int left_h = get_height(root->right);
+    int right_h = get_height(root->left);
+
+    // Assign new heights
+    root->height = max(left_h, right_h) + 1;
+
+    // Calculate new heights
+    left_h = get_height(r_child->left);
+    right_h = get_height(r_child->right);
+
+    r_child->height = max(left_h, right_h) + 1;
+
+    return r_child;
+}
+
+// Left-right rotation
+symbol_table_node_t *rotate_lr(symbol_table_node_t *root) {
+    // Rotate left child first
+    root->left = rotate_rr(root->left);
+    // Then rotate the node
+    return rotate_ll(root);
+}
+
+// Right-left rotation
+symbol_table_node_t *rotate_rl(symbol_table_node_t *root) {
+    // Rotate right child first
+    root->right = rotate_ll(root->right);
+    // Then rotate the node
+    return rotate_rr(root);
 }
 
 symbol_table_node_t *insert_node(symbol_table_node_t *root, symbol_table_type_t type, char *id,
@@ -85,15 +158,8 @@ symbol_table_node_t *insert_node(symbol_table_node_t *root, symbol_table_type_t 
     }
 
     // Get height of left and right subtrees
-    int left_h = 0;
-    int right_h = 0;
-
-    if (root->left != NULL) {
-        left_h = root->right->height;
-    }
-    if (root->right != NULL) {
-        right_h = root->right->height;
-    }
+    int left_h = get_height(root->left);
+    int right_h = get_height(root->right);
 
     // Update height
     root->height = max_height(left_h, right_h) + 1;
@@ -102,9 +168,32 @@ symbol_table_node_t *insert_node(symbol_table_node_t *root, symbol_table_type_t 
     int balance = left_h - right_h;
 
     // Decide which method of rotation to use
-    // TODO
+    if (balance >= 2) {
+        // Calculate balance for left child
+        balance = get_height(root->left->left) - get_height(root->left->right);
+        // Decide method
+        if (balance >= 0) {
+            // LL
+            return rotate_ll(root);
+        } else {
+            // LR
+            return rotate_lr(root);
+        }
+    } else if (balance <= -2) {
+        // Calculate balance for right child
+        balance = get_height(root->right->left) - get_height(root->right->right);
+        // Decide method
+        if (balance >= 0) {
+            // RR
+            return rotate_rr(root);
+        } else {
+            // RL
+            return rotate_rl(root);
+        }
+    }
 
-    return root; // Return root without change
+    // Return root without change
+    return root;
 }
 
 bool symbol_table_insert_item(symbol_table_stack_t *stack, symbol_table_type_t type, char *id,

@@ -14,6 +14,7 @@ Description: Header file for symbol table as a stack of height-balanced AVL tree
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <string.h>
 
 // Prefixes used in keys for variable nad function
 #define SYM_PREFIX_VAR "VAR_"
@@ -76,7 +77,6 @@ typedef struct symbol_table_stack_item {
 // Stack of AVL trees implemented as Linked list
 typedef struct symbol_table_stack {
     symbol_table_stack_item_t *top; // Representing the deepest scope
-    // symbol_table_stack_item_t *global; // Bottom of stack representing global (highest) scope
 } symbol_table_stack_t;
 
 // Allocate memory for Symbol table and created first AVL for global scope
