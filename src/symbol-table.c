@@ -38,6 +38,24 @@ bool symbol_table_create_avl(symbol_table_stack_t *stack) {
     return true;
 }
 
+int max_height(symbol_table_node_t *left, symbol_table_node_t *right) {
+    int l = 0;
+    int r = 0;
+
+    if (left != NULL) {
+        l = left->height;
+    }
+    if (right != NULL) {
+        r = right->height;
+    }
+
+    if (l < r) {
+        return r;
+    }
+
+    return l;
+}
+
 symbol_table_node_t *insert_node(symbol_table_node_t *root, symbol_table_type_t type, char *id,
                                  symbol_table_data_t data, bool *success) {
     if (root == NULL) {
@@ -58,14 +76,14 @@ symbol_table_node_t *insert_node(symbol_table_node_t *root, symbol_table_type_t 
         // Initialization of node values
         strcpy(node->key, id);
         node->data = data;
-        node->height = 0;
+        node->height = 1;
         node->left = NULL;
         node->right = NULL;
 
         return node;
     }
 
-    int cmp = strcmp(root->key, id) > 0;
+    int cmp = strcmp(root->key, id);
 
     // Decide which side to follow
     if (cmp > 0) {
@@ -75,6 +93,9 @@ symbol_table_node_t *insert_node(symbol_table_node_t *root, symbol_table_type_t 
     } else {
         *success = false;
     }
+
+    // Update height
+    root->height = max_height(root->left, root->right) + 1;
 
     return root; // return root without change
 }
