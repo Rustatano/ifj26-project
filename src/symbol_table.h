@@ -86,7 +86,7 @@ bool symbol_table_init(symbol_table_stack_t *stack);
 bool symbol_table_create_avl(symbol_table_stack_t *stack);
 
 // Delete the AVL that is currently on top of symbol table stack
-void symbol_table_pop_avl(symbol_table_stack_t *stack);
+void symbol_table_pop_avl(symbol_table_stack_item_t *stack_top);
 
 // Insert item to highest AVL
 bool symbol_table_insert_item(symbol_table_stack_t *stack, symbol_table_type_t type, char *id,
