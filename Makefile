@@ -40,7 +40,7 @@ check:
 	pre-commit run --all-files
 
 test-build:
-	$(CC) $(CFLAGS) -o $(TEST_OUT) $(TEST_DIR)/run_all_tests.c $(TEST_DIR)/scanner_bbox_tests.c $(SRC_FILES) -lcmocka
+	$(CC) $(CFLAGS) -o $(TEST_OUT) $(TEST_DIR)/*.c $(SRC_FILES) -lcmocka
 
 test: test-build
 	./$(TEST_OUT)
