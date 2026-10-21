@@ -3,7 +3,7 @@
 Name of project: Translator IFJ26
 Authors: Zobal, Tajovský, Ondruška, Svoboda
 Creation date: 19.10.2026
-File: symbol_table.h
+File: symtable.h
 
 Description: Implementation file for symbol table as a stack of height-balanced AVL trees
 -------------------------------------------------------
@@ -11,19 +11,20 @@ Description: Implementation file for symbol table as a stack of height-balanced 
 
 #include "symbol_table.h"
 
-bool symbol_table_init(symbol_table_stack_t *stack) {
+bool symtable_init(symtable_stack_t *stack) {
     stack->top = NULL;
+    stack->global = NULL;
     return true;
 }
 
-bool symbol_table_create_avl(symbol_table_stack_t *stack) {
+bool symtable_create_avl(symtable_stack_t *stack) {
     if (stack == NULL) {
         return false;
     }
 
     // Allocation of new item of symtable
-    symbol_table_stack_item_t *new_item =
-        (symbol_table_stack_item_t *)malloc(sizeof(symbol_table_stack_item_t));
+    symtable_stack_item_t *new_item =
+        (symtable_stack_item_t *)malloc(sizeof(symtable_stack_item_t));
     if (new_item == NULL) {
         return false;
     }
@@ -31,6 +32,13 @@ bool symbol_table_create_avl(symbol_table_stack_t *stack) {
     new_item->tree_root = NULL;
 
     new_item->next = stack->top;
+
+    // Assign global scope if it's first symtable
+    if (stack->global == NULL) {
+        stack->global = new_item;
+    }
+
+    // Assign new top of stack
     stack->top = new_item;
 
     return true;
@@ -46,7 +54,7 @@ int max(int left, int right) {
 }
 
 // Returns height of subtree, 0 if empty
-int get_height(symbol_table_node_t *node) {
+int get_height(symtable_node_t *node) {
     if (node == NULL) {
         return 0;
     }
@@ -54,9 +62,9 @@ int get_height(symbol_table_node_t *node) {
 }
 
 // Right rotation
-symbol_table_node_t *rotate_right_ll(symbol_table_node_t *root) {
-    symbol_table_node_t *l_child = root->left;
-    symbol_table_node_t *l_child_r_subtree = root->left->right;
+symtable_node_t *rotate_right_ll(symtable_node_t *root) {
+    symtable_node_t *l_child = root->left;
+    symtable_node_t *l_child_r_subtree = root->left->right;
 
     // Swap nodes
     l_child->right = root;
@@ -79,9 +87,9 @@ symbol_table_node_t *rotate_right_ll(symbol_table_node_t *root) {
 }
 
 // Left rotation
-symbol_table_node_t *rotate_left_rr(symbol_table_node_t *root) {
-    symbol_table_node_t *r_child = root->right;
-    symbol_table_node_t *r_child_l_subtree = root->right->left;
+symtable_node_t *rotate_left_rr(symtable_node_t *root) {
+    symtable_node_t *r_child = root->right;
+    symtable_node_t *r_child_l_subtree = root->right->left;
 
     // Swap nodes
     r_child->left = root;
@@ -104,7 +112,7 @@ symbol_table_node_t *rotate_left_rr(symbol_table_node_t *root) {
 }
 
 // Left-right rotation
-symbol_table_node_t *rotate_left_right_lr(symbol_table_node_t *root) {
+symtable_node_t *rotate_left_right_lr(symtable_node_t *root) {
     // Rotate left child first
     root->left = rotate_left_rr(root->left);
     // Then rotate the node
@@ -112,18 +120,18 @@ symbol_table_node_t *rotate_left_right_lr(symbol_table_node_t *root) {
 }
 
 // Right-left rotation
-symbol_table_node_t *rotate_right_left_rl(symbol_table_node_t *root) {
+symtable_node_t *rotate_right_left_rl(symtable_node_t *root) {
     // Rotate right child first
     root->right = rotate_right_ll(root->right);
     // Then rotate the node
     return rotate_left_rr(root);
 }
 
-symbol_table_node_t *insert_node(symbol_table_node_t *root, symbol_table_type_t type, char *id,
-                                 symbol_table_data_t data, bool *success) {
+symtable_node_t *insert_node(symtable_node_t *root, symtable_type_t type, char *id,
+                             symtable_data_t data, bool *success) {
     if (root == NULL) {
         // Allocation of memory for the node
-        symbol_table_node_t *node = (symbol_table_node_t *)malloc(sizeof(symbol_table_node_t));
+        symtable_node_t *node = (symtable_node_t *)malloc(sizeof(symtable_node_t));
         if (node == NULL) {
             *success = false;
             return NULL;
@@ -196,8 +204,8 @@ symbol_table_node_t *insert_node(symbol_table_node_t *root, symbol_table_type_t 
     return root;
 }
 
-bool symbol_table_insert_item(symbol_table_stack_t *stack, symbol_table_type_t type, char *id,
-                              symbol_table_data_t data) {
+bool symtable_insert_item(symtable_stack_t *stack, symtable_type_t type, char *id,
+                          symtable_data_t data) {
     bool success = true;
 
     stack->top->tree_root = insert_node(stack->top->tree_root, type, id, data, &success);
@@ -205,13 +213,13 @@ bool symbol_table_insert_item(symbol_table_stack_t *stack, symbol_table_type_t t
     return success;
 }
 
-symbol_table_node_t *sym_stack_search_current(symbol_table_stack_item_t *stack_top,
-                                              symbol_table_type_t type, char *id) {
+symtable_node_t *symtable_stack_search_current(symtable_stack_item_t *stack_top,
+                                               symtable_type_t type, char *id) {
     if (stack_top == NULL) {
         return NULL;
     }
 
-    symbol_table_node_t *root = stack_top->tree_root;
+    symtable_node_t *root = stack_top->tree_root;
     if (root == NULL) {
         return NULL;
     }
@@ -235,18 +243,17 @@ symbol_table_node_t *sym_stack_search_current(symbol_table_stack_item_t *stack_t
     return root;
 }
 
-symbol_table_node_t *symbol_table_search(symbol_table_stack_t *stack, symbol_table_type_t type,
-                                         char *id) {
+symtable_node_t *symtable_search(symtable_stack_t *stack, symtable_type_t type, char *id) {
     if (stack == NULL) {
         return NULL;
     }
 
-    symbol_table_stack_item_t *top = stack->top;
+    symtable_stack_item_t *top = stack->top;
     if (top == NULL) {
         return NULL;
     }
 
-    symbol_table_node_t *node = NULL;
+    symtable_node_t *node = NULL;
     while (top != NULL) {
         node = sym_stack_search_current(top, type, id);
         if (node != NULL) {
@@ -260,7 +267,7 @@ symbol_table_node_t *symbol_table_search(symbol_table_stack_t *stack, symbol_tab
 }
 
 // Recursively delete node and its children
-void delete_node(symbol_table_node_t *node) {
+void delete_node(symtable_node_t *node) {
     if (node == NULL) {
         return;
     }
@@ -272,8 +279,8 @@ void delete_node(symbol_table_node_t *node) {
 
     // Delete function parameters and its names
     if (node->data.type == SYM_TYPE_FUNC) {
-        symbol_table_fun_param_t *param = node->data.fun.params;
-        symbol_table_fun_param_t *next_param;
+        symtable_fun_param_t *param = node->data.fun.params;
+        symtable_fun_param_t *next_param;
         while (param != NULL) {
             next_param = param->next;
             free(param->name);
@@ -285,7 +292,7 @@ void delete_node(symbol_table_node_t *node) {
     free(node);
 }
 
-void symbol_table_pop_avl(symbol_table_stack_item_t *stack_top) {
+void symtable_pop_avl(symtable_stack_item_t *stack_top) {
     if (stack_top == NULL) {
         return;
     }
@@ -293,17 +300,17 @@ void symbol_table_pop_avl(symbol_table_stack_item_t *stack_top) {
     delete_node(stack_top->tree_root);
 }
 
-void sym_stack_delete(symbol_table_stack_t *stack) {
+void symtable_stack_delete(symtable_stack_t *stack) {
     if (stack == NULL) {
         return;
     }
 
-    symbol_table_stack_item_t *top = stack->top;
-    symbol_table_stack_item_t *next_top;
+    symtable_stack_item_t *top = stack->top;
+    symtable_stack_item_t *next_top;
 
     // Delete each AVL tree
     while (top != NULL) {
-        symbol_table_pop_avl(top);
+        symtable_pop_avl(top);
         next_top = top->next;
         free(top);
         top = next_top;
