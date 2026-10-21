@@ -5,7 +5,7 @@ Authors: Zobal, Tajovský, Ondruška, Svoboda
 Creation date: 11.10.2026
 File: scanner_bbox_tests.c
 
-Description: Black-box scanner tests.
+Description: Unit tests for scanner.
 
 -------------------------------------------------------
 */

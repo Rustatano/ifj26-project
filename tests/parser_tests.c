@@ -5,7 +5,7 @@ Authors: Zobal, Tajovský, Ondruška, Svoboda
 Creation date: 11.10.2026
 File: parser_bbox_tests.c
 
-Description: Black-box parser tests.
+Description: Unit tests for parser.
 
 -------------------------------------------------------
 */

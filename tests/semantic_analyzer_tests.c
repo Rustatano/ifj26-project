@@ -3,9 +3,9 @@
 Name of project: Translator IFJ26
 Authors: Zobal, Tajovský, Ondruška, Svoboda
 Creation date: 11.10.2026
-File: optimizer_bbox_tests.c
+File: semantic_analyzer_bbox_tests.c
 
-Description: Black-box optimizer tests.
+Description: Unit tests for semantic analyzer.
 
 -------------------------------------------------------
 */
