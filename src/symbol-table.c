@@ -54,7 +54,7 @@ int get_height(symbol_table_node_t *node) {
 }
 
 // Right rotation
-symbol_table_node_t *rotate_ll(symbol_table_node_t *root) {
+symbol_table_node_t *rotate_right_ll(symbol_table_node_t *root) {
     symbol_table_node_t *l_child = root->left;
     symbol_table_node_t *l_child_r_subtree = root->left->right;
 
@@ -79,7 +79,7 @@ symbol_table_node_t *rotate_ll(symbol_table_node_t *root) {
 }
 
 // Left rotation
-symbol_table_node_t *rotate_rr(symbol_table_node_t *root) {
+symbol_table_node_t *rotate_left_rr(symbol_table_node_t *root) {
     symbol_table_node_t *r_child = root->right;
     symbol_table_node_t *r_child_l_subtree = root->right->left;
 
@@ -104,19 +104,19 @@ symbol_table_node_t *rotate_rr(symbol_table_node_t *root) {
 }
 
 // Left-right rotation
-symbol_table_node_t *rotate_lr(symbol_table_node_t *root) {
+symbol_table_node_t *rotate_left_right_lr(symbol_table_node_t *root) {
     // Rotate left child first
-    root->left = rotate_rr(root->left);
+    root->left = rotate_left_rr(root->left);
     // Then rotate the node
-    return rotate_ll(root);
+    return rotate_right_ll(root);
 }
 
 // Right-left rotation
-symbol_table_node_t *rotate_rl(symbol_table_node_t *root) {
+symbol_table_node_t *rotate_right_left_rl(symbol_table_node_t *root) {
     // Rotate right child first
-    root->right = rotate_ll(root->right);
+    root->right = rotate_right_ll(root->right);
     // Then rotate the node
-    return rotate_rr(root);
+    return rotate_left_rr(root);
 }
 
 symbol_table_node_t *insert_node(symbol_table_node_t *root, symbol_table_type_t type, char *id,
@@ -174,10 +174,10 @@ symbol_table_node_t *insert_node(symbol_table_node_t *root, symbol_table_type_t 
         // Decide method
         if (balance >= 0) {
             // LL
-            return rotate_ll(root);
+            return rotate_right_ll(root);
         } else {
             // LR
-            return rotate_lr(root);
+            return rotate_left_right_lr(root);
         }
     } else if (balance <= -2) {
         // Calculate balance for right child
@@ -185,10 +185,10 @@ symbol_table_node_t *insert_node(symbol_table_node_t *root, symbol_table_type_t 
         // Decide method
         if (balance <= 0) {
             // RR
-            return rotate_rr(root);
+            return rotate_left_rr(root);
         } else {
             // RL
-            return rotate_rl(root);
+            return rotate_right_left_rl(root);
         }
     }
 
