@@ -21,7 +21,17 @@ Description: Unit tests for symbol table.
 #include "symbol_table.h"
 
 // SECTION: symtable_init
+void symtable_init_null_test(void **state) {
+    (void)state; // Unused argument
+    // Init
+    bool res = symtable_init(NULL);
+
+    // Assert
+    assert_false(res);
+}
+
 void symtable_init_test(void **state) {
+    (void)state; // Unused argument
     // Init
     symtable_stack_t symtable_stack;
     bool res = symtable_init(&symtable_stack);
@@ -32,16 +42,18 @@ void symtable_init_test(void **state) {
     assert_null(symtable_stack.global);
 }
 
-void symtable_init_null_test(void **state) {
+// SECTION: symtable_create_avl
+void symtable_create_avl_null_test(void **state) {
+    (void)state; // Unused argument
     // Init
-    bool res = symtable_init(NULL);
+    bool res = symtable_create_avl(NULL);
 
     // Assert
     assert_false(res);
 }
 
-// SECTION: symtable_create_avl
 void symtable_create_avl_first_call_test(void **state) {
+    (void)state; // Unused argument
     // Init
     symtable_stack_t symtable_stack;
     symtable_init(&symtable_stack);
@@ -52,13 +64,13 @@ void symtable_create_avl_first_call_test(void **state) {
     assert_true(res);
     assert_non_null(symtable_stack.top);
     assert_non_null(symtable_stack.global);
-    assert_int_equal(sizeof(symtable_stack.top), sizeof(symtable_stack_item_t));
     assert_null(symtable_stack.top->tree_root);
     assert_null(symtable_stack.top->next);
     assert_ptr_equal(symtable_stack.top, symtable_stack.global);
 }
 
 void symtable_create_avl_second_call_test(void **state) {
+    (void)state; // Unused argument
     // Init
     symtable_stack_t symtable_stack;
     symtable_init(&symtable_stack);
@@ -81,37 +93,27 @@ void symtable_create_avl_second_call_test(void **state) {
     assert_ptr_equal(symtable_stack.top->next, first_call_top);
 }
 
-void symtable_create_avl_null_test(void **state) {
-    // Init
-    bool res = symtable_create_avl(NULL);
-
-    // Assert
-    assert_false(res);
-}
-
 // SECTION: symtable_pop_avl
 void symtable_pop_avl_test(void **state) {
-    // Init
-    symtable_stack_t symtable_stack;
-    symtable_init(&symtable_stack);
-
-    if (!symtable_create_avl(&symtable_stack)) {
-        return;
-    }
-
-    symtable_stack_item_t *first_call_top = symtable_stack.top;
-
-    bool res = symtable_create_avl(&symtable_stack);
+    (void)state; // Unused argument
 }
 
 // SECTION: symtable_insert_item
-void symtable_insert_item_test(void **state) {}
+void symtable_insert_item_test(void **state) {
+    (void)state; // Unused argument
+}
 
 // SECTION: symtable_search
-void symtable_search_test(void **state) {}
+void symtable_search_test(void **state) {
+    (void)state; // Unused argument
+}
 
 // SECTION: symtable_stack_search_current
-void symtable_stack_search_current_test(void **state) {}
+void symtable_stack_search_current_test(void **state) {
+    (void)state; // Unused argument
+}
 
 // SECTION: symtable_stack_delete
-void symtable_stack_delete_test(void **state) {}
+void symtable_stack_delete_test(void **state) {
+    (void)state; // Unused argument
+}
