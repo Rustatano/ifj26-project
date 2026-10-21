@@ -183,7 +183,7 @@ symbol_table_node_t *insert_node(symbol_table_node_t *root, symbol_table_type_t 
         // Calculate balance for right child
         balance = get_height(root->right->left) - get_height(root->right->right);
         // Decide method
-        if (balance >= 0) {
+        if (balance <= 0) {
             // RR
             return rotate_rr(root);
         } else {
