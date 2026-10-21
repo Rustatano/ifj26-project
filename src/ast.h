@@ -63,7 +63,7 @@ typedef enum {
 struct ast_node {
     ast_node_type_t type;
     int source_code_line;
-    symbol_table_datatype_t result_type;
+    symtable_datatype_t result_type;
     ast_node_t *next;
 
     // Type-specific values
@@ -82,8 +82,8 @@ struct ast_node {
         // AST_NODE_FUN_DEFINITION
         struct {
             char *name;
-            symbol_table_fun_param_t *params;
-            symbol_table_datatype_t return_type;
+            symtable_fun_param_t *params;
+            symtable_datatype_t return_type;
             ast_node_t *body_block;
         } fun_definition;
 
@@ -91,7 +91,7 @@ struct ast_node {
         struct {
             char *name;
             int unique_id;
-            symbol_table_datatype_t var_type;
+            symtable_datatype_t var_type;
             bool is_mutable;
             ast_node_t *init_expres; // Pointer to initialization expression or NULL
         } var_declaration;
@@ -162,9 +162,9 @@ ast_node_t *ast_expres_operation_create(ast_expres_operator_t op, ast_node_t *le
                                         ast_node_t *right_side, int source_code_line);
 
 // Create variable declaration node
-ast_node_t *ast_var_declaration_create(const char *name, int unique_id,
-                                       symbol_table_datatype_t type, bool is_mutable,
-                                       ast_node_t *init_expres, int source_code_line);
+ast_node_t *ast_var_declaration_create(const char *name, int unique_id, symtable_datatype_t type,
+                                       bool is_mutable, ast_node_t *init_expres,
+                                       int source_code_line);
 
 // Create variable assignment node
 ast_node_t *ast_assignment_create(const char *target_name, int unique_id, ast_node_t *expres,
@@ -178,8 +178,8 @@ ast_node_t *ast_if_create(ast_node_t *condition, ast_node_t *if_block, ast_node_
 ast_node_t *ast_while_create(ast_node_t *condition, ast_node_t *body_block, int source_code_line);
 
 // Create variable expression node
-ast_node_t *ast_expres_var_create(const char *name, int unique_id,
-                                  symbol_table_datatype_t result_type, int source_code_line);
+ast_node_t *ast_expres_var_create(const char *name, int unique_id, symtable_datatype_t result_type,
+                                  int source_code_line);
 
 // Create constants
 ast_node_t *ast_const_int_create(int value, int source_code_line);

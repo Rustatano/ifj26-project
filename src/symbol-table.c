@@ -255,7 +255,7 @@ symtable_node_t *symtable_search(symtable_stack_t *stack, symtable_type_t type, 
 
     symtable_node_t *node = NULL;
     while (top != NULL) {
-        node = sym_stack_search_current(top, type, id);
+        node = symtable_stack_search_current(top, type, id);
         if (node != NULL) {
             return node;
         }
