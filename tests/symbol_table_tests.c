@@ -32,21 +32,77 @@ void symtable_init_test(void **state) {
     assert_null(symtable_stack.global);
 }
 
-// SECTION: symtable_create_avl
-void symtable_create_avl_test(void **state) {
+void symtable_init_null_test(void **state) {
     // Init
-    symtable_stack_t symtable_stack;
-    bool res = symtable_init(&symtable_stack);
-
-    symtable_create_avl(&symtable_stack);
+    bool res = symtable_init(NULL);
 
     // Assert
+    assert_false(res);
+}
+
+// SECTION: symtable_create_avl
+void symtable_create_avl_first_call_test(void **state) {
+    // Init
+    symtable_stack_t symtable_stack;
+    symtable_init(&symtable_stack);
+
+    bool res = symtable_create_avl(&symtable_stack);
+
+    // Assert
+    assert_true(res);
     assert_non_null(symtable_stack.top);
     assert_non_null(symtable_stack.global);
+    assert_int_equal(sizeof(symtable_stack.top), sizeof(symtable_stack_item_t));
+    assert_null(symtable_stack.top->tree_root);
+    assert_null(symtable_stack.top->next);
+    assert_ptr_equal(symtable_stack.top, symtable_stack.global);
+}
+
+void symtable_create_avl_second_call_test(void **state) {
+    // Init
+    symtable_stack_t symtable_stack;
+    symtable_init(&symtable_stack);
+
+    if (!symtable_create_avl(&symtable_stack)) {
+        return;
+    }
+
+    symtable_stack_item_t *first_call_top = symtable_stack.top;
+
+    bool res = symtable_create_avl(&symtable_stack);
+
+    // Assert
+    assert_true(res);
+    assert_non_null(symtable_stack.top);
+    assert_non_null(symtable_stack.global);
+    assert_ptr_not_equal(symtable_stack.top, symtable_stack.global);
+    assert_ptr_equal(symtable_stack.global, first_call_top);
+    assert_null(symtable_stack.top->tree_root);
+    assert_ptr_equal(symtable_stack.top->next, first_call_top);
+}
+
+void symtable_create_avl_null_test(void **state) {
+    // Init
+    bool res = symtable_create_avl(NULL);
+
+    // Assert
+    assert_false(res);
 }
 
 // SECTION: symtable_pop_avl
-void symtable_pop_avl_test(void **state) {}
+void symtable_pop_avl_test(void **state) {
+    // Init
+    symtable_stack_t symtable_stack;
+    symtable_init(&symtable_stack);
+
+    if (!symtable_create_avl(&symtable_stack)) {
+        return;
+    }
+
+    symtable_stack_item_t *first_call_top = symtable_stack.top;
+
+    bool res = symtable_create_avl(&symtable_stack);
+}
 
 // SECTION: symtable_insert_item
 void symtable_insert_item_test(void **state) {}
