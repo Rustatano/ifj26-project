@@ -23,6 +23,13 @@ extern void symtable_init_test(void **state);
 extern void symtable_create_avl_null_test(void **state);
 extern void symtable_create_avl_first_call_test(void **state);
 extern void symtable_create_avl_second_call_test(void **state);
+extern void symtable_pop_avl_null_test(void **state);
+extern void symtable_pop_avl_one_tree_test(void **state);
+extern void symtable_pop_avl_two_trees_test(void **state);
+// TODO: insert and search tests
+extern void symtable_stack_search_current_null_test(void **state);
+extern void symtable_stack_search_current_exists_test(void **state);
+extern void symtable_stack_search_current_not_exists_test(void **state);
 
 // Scanner test functions
 extern void scanner_init_test(void **state);
@@ -34,6 +41,12 @@ int main(void) {
         cmocka_unit_test(symtable_create_avl_null_test),
         cmocka_unit_test(symtable_create_avl_first_call_test),
         cmocka_unit_test(symtable_create_avl_second_call_test),
+        cmocka_unit_test(symtable_pop_avl_null_test),
+        cmocka_unit_test(symtable_pop_avl_one_tree_test),
+        cmocka_unit_test(symtable_pop_avl_two_trees_test),
+        cmocka_unit_test(symtable_stack_search_current_null_test),
+        cmocka_unit_test(symtable_stack_search_current_exists_test),
+        cmocka_unit_test(symtable_stack_search_current_not_exists_test),
     };
     const struct CMUnitTest scanner_tests[] = {
         cmocka_unit_test(scanner_init_test),
