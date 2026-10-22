@@ -15,7 +15,6 @@ bool symtable_init(symtable_stack_t *stack) {
     if (stack == NULL) {
         return false;
     }
-
     stack->top = NULL;
     stack->global = NULL;
     return true;
@@ -207,7 +206,12 @@ symtable_node_t *insert_node(symtable_node_t *root, char *id, symtable_data_t da
     return root;
 }
 
-bool symtable_insert_item(symtable_stack_t *stack, char *id, symtable_data_t data) {
+bool symtable_insert_item(symtable_stack_t *stack, symtable_type_t type, char *id,
+                          symtable_data_t data) {
+    if (stack == NULL || id == NULL) {
+        return false;
+    }
+
     bool success = true;
 
     stack->top->tree_root = insert_node(stack->top->tree_root, id, data, &success);
@@ -217,7 +221,7 @@ bool symtable_insert_item(symtable_stack_t *stack, char *id, symtable_data_t dat
 
 symtable_node_t *symtable_stack_search_current(symtable_stack_item_t *stack_top,
                                                symtable_type_t type, char *id) {
-    if (stack_top == NULL) {
+    if (stack_top == NULL || id == NULL) {
         return NULL;
     }
 
@@ -253,7 +257,7 @@ symtable_node_t *symtable_stack_search_current(symtable_stack_item_t *stack_top,
 }
 
 symtable_node_t *symtable_search(symtable_stack_t *stack, symtable_type_t type, char *id) {
-    if (stack == NULL) {
+    if (stack == NULL || id == NULL) {
         return NULL;
     }
 
