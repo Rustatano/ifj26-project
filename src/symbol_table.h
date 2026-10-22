@@ -40,8 +40,6 @@ typedef struct symtable_fun_param {
 
 // Struct representing one data object in AVL
 typedef struct {
-    symtable_type_t type;
-
     // Representing variable and constant as var or function as fun
     union {
         struct {

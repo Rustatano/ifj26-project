@@ -127,8 +127,7 @@ symtable_node_t *rotate_right_left_rl(symtable_node_t *root) {
     return rotate_left_rr(root);
 }
 
-symtable_node_t *insert_node(symtable_node_t *root, symtable_type_t type, char *id,
-                             symtable_data_t data, bool *success) {
+symtable_node_t *insert_node(symtable_node_t *root, char *id, symtable_data_t data, bool *success) {
     if (root == NULL) {
         // Allocation of memory for the node
         symtable_node_t *node = (symtable_node_t *)malloc(sizeof(symtable_node_t));
@@ -158,9 +157,9 @@ symtable_node_t *insert_node(symtable_node_t *root, symtable_type_t type, char *
 
     // Decide which side to follow
     if (cmp > 0) {
-        root->left = insert_node(root->left, type, id, data, success);
+        root->left = insert_node(root->left, id, data, success);
     } else if (cmp < 0) {
-        root->right = insert_node(root->right, type, id, data, success);
+        root->right = insert_node(root->right, id, data, success);
     } else {
         *success = false;
     }
@@ -204,11 +203,10 @@ symtable_node_t *insert_node(symtable_node_t *root, symtable_type_t type, char *
     return root;
 }
 
-bool symtable_insert_item(symtable_stack_t *stack, symtable_type_t type, char *id,
-                          symtable_data_t data) {
+bool symtable_insert_item(symtable_stack_t *stack, char *id, symtable_data_t data) {
     bool success = true;
 
-    stack->top->tree_root = insert_node(stack->top->tree_root, type, id, data, &success);
+    stack->top->tree_root = insert_node(stack->top->tree_root, id, data, &success);
 
     return success;
 }
