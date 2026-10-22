@@ -3,7 +3,7 @@
 Name of project: Translator IFJ26
 Authors: Zobal, Tajovský, Ondruška, Svoboda
 Creation date: 20.10.2026
-File: scanner_bbox_tests.c
+File: scanner_tests.c
 
 Description: Unit tests for symbol table.
 

@@ -3,7 +3,7 @@
 Name of project: Translator IFJ26
 Authors: Zobal, Tajovský, Ondruška, Svoboda
 Creation date: 14.10.2026
-File: symtable.h
+File: symbol_table.h
 
 Description: Header file for symbol table as a stack of height-balanced AVL trees
 -------------------------------------------------------

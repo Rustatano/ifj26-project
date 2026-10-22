@@ -3,7 +3,7 @@
 Name of project: Translator IFJ26
 Authors: Zobal, Tajovský, Ondruška, Svoboda
 Creation date: 11.10.2026
-File: optimizer_bbox_tests.c
+File: optimizer_tests.c
 
 Description: Unit tests for optimizer.
 
