@@ -206,8 +206,7 @@ symtable_node_t *insert_node(symtable_node_t *root, char *id, symtable_data_t da
     return root;
 }
 
-bool symtable_insert_item(symtable_stack_t *stack, symtable_type_t type, char *id,
-                          symtable_data_t data) {
+bool symtable_insert_item(symtable_stack_t *stack, char *id, symtable_data_t data) {
     if (stack == NULL || id == NULL) {
         return false;
     }
