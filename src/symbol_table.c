@@ -12,6 +12,10 @@ Description: Implementation file for symbol table as a stack of height-balanced 
 #include "symbol_table.h"
 
 bool symtable_init(symtable_stack_t *stack) {
+    if (stack == NULL) {
+        return false;
+    }
+
     stack->top = NULL;
     stack->global = NULL;
     return true;
@@ -222,23 +226,30 @@ symtable_node_t *symtable_stack_search_current(symtable_stack_item_t *stack_top,
         return NULL;
     }
 
-    // Decide which side to follow
+    // Compare IDs
     int cmp = strcmp(root->key, id);
-    while (cmp != 0 && type != root->data.type) {
+    while (cmp != 0) {
+        // Decide which side to follow
         if (cmp > 0) {
             root = root->left;
         } else {
             root = root->right;
         }
 
+        // Node not found
         if (root == NULL) {
             return NULL;
         }
 
+        // Compare IDs
         cmp = strcmp(root->key, id);
     }
 
-    return root;
+    if (root->data.type == type) {
+        return root;
+    }
+
+    return NULL;
 }
 
 symtable_node_t *symtable_search(symtable_stack_t *stack, symtable_type_t type, char *id) {
@@ -291,11 +302,21 @@ void delete_node(symtable_node_t *node) {
 }
 
 void symtable_pop_avl(symtable_stack_t *stack) {
+    if (stack == NULL) {
+        return;
+    }
     if (stack->top == NULL) {
         return;
     }
 
     delete_node(stack->top->tree_root);
+
+    stack->top = stack->top->next;
+
+    // There is no tree left in stack
+    if (stack->top == NULL) {
+        stack->global = NULL;
+    }
 }
 
 void symtable_stack_delete(symtable_stack_t *stack) {
