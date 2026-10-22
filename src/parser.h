@@ -13,6 +13,7 @@ Description: Header file for the parser
 #define PARSER_H
 
 #include "ast.h"
+#include "scanner.h"
 #include "symbol_table.h"
 #include <stdbool.h>
 #include <stdio.h>
@@ -32,6 +33,6 @@ typedef struct {
 } parse_result_t;
 
 // Start the parsing process. Will call the scanner get_token function and create a AST
-parse_result_t parse(ast_node_t **ast_root);
+parse_result_t parse(ast_node_t **ast_root, scanner_conf_t *scanner_conf);
 
 #endif
