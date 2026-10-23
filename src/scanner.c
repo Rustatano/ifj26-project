@@ -5,19 +5,65 @@ Authors: Zobal, Tajovský, Ondruška, Svoboda
 Creation date: 06.10.2026
 File: scanner.c
 
-Description: Lexical analyzator of the translator, which scans lexems for tokens
+Description: Lexical analyzer of the translator, which scans characters
+from input, groups them into lexems and returns tokens
 
 -------------------------------------------------------
 */
 
 // Libraries
 #include "scanner.h"
+#include <stdbool.h>
 #include <stdlib.h>
 
+// Macros
+#define STRING_START_SIZE 64
+
+// Enums
 typedef enum { STATE_START, STATE_ASSIGN, STATE_LT, STATE_GT, STATE_NOT } state_t;
 
+typedef struct {
+    char *content; // Content of the string
+    int length;    // Current string length (without '\0')
+    int capacity;  // Allocated space
+} dynamic_string_t;
+
+// Initializes string values
+bool str_init(dynamic_string_t *str) {
+    str->capacity = STRING_START_SIZE;
+    str->length = 0;
+    str->content = malloc(str->capacity);
+    // Allocation not successful
+    if (str->content == NULL) {
+        return false;
+    }
+    str->content[0] = '\0';
+    return true;
+}
+
+// Adds a character into a string
+bool str_add_char(dynamic_string_t *str, char ch) {
+    // If capacity is bigger than required new space
+    if (str->length + 1 >= str->capacity) {
+        // Increases string capacity
+        int new_cap = str->capacity * 2;
+        char *new_data = realloc(str->content, new_cap);
+        // Couldn't increase capacity
+        if (new_data == NULL) {
+            return false;
+        }
+        // Update values
+        str->content = new_data;
+        str->capacity = new_cap;
+    }
+    str->content[str->length] = ch;
+    str->length++;
+    str->content[str->length] = '\0';
+    return true;
+}
+
+// Initializes all values for scanning
 void scanner_init(scanner_conf_t *conf, FILE *file) {
-    // Initializes all values for scanning
 
     conf->source_file = file;
     conf->indent_top = 0;
@@ -33,7 +79,7 @@ int get_char(scanner_conf_t *conf) {
     return fgetc(conf->source_file);
 }
 
-// Stores chars to be proccesed for the next token
+// Stores chars to be processed for the next token
 void store_char(scanner_conf_t *conf, int ch) {
     if (conf->unread_top < UNREAD_CHARS_SIZE) {
         conf->unread_chars_stack[conf->unread_top] = ch;
@@ -41,6 +87,7 @@ void store_char(scanner_conf_t *conf, int ch) {
     }
 }
 
+// Reads input file and procceses first lexeme it finds
 token_t get_token(scanner_conf_t *conf) {
 
     // Creates variables for further use
@@ -154,9 +201,10 @@ token_t get_token(scanner_conf_t *conf) {
             exit(1);
             break;
 
+        // If not in any valid state
         default:
             fprintf(stderr, "Lexical analysis Error 1: Invalid token type\n");
-            exit(1); // Scanner error exit code
+            exit(1);
             break;
         }
     }
