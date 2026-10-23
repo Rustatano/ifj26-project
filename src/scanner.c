@@ -5,28 +5,41 @@ Authors: Zobal, Tajovský, Ondruška, Svoboda
 Creation date: 06.10.2026
 File: scanner.c
 
-Description: Lexical analyzer of the translator, which scans characters
-from input, groups them into lexems and returns tokens
+Description: Lexical analyzer, which scans characters
+from input, groups them into lexems and returns tokens.
 
 -------------------------------------------------------
 */
 
 // Libraries
 #include "scanner.h"
+#include <ctype.h> // For isalpha(), ..
 #include <stdbool.h>
-#include <stdlib.h>
+#include <stdlib.h> // For malloc, realloc, ..
+#include <string.h> // For strcmp, ..
 
 // Macros
 #define STRING_START_SIZE 64
 
 // Enums
-typedef enum { STATE_START, STATE_ASSIGN, STATE_LT, STATE_GT, STATE_NOT } state_t;
+typedef enum {
+    STATE_START,
+    STATE_ASSIGN,
+    STATE_LT,
+    STATE_GT,
+    STATE_NOT,
+    STATE_ID,
+    STATE_UNDERSCORE
+} state_t;
 
+// Structs
 typedef struct {
     char *content; // Content of the string
     int length;    // Current string length (without '\0')
     int capacity;  // Allocated space
 } dynamic_string_t;
+
+// Functions
 
 // Initializes string values
 bool str_init(dynamic_string_t *str) {
@@ -62,6 +75,57 @@ bool str_add_char(dynamic_string_t *str, char ch) {
     return true;
 }
 
+// Checks if identifier is a valid keyword
+token_type_t keyword_check(char *content) {
+    // If the string matches a keyword, it frees the memory and returns a valid token type
+    // Otherwise returns token type ID and keeps the memory
+    if (strcmp(content, "def") == 0) {
+        free(content);
+        return TOKEN_KW_DEF;
+    } else if (strcmp(content, "do") == 0) {
+        free(content);
+        return TOKEN_KW_DO;
+    } else if (strcmp(content, "Double") == 0) {
+        free(content);
+        return TOKEN_KW_DOUBLE;
+    } else if (strcmp(content, "else") == 0) {
+        free(content);
+        return TOKEN_KW_ELSE;
+    } else if (strcmp(content, "if") == 0) {
+        free(content);
+        return TOKEN_KW_IF;
+    } else if (strcmp(content, "import") == 0) {
+        free(content);
+        return TOKEN_KW_IMPORT;
+    } else if (strcmp(content, "Int") == 0) {
+        free(content);
+        return TOKEN_KW_INT;
+    } else if (strcmp(content, "return") == 0) {
+        free(content);
+        return TOKEN_KW_RETURN;
+    } else if (strcmp(content, "String") == 0) {
+        free(content);
+        return TOKEN_KW_STRING;
+    } else if (strcmp(content, "then") == 0) {
+        free(content);
+        return TOKEN_KW_THEN;
+    } else if (strcmp(content, "Unit") == 0) {
+        free(content);
+        return TOKEN_KW_UNIT;
+    } else if (strcmp(content, "val") == 0) {
+        free(content);
+        return TOKEN_KW_VAL;
+    } else if (strcmp(content, "var") == 0) {
+        free(content);
+        return TOKEN_KW_VAR;
+    } else if (strcmp(content, "while") == 0) {
+        free(content);
+        return TOKEN_KW_WHILE;
+    } else {
+        return TOKEN_ID;
+    }
+}
+
 // Initializes all values for scanning
 void scanner_init(scanner_conf_t *conf, FILE *file) {
 
@@ -87,12 +151,14 @@ void store_char(scanner_conf_t *conf, int ch) {
     }
 }
 
-// Reads input file and procceses first lexeme it finds
+// Reads input file and processes first lexeme it finds
 token_t get_token(scanner_conf_t *conf) {
 
     // Creates variables for further use
     state_t state = STATE_START;
     token_t token;
+    dynamic_string_t str;
+    int char_buffer;
 
     // State automaton
     while (1) {
@@ -111,6 +177,24 @@ token_t get_token(scanner_conf_t *conf) {
             else if (ch == ' ' || ch == '\r') {
                 continue;
             }
+
+            // Identifier
+            else if (isalpha(ch)) {
+                if (!str_init(&str)) {
+                    fprintf(stderr, "Lexical analysis Error 99: String allocation error\n");
+                    exit(99); // Internal compiler error
+                }
+                str_add_char(&str, ch);
+                state = STATE_ID;
+                continue;
+            }
+            // Underscore
+            else if (ch == '_') {
+                char_buffer = ch;
+                state = STATE_UNDERSCORE;
+                continue;
+            }
+
             // Operators
             else if (ch == '+') {
                 token.type = TOKEN_PLUS;
@@ -159,10 +243,54 @@ token_t get_token(scanner_conf_t *conf) {
                 return token;
             }
             // Next char is not "==" therefore it is an assign token
-            // Storing excessive char back for another read
+            // Storing unused char back for another read
             store_char(conf, ch);
             token.type = TOKEN_ASSIGN;
             return token;
+            break;
+
+        case STATE_UNDERSCORE:
+            // Identifier starting with underscore
+            if (isalnum(ch) || ch == '_') {
+                if (!str_init(&str)) {
+                    fprintf(stderr, "Lexical analysis Error 99: String allocation error\n");
+                    exit(99); // Internal compiler error
+                }
+                // Saving both underscore and the char after in the string
+                str_add_char(&str, char_buffer);
+                str_add_char(&str, ch);
+                // Moving to ID state
+                state = STATE_ID;
+                continue;
+            }
+            // Standalone underscore
+            else {
+                // Storing unused char back for another read
+                store_char(conf, ch);
+                // Return token
+                token.type = TOKEN_UNDERSCORE;
+                return token;
+            }
+            break;
+
+        case STATE_ID:
+            // The string keeps going
+            if (isalnum(ch) || ch == '_') {
+                str_add_char(&str, ch);
+                continue;
+            }
+            // End of a string
+            else {
+                // Storing unused char back for another read
+                store_char(conf, ch);
+
+                // Return token
+                token.type = keyword_check(str.content);
+                if (token.type == TOKEN_ID) {
+                    token.attr.str_val = str.content;
+                }
+                return token;
+            }
             break;
 
         case STATE_LT:
