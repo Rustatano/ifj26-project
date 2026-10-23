@@ -8,7 +8,10 @@
       "extensions": [
         "ms-vscode.cpptools",
         "James-Yu.latex-workshop",
-        "xaver.clang-format"
+        "xaver.clang-format",
+        "github.vscode-github-actions",
+        "ms-azuretools.vscode-containers",
+        "esbenp.prettier-vscode"
       ],
       "settings": {
         "C_Cpp.default.compilerPath": "/usr/bin/gcc-16",
@@ -27,7 +30,19 @@
             ],
             "env": {}
           }
-        ]
+        ],
+        "latex-workshop.formatting.latex": "latexindent",
+        "editor.formatOnSave": true,
+        "[latex]": {
+          "editor.defaultFormatter": "James-Yu.latex-workshop"
+        },
+        "[c]": {
+          "editor.defaultFormatter": "ms-vscode.cpptools"
+        },
+        "[yaml][json][jsonc]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode",
+          "editor.tabSize": 2
+        }
       }
     }
   },
