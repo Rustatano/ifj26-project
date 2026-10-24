@@ -1,7 +1,7 @@
 /*
 -------------------------------------------------------
 Name of project: Translator IFJ26
-Authors: Zobal, Tajovský, Ondruška, Svoboda
+Authors: xsvoboj01 (Jakub Svoboda)
 Creation date: 18.10.2026
 File: semantic.c
 

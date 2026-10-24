@@ -1,7 +1,7 @@
 /*
 -------------------------------------------------------
 Name of project: Translator IFJ26
-Authors: Zobal, Tajovský, Ondruška, Svoboda
+Authors: xondrus00 (Sebastian Ondruska), xsvoboj01 (Jakub Svoboda)
 Creation date: 14.10.2026
 File: symtable.h
 
