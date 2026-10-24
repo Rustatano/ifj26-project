@@ -42,7 +42,7 @@ int count_fun_params(symtable_fun_param_t *param) {
 // Check if variable is defined
 symtable_datatype_t check_expres_var(symtable_stack_t *symtable_stack, ast_node_t *node) {
     symtable_node_t *var_declaration =
-        symtable_search(symtable_stack->top, SYM_TYPE_VAR, node->expressions_var.name);
+        symtable_search(symtable_stack, SYM_TYPE_VAR, node->expressions_var.name);
     if (var_declaration == NULL) {
         // Semantic error (usage of not declared variable)
         return SYM_DATATYPE_ERROR;
@@ -170,6 +170,8 @@ symtable_datatype_t check_expr(symtable_stack_t *symtable_stack, ast_node_t *nod
     case AST_NODE_CONST_STRING:
     case AST_NODE_CONST_UNIT:
         return node->result_type;
+    default:
+        return SYM_DATATYPE_ERROR;
     }
 
     // Semantic error (invalid expression type)
@@ -271,14 +273,14 @@ symtable_datatype_t check_statement_while(symtable_stack_t *symtable_stack, ast_
 }
 
 symtable_datatype_t check_statement_return(symtable_stack_t *symtable_stack, ast_node_t *node,
-                                           ast_node_t *fun_context) {
+                                           symtable_node_t *fun_context) {
     symtable_datatype_t return_type = check_expr(symtable_stack, node->return_statement.expres);
     if (return_type == SYM_DATATYPE_ERROR) {
         // Semantic error (invalid return value)
         return SYM_DATATYPE_ERROR;
     }
 
-    if (fun_context->fun_definition.return_type != return_type) {
+    if (fun_context->data.fun.return_type != return_type) {
         // Semantic error (missmatch of return type)
         return SYM_DATATYPE_ERROR;
     }

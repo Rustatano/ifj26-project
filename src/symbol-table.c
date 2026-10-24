@@ -220,13 +220,16 @@ bool symtable_insert_item(symtable_stack_t *stack, symtable_type_t type, char *i
     return success;
 }
 
-symtable_node_t *symtable_stack_search_current(symtable_stack_item_t *stack_top,
-                                               symtable_type_t type, char *id) {
-    if (stack_top == NULL || id == NULL) {
+symtable_node_t *symtable_stack_search_current(symtable_stack_t *stack, symtable_type_t type,
+                                               char *id) {
+    if (stack == NULL || id == NULL) {
+        return NULL;
+    }
+    if (stack->top == NULL) {
         return NULL;
     }
 
-    symtable_node_t *root = stack_top->tree_root;
+    symtable_node_t *root = stack->top->tree_root;
     if (root == NULL) {
         return NULL;
     }
@@ -262,7 +265,26 @@ symtable_node_t *symtable_search(symtable_stack_t *stack, symtable_type_t type, 
 
     symtable_node_t *node = NULL;
     while (top != NULL) {
-        node = symtable_stack_search_current(top, type, id);
+        symtable_node_t *root = top->tree_root;
+        if (root == NULL) {
+            return NULL;
+        }
+
+        // Decide which side to follow
+        int cmp = strcmp(root->key, id);
+        while (cmp != 0 && type != root->data.type) {
+            if (cmp > 0) {
+                root = root->left;
+            } else {
+                root = root->right;
+            }
+
+            if (root == NULL) {
+                return NULL;
+            }
+
+            cmp = strcmp(root->key, id);
+        }
         if (node != NULL) {
             return node;
         }
@@ -299,12 +321,15 @@ void delete_node(symtable_node_t *node) {
     free(node);
 }
 
-void symtable_pop_avl(symtable_stack_item_t *stack_top) {
-    if (stack_top == NULL) {
+void symtable_pop_avl(symtable_stack_t *stack) {
+    if (stack == NULL) {
+        return;
+    }
+    if (stack->top == NULL) {
         return;
     }
 
-    delete_node(stack_top->tree_root);
+    delete_node(stack->top->tree_root);
 }
 
 void symtable_stack_delete(symtable_stack_t *stack) {
@@ -312,16 +337,9 @@ void symtable_stack_delete(symtable_stack_t *stack) {
         return;
     }
 
-    symtable_stack_item_t *top = stack->top;
-    symtable_stack_item_t *next_top;
-
     // Delete each AVL tree
-    while (top != NULL) {
-        symtable_pop_avl(top);
-        next_top = top->next;
-        free(top);
-        top = next_top;
+    while (stack->top != NULL) {
+        symtable_pop_avl(stack);
+        free(stack->top);
     }
-
-    stack->top = NULL;
 }
