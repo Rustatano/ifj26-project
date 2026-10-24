@@ -69,8 +69,9 @@ symtable_datatype_t check_expres_fun_call(symtable_stack_t *symtable_stack, ast_
             return SYM_DATATYPE_ERROR;
         }
         if (defined_param->type != check_expr(symtable_stack, checked_param)) {
-            // Semantic error (argument does not match parameter's type)
-            return SYM_DATATYPE_ERROR;
+            // Try implicit conversion, else emantic error (argument does not match parameter's
+            // type)
+            return implicit_conversion_int_to_double(&node->assign_statement.expres);
         }
         defined_param = defined_param->next;
         checked_param = checked_param->next;
@@ -84,13 +85,69 @@ symtable_datatype_t check_expres_fun_call(symtable_stack_t *symtable_stack, ast_
     return fun_definition->data.fun.return_type;
 }
 
+// Allocate and initialize AST_NODE_CONVERT
+ast_node_t *create_conversion_node(ast_node_t *from) {
+    ast_node_t *new_node = (ast_node_t *)malloc(sizeof(ast_node_t));
+    if (new_node == NULL) {
+        return NULL;
+    }
+
+    new_node->type = AST_NODE_CONVERT;
+    new_node->source_code_line = from->source_code_line;
+    new_node->result_type = SYM_DATATYPE_DOUBLE;
+    new_node->next = NULL;
+    new_node->block.first_statement = from;
+
+    return new_node;
+}
+
+// Do implicit conversion if allowed
+symtable_datatype_t implicit_conversion_int_to_double(ast_node_t **node_ptr) {
+    if (node_ptr == NULL || *node_ptr == NULL) {
+        return false;
+    }
+
+    ast_node_t *node = *node_ptr;
+
+    // Convert constant
+    if (node->type == AST_NODE_CONST_INT) {
+        node->type = AST_NODE_CONST_DOUBLE;
+        node->double_value = (double)node->int_value;
+        node->result_type = SYM_DATATYPE_DOUBLE;
+        return true;
+    }
+
+    // Convert node of result type int
+    if (node->result_type == SYM_DATATYPE_INT) {
+        ast_node_t *conversion_node = create_conversion_node(node);
+        if (conversion_node == NULL) {
+            return false;
+        }
+
+        // Connect new node
+        *node_ptr = conversion_node;
+        return true;
+    }
+
+    // Already double
+    if (node->result_type == SYM_DATATYPE_DOUBLE) {
+        return SYM_DATATYPE_DOUBLE;
+    }
+
+    return SYM_DATATYPE_ERROR;
+}
+
 // Check if left and right side of operator has the same type
 symtable_datatype_t check_expres_operator(symtable_stack_t *symtable_stack, ast_node_t *node) {
+    // Get types of left and right operands
     symtable_datatype_t left = check_expr(symtable_stack, node->expres_operator.left_side);
     symtable_datatype_t right = check_expr(symtable_stack, node->expres_operator.right_side);
-    if (left != right) {
-        // Semantic Error
-        return SYM_DATATYPE_ERROR;
+
+    // Check operands types correctness
+    if (left == SYM_DATATYPE_INT && right == SYM_DATATYPE_DOUBLE) {
+        implicit_conversion_int_to_double(&(node->expres_operator.left_side));
+    } else if (left == SYM_DATATYPE_DOUBLE && right == SYM_DATATYPE_INT) {
+        implicit_conversion_int_to_double(&(node->expres_operator.right_side));
     }
 
     return left; // left == right
@@ -147,8 +204,9 @@ symtable_datatype_t check_var_declaration(symtable_stack_t *symtable_stack, ast_
 
     // Type of variable is determined from parser
     if (node->var_declaration.var_type != init_expr_type) {
-        // Semantic error (declaration of variable with type with invalid type expression)
-        return SYM_DATATYPE_ERROR;
+        // Try implicit conversion, else semantic error (declaration of variable with type with
+        // invalid type expression)
+        return implicit_conversion_int_to_double(&node->var_declaration.init_expres);
     }
 
     return init_expr_type;
@@ -171,8 +229,8 @@ symtable_datatype_t check_value_assignment(symtable_stack_t *symtable_stack, ast
 
     if (var_declaration->data.var.type !=
         check_expr(symtable_stack, node->assign_statement.expres)) {
-        // Semantic error (assignment of invalid type)
-        return SYM_DATATYPE_ERROR;
+        // Try implicit conversion, else emantic error (assignment of invalid type)
+        return implicit_conversion_int_to_double(&node->assign_statement.expres);
     }
 
     return SYM_DATATYPE_UNIT;
