@@ -51,7 +51,6 @@ typedef struct {
         struct {
             symtable_datatype_t type;
             bool is_mutable;
-            bool is_initialized;
             int unique_id; // ID is used by code generator
         } var;
 

@@ -137,7 +137,8 @@ symtable_datatype_t check_var_declaration(symtable_stack_t *symtable_stack, ast_
     }
 
     // Declaration and initialization of variable
-    return check_expr(symtable_stack, node->var_declaration.init_expres);
+    return node->var_declaration.var_type =
+               check_expr(symtable_stack, node->var_declaration.init_expres);
 }
 
 symtable_datatype_t check_value_assignment(symtable_stack_t *symtable_stack, ast_node_t *node) {
@@ -147,6 +148,11 @@ symtable_datatype_t check_value_assignment(symtable_stack_t *symtable_stack, ast
 
     if (var_declaration == NULL) {
         // Semantic error (assignment to undefined variable)
+        return SYM_DATATYPE_ERROR;
+    }
+
+    if (!var_declaration->data.var.is_mutable) {
+        // Semantic error (assignment to immutable variable)
         return SYM_DATATYPE_ERROR;
     }
 
