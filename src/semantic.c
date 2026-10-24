@@ -153,35 +153,48 @@ symtable_datatype_t check_block(symtable_stack_t *symtable_stack, ast_node_t *no
         case AST_NODE_VAR_DECLARATION:
             if ((current_node->result_type = check_var_declaration(symtable_stack, current_node)) ==
                 SYM_DATATYPE_ERROR) {
+                symtable_pop_avl(symtable_stack);
                 return SYM_DATATYPE_ERROR;
             }
+            break;
         case AST_NODE_VALUE_ASSIGNMENT:
             if ((current_node->result_type =
                      check_value_assignment(symtable_stack, current_node)) == SYM_DATATYPE_ERROR) {
+                symtable_pop_avl(symtable_stack);
                 return SYM_DATATYPE_ERROR;
             }
+            break;
         case AST_NODE_STATEMENT_IF:
             if ((current_node->result_type = check_statement_if(symtable_stack, current_node)) ==
                 SYM_DATATYPE_ERROR) {
+                symtable_pop_avl(symtable_stack);
                 return SYM_DATATYPE_ERROR;
             }
+            break;
         case AST_NODE_STATEMENT_WHILE:
             if ((current_node->result_type = check_statement_while(symtable_stack, current_node)) ==
                 SYM_DATATYPE_ERROR) {
+                symtable_pop_avl(symtable_stack);
                 return SYM_DATATYPE_ERROR;
             }
+            break;
         case AST_NODE_STATEMENT_RETURN:
             if ((current_node->result_type =
                      check_statement_return(symtable_stack, current_node)) == SYM_DATATYPE_ERROR) {
+                symtable_pop_avl(symtable_stack);
                 return SYM_DATATYPE_ERROR;
             }
+            break;
         case AST_NODE_EXPRES_FUN_CALL:
             if ((current_node->result_type = check_expres_fun_call(symtable_stack, current_node)) ==
                 SYM_DATATYPE_ERROR) {
+                symtable_pop_avl(symtable_stack);
                 return SYM_DATATYPE_ERROR;
             }
+            break;
         default:
             // Semantic error (invalid statement)
+            symtable_pop_avl(symtable_stack);
             return SYM_DATATYPE_ERROR;
         }
 
@@ -189,6 +202,7 @@ symtable_datatype_t check_block(symtable_stack_t *symtable_stack, ast_node_t *no
         current_node = current_node->next;
     }
 
+    // Clear current scope
     symtable_pop_avl(symtable_stack);
 
     return SYM_DATATYPE_UNIT;
