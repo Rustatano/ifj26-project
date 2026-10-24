@@ -39,11 +39,24 @@ int count_fun_params(symtable_fun_param_t *param) {
     return count_fun_params(param->next) + 1;
 }
 
+// Check if variable is defined
+symtable_datatype_t check_expres_var(symtable_stack_t *symtable_stack, ast_node_t *node) {
+    symtable_node_t *var_declaration = symtable_stack_search_current(
+        symtable_stack->top, SYM_TYPE_VAR, node->expressions_var.name);
+    if (var_declaration == NULL) {
+        // Semantic error (usage of not declared variable)
+        return SYM_DATATYPE_ERROR;
+    }
+
+    return var_declaration->data.var.type;
+}
+
+// Check if function is defined and calling is correct
 symtable_datatype_t check_expres_fun_call(symtable_stack_t *symtable_stack, ast_node_t *node) {
     symtable_node_t *fun_definition =
         symtable_search(symtable_stack, SYM_TYPE_FUNC, node->expres_fun_call.fun_name);
     if (fun_definition == NULL) {
-        // Semantic error
+        // Semantic error (usage of not defined function)
         return SYM_DATATYPE_ERROR;
     }
 
@@ -52,9 +65,11 @@ symtable_datatype_t check_expres_fun_call(symtable_stack_t *symtable_stack, ast_
 
     while (defined_param != NULL) {
         if (checked_param == NULL) {
+            // Semantic error (invalid number of parameters, less than defined)
             return SYM_DATATYPE_ERROR;
         }
         if (defined_param->type != check_expr(symtable_stack, checked_param)) {
+            // Semantic error (argument does not match parameter's type)
             return SYM_DATATYPE_ERROR;
         }
         defined_param = defined_param->next;
@@ -62,13 +77,15 @@ symtable_datatype_t check_expres_fun_call(symtable_stack_t *symtable_stack, ast_
     }
 
     if (checked_param != NULL) {
+        // Semantic error (invalid number of parameters, more than defined)
         return SYM_DATATYPE_ERROR;
     }
 
     return fun_definition->data.fun.return_type;
 }
 
-symtable_datatype_t check_expres_operator_add(symtable_stack_t *symtable_stack, ast_node_t *node) {
+// Check if left and right side of operator has the same type
+symtable_datatype_t check_expres_operator(symtable_stack_t *symtable_stack, ast_node_t *node) {
     symtable_datatype_t left = check_expr(symtable_stack, node->expres_operator.left_side);
     symtable_datatype_t right = check_expr(symtable_stack, node->expres_operator.right_side);
     if (left != right) {
@@ -76,83 +93,42 @@ symtable_datatype_t check_expres_operator_add(symtable_stack_t *symtable_stack, 
         return SYM_DATATYPE_ERROR;
     }
 
-    node->result_type = left; // left == right
-
-    return left;
+    return left; // left == right
 }
 
-symtable_datatype_t check_expres_operator(symtable_stack_t *symtable_stack, ast_node_t *node) {
-    switch (node->expres_operator.op) {
-    case AST_EXPRES_OPERATOR_ADD:
-        return check_expres_operator_add(symtable_stack, node);
-
-    case AST_EXPRES_OPERATOR_SUB:
-        break;
-
-    case AST_EXPRES_OPERATOR_MUL:
-        break;
-
-    case AST_EXPRES_OPERATOR_DIV:
-        break;
-
-    case AST_EXPRES_OPERATOR_EQUAL:
-        break;
-
-    case AST_EXPRES_OPERATOR_NOT_EQUAL:
-        break;
-
-    case AST_EXPRES_OPERATOR_SMALLER:
-        break;
-
-    case AST_EXPRES_OPERATOR_SMALLER_EQUAL:
-        break;
-
-    case AST_EXPRES_OPERATOR_BIGGER:
-        break;
-
-    case AST_EXPRES_OPERATOR_BIGGER_EQUAL:
-        break;
-
-    default:
-        break;
-    }
-
-    return SYM_DATATYPE_ERROR;
-}
-
+// Determine type of expression recursively
 symtable_datatype_t check_expr(symtable_stack_t *symtable_stack, ast_node_t *node) {
     switch (node->type) {
     case AST_NODE_EXPRES_OPERATOR:
-        return check_expres_operator(symtable_stack, node);
+        return node->result_type = check_expres_operator(symtable_stack, node);
+
     case AST_NODE_EXPRES_FUN_CALL:
-        return check_expres_fun_call(symtable_stack, node);
+        return node->result_type = check_expres_fun_call(symtable_stack, node);
+
     case AST_NODE_EXPRES_VAR:
-        break;
+        return node->result_type = check_expres_var(symtable_stack, node);
 
     case AST_NODE_CONST_INT:
     case AST_NODE_CONST_DOUBLE:
     case AST_NODE_CONST_STRING:
     case AST_NODE_CONST_UNIT:
         return node->result_type;
-
-    default:
-        break;
     }
 
+    // Semantic error (invalid expression type)
     return SYM_DATATYPE_ERROR;
 }
-bool check_var_declaration(symtable_stack_t *symtable_stack, ast_node_t *node) {
-    // Declaration of variable
+
+// Check
+symtable_datatype_t check_var_declaration(symtable_stack_t *symtable_stack, ast_node_t *node) {
+    // Declaration of variable si invalid, must be initialized
     if (node->var_declaration.init_expres == NULL) {
-        return false;
+        // Semantic error (variable is not initialized at declaration)
+        return SYM_DATATYPE_ERROR;
     }
 
     // Declaration and initialization of variable
-    if (check_expres(symtable_stack, node->var_declaration.init_expres) == SYM_DATATYPE_ERROR) {
-        return false;
-    }
-
-    return true;
+    return check_expr(symtable_stack, node->var_declaration.init_expres);
 }
 
 bool check_value_assignment(symtable_stack_t *symtable_stack, ast_node_t *node) { return true; }
@@ -163,49 +139,37 @@ bool check_statement_while(symtable_stack_t *symtable_stack, ast_node_t *node) {
 
 bool check_statement_return(symtable_stack_t *symtable_stack, ast_node_t *node) { return true; }
 
-bool check_block(symtable_stack_t *symtable_stack, ast_node_t *node) {
+symtable_datatype_t check_block(symtable_stack_t *symtable_stack, ast_node_t *node) {
     if (!symtable_create_avl(symtable_stack)) {
-        return false;
+        // Could not create new symtable
+        return SYM_DATATYPE_ERROR;
     }
 
+    // Assign first statement of the block
     ast_node_t *current_node = node->block.first_statement;
 
     while (current_node != NULL) {
         switch (current_node->type) {
         case AST_NODE_VAR_DECLARATION:
-            if (!check_var_declaration(symtable_stack, current_node)) {
-                return false;
-            }
-            break;
+            return current_node->result_type = check_var_declaration(symtable_stack, current_node);
+        case AST_NODE_VALUE_ASSIGNMENT:
+            return current_node->result_type = check_value_assignment(symtable_stack, current_node);
         case AST_NODE_STATEMENT_IF:
-            if (!check_statement_if(symtable_stack, current_node)) {
-                return false;
-            }
-            break;
+            return current_node->result_type = check_statement_if(symtable_stack, current_node);
         case AST_NODE_STATEMENT_WHILE:
-            if (!check_statement_while(symtable_stack, current_node)) {
-                return false;
-            }
-            break;
+            return current_node->result_type = check_statement_while(symtable_stack, current_node);
         case AST_NODE_STATEMENT_RETURN:
-            if (!check_statement_return(symtable_stack, current_node)) {
-                return false;
-            }
-            break;
+            return current_node->result_type = check_statement_return(symtable_stack, current_node);
         case AST_NODE_EXPRES_FUN_CALL:
-            if (!check_expres_fun_call(symtable_stack, current_node)) {
-                return false;
-            }
-            break;
+            return current_node->result_type = check_expres_fun_call(symtable_stack, current_node);
         default:
-            break;
+            // Semantic error (invalid statement)
+            return SYM_DATATYPE_ERROR;
         }
 
         // New node
         current_node = current_node->next;
     }
-
-    return true;
 }
 
 bool first_ast_passage(ast_node_t *ast, symtable_stack_t *symtable_stack) {
@@ -264,7 +228,11 @@ bool second_ast_passage(ast_node_t *ast, symtable_stack_t *symtable_stack) {
         if (current_node->type == AST_NODE_FUN_DEFINITION) {
             current_function = symtable_stack_search_current(symtable_stack, SYM_TYPE_FUNC,
                                                              current_node->fun_definition.name);
-            check_block(symtable_stack, current_node->fun_definition.body_block);
+            if (check_block(symtable_stack, current_node->fun_definition.body_block) ==
+                SYM_DATATYPE_ERROR) {
+                // Semantic error
+                return false;
+            }
         }
 
         // New current node
