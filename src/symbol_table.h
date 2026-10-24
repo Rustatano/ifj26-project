@@ -21,14 +21,18 @@ Description: Header file for symbol table as a stack of height-balanced AVL tree
 #define SYM_PREFIX_VAR "VAR_"
 #define SYM_PREFIX_FUN "FUN_"
 
-typedef enum { SYM_TYPE_VAR, SYM_TYPE_FUNC } symtable_type_t;
+typedef enum {
+    SYM_TYPE_VAR,
+    SYM_TYPE_FUNC,
+} symtable_type_t;
 
 typedef enum {
-    SYM_TYPE_ID,
-    SYM_TYPE_INT,
-    SYM_TYPE_DOUBLE,
-    SYM_TYPE_STRING,
-    SYM_TYPE_UNIT,
+    SYM_DATATYPE_ERROR,
+    SYM_DATATYPE_ID,
+    SYM_DATATYPE_INT,
+    SYM_DATATYPE_DOUBLE,
+    SYM_DATATYPE_STRING,
+    SYM_DATATYPE_UNIT,
 } symtable_datatype_t;
 
 // Linked list representing parameters of functions
