@@ -27,6 +27,7 @@ typedef enum {
 } symtable_type_t;
 
 typedef enum {
+    SYM_DATATYPE_UNKNOWN,
     SYM_DATATYPE_ERROR,
     SYM_DATATYPE_ID,
     SYM_DATATYPE_INT,

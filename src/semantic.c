@@ -136,9 +136,22 @@ symtable_datatype_t check_var_declaration(symtable_stack_t *symtable_stack, ast_
         return SYM_DATATYPE_ERROR;
     }
 
-    // Declaration and initialization of variable
-    return node->var_declaration.var_type =
-               check_expr(symtable_stack, node->var_declaration.init_expres);
+    // Get initialization expression type
+    symtable_datatype_t init_expr_type =
+        check_expr(symtable_stack, node->var_declaration.init_expres);
+
+    // Type of variable is not determined from parser
+    if (node->var_declaration.var_type == SYM_DATATYPE_UNKNOWN) {
+        return node->var_declaration.var_type = init_expr_type;
+    }
+
+    // Type of variable is determined from parser
+    if (node->var_declaration.var_type != init_expr_type) {
+        // Semantic error (declaration of variable with type with invalid type expression)
+        return SYM_DATATYPE_ERROR;
+    }
+
+    return init_expr_type;
 }
 
 symtable_datatype_t check_value_assignment(symtable_stack_t *symtable_stack, ast_node_t *node) {
