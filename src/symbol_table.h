@@ -92,7 +92,7 @@ bool symtable_init(symtable_stack_t *stack);
 bool symtable_create_avl(symtable_stack_t *stack);
 
 // Delete the AVL that is currently on top of symbol table stack
-void symtable_pop_avl(symtable_stack_item_t *stack_top);
+void symtable_pop_avl(symtable_stack_t *stack);
 
 // Insert item to highest AVL
 bool symtable_insert_item(symtable_stack_t *stack, symtable_type_t type, char *id,
@@ -102,8 +102,8 @@ bool symtable_insert_item(symtable_stack_t *stack, symtable_type_t type, char *i
 symtable_node_t *symtable_search(symtable_stack_t *stack, symtable_type_t type, char *id);
 
 // Search item in the current top AVL only
-symtable_node_t *symtable_stack_search_current(symtable_stack_item_t *stack_top,
-                                               symtable_type_t type, char *id);
+symtable_node_t *symtable_stack_search_current(symtable_stack_t *stack, symtable_type_t type,
+                                               char *id);
 
 // Delete whole symbol table and free all the memory
 void symtable_stack_delete(symtable_stack_t *stack);

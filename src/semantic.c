@@ -151,17 +151,35 @@ symtable_datatype_t check_block(symtable_stack_t *symtable_stack, ast_node_t *no
     while (current_node != NULL) {
         switch (current_node->type) {
         case AST_NODE_VAR_DECLARATION:
-            return current_node->result_type = check_var_declaration(symtable_stack, current_node);
+            if ((current_node->result_type = check_var_declaration(symtable_stack, current_node)) ==
+                SYM_DATATYPE_ERROR) {
+                return SYM_DATATYPE_ERROR;
+            }
         case AST_NODE_VALUE_ASSIGNMENT:
-            return current_node->result_type = check_value_assignment(symtable_stack, current_node);
+            if ((current_node->result_type =
+                     check_value_assignment(symtable_stack, current_node)) == SYM_DATATYPE_ERROR) {
+                return SYM_DATATYPE_ERROR;
+            }
         case AST_NODE_STATEMENT_IF:
-            return current_node->result_type = check_statement_if(symtable_stack, current_node);
+            if ((current_node->result_type = check_statement_if(symtable_stack, current_node)) ==
+                SYM_DATATYPE_ERROR) {
+                return SYM_DATATYPE_ERROR;
+            }
         case AST_NODE_STATEMENT_WHILE:
-            return current_node->result_type = check_statement_while(symtable_stack, current_node);
+            if ((current_node->result_type = check_statement_while(symtable_stack, current_node)) ==
+                SYM_DATATYPE_ERROR) {
+                return SYM_DATATYPE_ERROR;
+            }
         case AST_NODE_STATEMENT_RETURN:
-            return current_node->result_type = check_statement_return(symtable_stack, current_node);
+            if ((current_node->result_type =
+                     check_statement_return(symtable_stack, current_node)) == SYM_DATATYPE_ERROR) {
+                return SYM_DATATYPE_ERROR;
+            }
         case AST_NODE_EXPRES_FUN_CALL:
-            return current_node->result_type = check_expres_fun_call(symtable_stack, current_node);
+            if ((current_node->result_type = check_expres_fun_call(symtable_stack, current_node)) ==
+                SYM_DATATYPE_ERROR) {
+                return SYM_DATATYPE_ERROR;
+            }
         default:
             // Semantic error (invalid statement)
             return SYM_DATATYPE_ERROR;
@@ -170,6 +188,10 @@ symtable_datatype_t check_block(symtable_stack_t *symtable_stack, ast_node_t *no
         // New node
         current_node = current_node->next;
     }
+
+    symtable_pop_avl(symtable_stack);
+
+    return SYM_DATATYPE_UNIT;
 }
 
 bool first_ast_passage(ast_node_t *ast, symtable_stack_t *symtable_stack) {
@@ -183,8 +205,8 @@ bool first_ast_passage(ast_node_t *ast, symtable_stack_t *symtable_stack) {
         // Check if node is function definition
         if (current_node->type == AST_NODE_FUN_DEFINITION) {
             // Search for the node with the same name/key
-            symtable_node_t *defined_node = symtable_stack_search_current(
-                symtable_stack->global, SYM_TYPE_FUNC, current_node->fun_definition.name);
+            symtable_node_t *defined_node =
+                symtable_search(symtable_stack, SYM_TYPE_FUNC, current_node->fun_definition.name);
 
             if (defined_node != NULL) {
                 // Error code 4, redefinition/overloading of function unsupported
