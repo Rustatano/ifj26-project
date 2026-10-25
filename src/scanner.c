@@ -157,8 +157,8 @@ token_t get_token(scanner_conf_t *conf) {
     // Creates variables for further use
     state_t state = STATE_START;
     token_t token;
-    dynamic_string_t str;
-    int char_buffer;
+    dynamic_string_t str; // For working with strings
+    int char_buffer;      // Buffer for saving last char for conditions
 
     // State automaton
     while (1) {
@@ -170,7 +170,12 @@ token_t get_token(scanner_conf_t *conf) {
         case STATE_START:
             if (ch == EOF) {
                 token.type = TOKEN_EOF;
-                return token;
+                break;
+            }
+            // New line
+            else if (ch == '\n') {
+                token.type = TOKEN_EOL;
+                break;
             }
 
             // Ignore white spaces
@@ -198,19 +203,19 @@ token_t get_token(scanner_conf_t *conf) {
             // Operators
             else if (ch == '+') {
                 token.type = TOKEN_PLUS;
-                return token;
+                break;
             } else if (ch == '-') {
                 token.type = TOKEN_MINUS;
-                return token;
+                break;
             } else if (ch == '*') {
                 token.type = TOKEN_MUL;
-                return token;
+                break;
             } else if (ch == '(') {
                 token.type = TOKEN_LPAREN;
-                return token;
+                break;
             } else if (ch == ')') {
                 token.type = TOKEN_RPAREN;
-                return token;
+                break;
             }
             // Relations
             else if (ch == '=') {
@@ -227,12 +232,11 @@ token_t get_token(scanner_conf_t *conf) {
                 continue;
             }
 
-            // Errors
+            // Tabulator
             else if (ch == '\t') {
-                fprintf(
-                    stderr,
-                    "Lexical analysis Error 1: Tabulator at the beginning of a non empty line\n");
-                exit(1); // Scanner error exit code
+                fprintf(stderr, "Lexical analysis Error 1: Tabulator at the beginning of a non "
+                                "empty line\n");
+                exit(1);
             }
             break;
 
@@ -240,13 +244,12 @@ token_t get_token(scanner_conf_t *conf) {
             // Checking for another token type
             if (ch == '=') {
                 token.type = TOKEN_EQ;
-                return token;
+                break;
             }
             // Next char is not "==" therefore it is an assign token
             // Storing unused char back for another read
             store_char(conf, ch);
             token.type = TOKEN_ASSIGN;
-            return token;
             break;
 
         case STATE_UNDERSCORE:
@@ -267,9 +270,8 @@ token_t get_token(scanner_conf_t *conf) {
             else {
                 // Storing unused char back for another read
                 store_char(conf, ch);
-                // Return token
+                // Set token type
                 token.type = TOKEN_UNDERSCORE;
-                return token;
             }
             break;
 
@@ -284,12 +286,11 @@ token_t get_token(scanner_conf_t *conf) {
                 // Storing unused char back for another read
                 store_char(conf, ch);
 
-                // Return token
+                // Set token type
                 token.type = keyword_check(str.content);
                 if (token.type == TOKEN_ID) {
                     token.attr.str_val = str.content;
                 }
-                return token;
             }
             break;
 
@@ -297,31 +298,29 @@ token_t get_token(scanner_conf_t *conf) {
             // Checking for another token type
             if (ch == '=') {
                 token.type = TOKEN_LE;
-                return token;
+                break;
             }
             // Storing excessive char back for another read
             store_char(conf, ch);
             token.type = TOKEN_LT;
-            return token;
             break;
 
         case STATE_GT:
             // Checking for another token type
             if (ch == '=') {
                 token.type = TOKEN_GE;
-                return token;
+                break;
             }
             // Storing excessive char back for another read
             store_char(conf, ch);
             token.type = TOKEN_GT;
-            return token;
             break;
 
         case STATE_NOT:
             // Checking for another token type
             if (ch == '=') {
                 token.type = TOKEN_NEQ;
-                return token;
+                break;
             }
             // Otherwise an error
             store_char(conf, ch);
@@ -335,5 +334,6 @@ token_t get_token(scanner_conf_t *conf) {
             exit(1);
             break;
         }
+        return token;
     }
 }
