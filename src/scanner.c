@@ -29,7 +29,19 @@ typedef enum {
     STATE_GT,
     STATE_NOT,
     STATE_ID,
-    STATE_UNDERSCORE
+    STATE_UNDERSCORE,
+    // String
+    STATE_FIR_QUOTE,
+    STATE_SEC_QUOTE,
+    STATE_THIRD_QUOTE,
+    STATE_ONE_L_STR_DATA, // ONE LINE STRING DATA
+    STATE_MUL_L_STR_DATA, // MULTIPLE LINE STRING DATA
+    STATE_FIR_END_QUOTE,
+    STATE_SEC_END_QUOTE,
+    STATE_THIRD_END_QUOTE,
+    STATE_ESC_SEQ_ONE_L, // ESCAPE SEQUENCE ONE LINE STRING
+    STATE_ESC_SEQ_MUL_L, // ESCAPE SEQUENCE MULTI LINE STRING
+
 } state_t;
 
 // Structs
@@ -73,6 +85,13 @@ bool str_add_char(dynamic_string_t *str, char ch) {
     str->length++;
     str->content[str->length] = '\0';
     return true;
+}
+
+void string_init_check(dynamic_string_t *str) {
+    if (!str_init(str)) {
+        fprintf(stderr, "Lexical analysis Error 99: String allocation error\n");
+        exit(99); // Internal compiler error
+    }
 }
 
 // Checks if identifier is a valid keyword
@@ -185,10 +204,7 @@ token_t get_token(scanner_conf_t *conf) {
 
             // Identifier
             else if (isalpha(ch)) {
-                if (!str_init(&str)) {
-                    fprintf(stderr, "Lexical analysis Error 99: String allocation error\n");
-                    exit(99); // Internal compiler error
-                }
+                string_init_check(&str);
                 str_add_char(&str, ch);
                 state = STATE_ID;
                 continue;
@@ -234,9 +250,17 @@ token_t get_token(scanner_conf_t *conf) {
 
             // Tabulator
             else if (ch == '\t') {
-                fprintf(stderr, "Lexical analysis Error 1: Tabulator at the beginning of a non "
-                                "empty line\n");
+                fprintf(
+                    stderr,
+                    "Lexical analysis Error 1: Tabulator at the beginning of a non empty line\n");
                 exit(1);
+            }
+
+            // String
+            else if (ch == '"') {
+                string_init_check(&str);
+                state = STATE_FIR_QUOTE;
+                continue;
             }
             break;
 
@@ -255,10 +279,7 @@ token_t get_token(scanner_conf_t *conf) {
         case STATE_UNDERSCORE:
             // Identifier starting with underscore
             if (isalnum(ch) || ch == '_') {
-                if (!str_init(&str)) {
-                    fprintf(stderr, "Lexical analysis Error 99: String allocation error\n");
-                    exit(99); // Internal compiler error
-                }
+                string_init_check(&str);
                 // Saving both underscore and the char after in the string
                 str_add_char(&str, char_buffer);
                 str_add_char(&str, ch);
@@ -328,9 +349,95 @@ token_t get_token(scanner_conf_t *conf) {
             exit(1);
             break;
 
+        case STATE_FIR_QUOTE:
+            // The input is [""]
+            if (ch == '"') {
+                state = STATE_SEC_QUOTE;
+                continue;
+            }
+            // The input is ["A]
+            else {
+                str_add_char(&str, ch);
+                state = STATE_ONE_L_STR_DATA;
+                continue;
+            }
+
+            break;
+
+        case STATE_ONE_L_STR_DATA:
+            // End of the string
+            if (ch == '"') {
+                token.type = TOKEN_STRING;
+                token.attr.str_val = str.content;
+                break;
+            }
+            // Next char is an special character
+            else if (ch == '\n' || ch == '\r' || ch == EOF) {
+                fprintf(stderr,
+                        "Lexical analysis Error 1: Invalid One line string token, cannot "
+                        "include: %c \n",
+                        ch);
+                exit(1);
+            }
+            // Next char is an escape sequence
+            else if (ch == '\\') {
+                state = STATE_ESC_SEQ_ONE_L;
+                continue;
+            }
+            // Next char is just another string data
+            else {
+                str_add_char(&str, ch);
+                continue;
+            }
+            break;
+
+        case STATE_ESC_SEQ_ONE_L:
+            // Next char is a valid escape sequence
+            if (ch == '\\') {
+                str_add_char(&str, '\\');
+            } else if (ch == '"') {
+                str_add_char(&str, '\"');
+            } else if (ch == 'n') {
+                str_add_char(&str, '\n');
+            } else if (ch == 'r') {
+                str_add_char(&str, '\r');
+            } else if (ch == 't') {
+                str_add_char(&str, '\t');
+            }
+            // Next char is not a valid sequence
+            else {
+                if (ch == EOF) {
+                    fprintf(stderr,
+                            "Lexical analysis Error 1: Unexpected EOF in escape sequence \n");
+                } else {
+                    fprintf(stderr,
+                            "Lexical analysis Error 1: Not a valid escape sequence: '\\%c' \n", ch);
+                }
+                exit(1);
+            }
+            state = STATE_ONE_L_STR_DATA;
+            continue;
+            break;
+
+        case STATE_SEC_QUOTE:
+            // The whole input is a triple quote (beggining of a multi-line string)
+            if (ch == '"') {
+                state = STATE_THIRD_QUOTE;
+                continue;
+            }
+            // The end of an empty one-line string [""]
+            else {
+                store_char(conf, ch);
+                token.type = TOKEN_STRING;
+                token.attr.str_val = str.content;
+                // Token attribute is left empty because there is no data
+                break;
+            }
+            break;
+
         // If not in any valid state
         default:
-            fprintf(stderr, "Lexical analysis Error 1: Invalid token type\n");
+            fprintf(stderr, "Lexical analysis Error 1: Invalid token type: %c \n", ch);
             exit(1);
             break;
         }
