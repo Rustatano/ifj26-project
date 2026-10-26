@@ -94,6 +94,13 @@ void string_init_check(dynamic_string_t *str) {
     }
 }
 
+void string_EOF_check(int ch) {
+    if (ch == EOF) {
+        fprintf(stderr, "Lexical analysis Error 1: Invalid string token, cannot include EOF \n");
+        exit(1);
+    }
+}
+
 // Checks if identifier is a valid keyword
 token_type_t keyword_check(char *content) {
     // If the string matches a keyword, it frees the memory and returns a valid token type
@@ -350,6 +357,7 @@ token_t get_token(scanner_conf_t *conf) {
             break;
 
         case STATE_FIR_QUOTE:
+            string_EOF_check(ch);
             // The input is [""]
             if (ch == '"') {
                 state = STATE_SEC_QUOTE;
@@ -365,6 +373,7 @@ token_t get_token(scanner_conf_t *conf) {
             break;
 
         case STATE_ONE_L_STR_DATA:
+            string_EOF_check(ch);
             // End of the string
             if (ch == '"') {
                 token.type = TOKEN_STRING;
@@ -372,7 +381,7 @@ token_t get_token(scanner_conf_t *conf) {
                 break;
             }
             // Next char is an special character
-            else if (ch == '\n' || ch == '\r' || ch == EOF) {
+            else if (ch == '\n' || ch == '\r') {
                 fprintf(stderr,
                         "Lexical analysis Error 1: Invalid One line string token, cannot "
                         "include: %c \n",
@@ -380,7 +389,7 @@ token_t get_token(scanner_conf_t *conf) {
                 exit(1);
             }
             // Next char is an escape sequence
-            else if (ch == '\\') {
+            if (ch == '\\') {
                 state = STATE_ESC_SEQ_ONE_L;
                 continue;
             }
@@ -392,6 +401,7 @@ token_t get_token(scanner_conf_t *conf) {
             break;
 
         case STATE_ESC_SEQ_ONE_L:
+            string_EOF_check(ch);
             // Next char is a valid escape sequence
             if (ch == '\\') {
                 str_add_char(&str, '\\');
@@ -406,13 +416,8 @@ token_t get_token(scanner_conf_t *conf) {
             }
             // Next char is not a valid sequence
             else {
-                if (ch == EOF) {
-                    fprintf(stderr,
-                            "Lexical analysis Error 1: Unexpected EOF in escape sequence \n");
-                } else {
-                    fprintf(stderr,
-                            "Lexical analysis Error 1: Not a valid escape sequence: '\\%c' \n", ch);
-                }
+                fprintf(stderr, "Lexical analysis Error 1: Not a valid escape sequence: '\\%c' \n",
+                        ch);
                 exit(1);
             }
             state = STATE_ONE_L_STR_DATA;
@@ -421,17 +426,92 @@ token_t get_token(scanner_conf_t *conf) {
 
         case STATE_SEC_QUOTE:
             // The whole input is a triple quote (beggining of a multi-line string)
+            // lexeme state = ["""]
             if (ch == '"') {
                 state = STATE_THIRD_QUOTE;
                 continue;
             }
-            // The end of an empty one-line string [""]
+            // The end of an empty one-line string
+            // [""]
             else {
                 store_char(conf, ch);
                 token.type = TOKEN_STRING;
                 token.attr.str_val = str.content;
-                // Token attribute is left empty because there is no data
+                // Token attribute is left empty (only with '\0') because there is no data
                 break;
+            }
+            break;
+
+        case STATE_THIRD_QUOTE:
+            string_EOF_check(ch);
+            // The input is a first end double quote
+            // [""" "]
+            if (ch == '"') {
+                state = STATE_FIR_END_QUOTE;
+                continue;
+            }
+            // There are data in the multi line string
+            // [""" DATA ]
+            else {
+                state = STATE_MUL_L_STR_DATA;
+                str_add_char(&str, ch);
+                continue;
+            }
+            break;
+
+        case STATE_MUL_L_STR_DATA:
+            string_EOF_check(ch);
+            // The input is a first ending double quote
+            // [""" DATA "]
+            if (ch == '"') {
+                state = STATE_FIR_END_QUOTE;
+                continue;
+            }
+            // The input is just data
+            // [""" DATA NEW_DATA]
+            else {
+                str_add_char(&str, ch);
+                continue;
+            }
+            break;
+
+        case STATE_FIR_END_QUOTE:
+            string_EOF_check(ch);
+            // The input is a second ending double quote
+            // [""" DATA ""]
+            if (ch == '"') {
+                state = STATE_SEC_END_QUOTE;
+                continue;
+            }
+            // The previous double quote was just data, because it wasn't in sequence
+            // with another two pairs of double quotes => next char is not a double quote
+            // [""" DATA " DATA]
+            else {
+                state = STATE_MUL_L_STR_DATA;
+                str_add_char(&str, '"');
+                str_add_char(&str, ch);
+                continue;
+            }
+            break;
+
+        case STATE_SEC_END_QUOTE:
+            string_EOF_check(ch);
+            // The last double quote is found for the ending sequence of the multi line string
+            // [""" DATA """]
+            if (ch == '"') {
+                token.type = TOKEN_STRING;
+                token.attr.str_val = str.content;
+                break;
+            }
+            // The last two double quotes were just part of the string content not a finishing
+            // sequence
+            // [""" DATA "" DATA]
+            else {
+                state = STATE_MUL_L_STR_DATA;
+                str_add_char(&str, '"');
+                str_add_char(&str, '"');
+                str_add_char(&str, ch);
+                continue;
             }
             break;
 
