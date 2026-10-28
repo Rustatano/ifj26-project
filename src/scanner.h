@@ -1,7 +1,7 @@
 /*
 -------------------------------------------------------
 Name of project: Translator IFJ26
-Authors: Zobal, Tajovský, Ondruška, Svoboda
+Authors: xzobals00 (Stepan Zobal)
 Creation date: 06.10.2026
 File: scanner.h
 

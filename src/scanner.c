@@ -1,7 +1,7 @@
 /*
 -------------------------------------------------------
 Name of project: Translator IFJ26
-Authors: Zobal, Tajovský, Ondruška, Svoboda
+Authors: xzobals00 (Stepan Zobal)
 Creation date: 06.10.2026
 File: scanner.c
 
@@ -41,7 +41,10 @@ typedef enum {
     STATE_THIRD_END_QUOTE,
     STATE_ESC_SEQ_ONE_L, // ESCAPE SEQUENCE ONE LINE STRING
     STATE_ESC_SEQ_MUL_L, // ESCAPE SEQUENCE MULTI LINE STRING
-
+    // Int
+    STATE_WHOLE_NUM,
+    STATE_WHOLE_NUM_UNDERSCORE,
+    STATE_ZERO,
 } state_t;
 
 // Structs
@@ -269,6 +272,21 @@ token_t get_token(scanner_conf_t *conf) {
                 state = STATE_FIR_QUOTE;
                 continue;
             }
+
+            // Whole number
+            else if (isdigit(ch)) {
+                token.type = TOKEN_INT;
+
+                // Character to number conversion
+                token.attr.int_val = ch - '0';
+
+                if (ch == '0') {
+                    state = STATE_ZERO;
+                } else {
+                    state = STATE_WHOLE_NUM;
+                }
+                continue;
+            }
             break;
 
         case STATE_ASSIGN:
@@ -326,34 +344,37 @@ token_t get_token(scanner_conf_t *conf) {
             // Checking for another token type
             if (ch == '=') {
                 token.type = TOKEN_LE;
-                break;
             }
             // Storing excessive char back for another read
-            store_char(conf, ch);
-            token.type = TOKEN_LT;
+            else {
+                store_char(conf, ch);
+                token.type = TOKEN_LT;
+            }
             break;
 
         case STATE_GT:
             // Checking for another token type
             if (ch == '=') {
                 token.type = TOKEN_GE;
-                break;
             }
             // Storing excessive char back for another read
-            store_char(conf, ch);
-            token.type = TOKEN_GT;
+            else {
+                store_char(conf, ch);
+                token.type = TOKEN_GT;
+            }
             break;
 
         case STATE_NOT:
             // Checking for another token type
             if (ch == '=') {
                 token.type = TOKEN_NEQ;
-                break;
             }
             // Otherwise an error
-            store_char(conf, ch);
-            fprintf(stderr, "Lexical analysis Error 1: Invalid token '!' is not supported\n");
-            exit(1);
+            else {
+                store_char(conf, ch);
+                fprintf(stderr, "Lexical analysis Error 1: Invalid token '!' is not supported\n");
+                exit(1);
+            }
             break;
 
         case STATE_FIR_QUOTE:
@@ -369,7 +390,6 @@ token_t get_token(scanner_conf_t *conf) {
                 state = STATE_ONE_L_STR_DATA;
                 continue;
             }
-
             break;
 
         case STATE_ONE_L_STR_DATA:
@@ -422,7 +442,8 @@ token_t get_token(scanner_conf_t *conf) {
             }
             state = STATE_ONE_L_STR_DATA;
             continue;
-            break;
+            break; // Every case ends with an break that just defensive programing (compiler deletes
+                   // it anyway)
 
         case STATE_SEC_QUOTE:
             // The whole input is a triple quote (beggining of a multi-line string)
@@ -438,7 +459,6 @@ token_t get_token(scanner_conf_t *conf) {
                 token.type = TOKEN_STRING;
                 token.attr.str_val = str.content;
                 // Token attribute is left empty (only with '\0') because there is no data
-                break;
             }
             break;
 
@@ -501,7 +521,7 @@ token_t get_token(scanner_conf_t *conf) {
             if (ch == '"') {
                 token.type = TOKEN_STRING;
                 token.attr.str_val = str.content;
-                break;
+                // Exit and return token
             }
             // The last two double quotes were just part of the string content not a finishing
             // sequence
@@ -512,6 +532,66 @@ token_t get_token(scanner_conf_t *conf) {
                 str_add_char(&str, '"');
                 str_add_char(&str, ch);
                 continue;
+            }
+            break;
+
+            // Numbers
+
+        case STATE_ZERO:
+            // The input is a number
+            if (isdigit(ch) || ch == '_') {
+                fprintf(stderr,
+                        "Lexical analysis Error 1: Invalid Number format, cannot accept a number "
+                        "with a leading zero or a trailing underscore after zero: 0%c \n",
+                        ch);
+                exit(1);
+            }
+            // Return the unused non number char back for a read
+            else {
+                store_char(conf, ch);
+                // Exit and return token
+            }
+            break;
+
+        case STATE_WHOLE_NUM:
+            if (isdigit(ch)) {
+                // Decimal number shift plus the new number
+                // (ch - '0') is a character to integer conversion
+                token.attr.int_val = token.attr.int_val * 10 + (ch - '0');
+                continue;
+            }
+            // Input is underscore, go to the underscore guard state
+            else if (ch == '_') {
+                state = STATE_WHOLE_NUM_UNDERSCORE;
+                continue;
+            }
+            // The next character is a part of another token,
+            // Puts it back for another read
+            else {
+                store_char(conf, ch);
+                // Exit and return token
+            }
+            break;
+
+        case STATE_WHOLE_NUM_UNDERSCORE:
+            // The input is still an underscore, stay in this state
+            if (ch == '_') {
+                continue;
+            }
+            // The input is a whole number go back to the whole number state
+            else if (isdigit(ch)) {
+                state = STATE_WHOLE_NUM;
+                // Decimal number shift plus the new number
+                // (ch - '0') is a character to integer conversion
+                token.attr.int_val = token.attr.int_val * 10 + (ch - '0');
+            }
+            // Number ends with an underscore
+            else {
+                fprintf(stderr,
+                        "Lexical analysis Error 1: Number literal cannot end with an underscore "
+                        "%d%c \n",
+                        token.attr.int_val, ch);
+                exit(1);
             }
             break;
 
