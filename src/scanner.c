@@ -30,6 +30,11 @@ typedef enum {
     STATE_NOT,
     STATE_ID,
     STATE_UNDERSCORE,
+    STATE_LPAREN,
+    STATE_AT, // @
+    STATE_AT_M,
+    STATE_AT_MA,
+    STATE_AT_MAI,
     // String
     STATE_FIR_QUOTE,
     STATE_SEC_QUOTE,
@@ -45,6 +50,9 @@ typedef enum {
     STATE_WHOLE_NUM,
     STATE_WHOLE_NUM_UNDERSCORE,
     STATE_ZERO,
+    // Double
+    STATE_DOT,
+    STATE_DOUBLE,
 } state_t;
 
 // Structs
@@ -236,13 +244,11 @@ token_t get_token(scanner_conf_t *conf) {
             } else if (ch == '*') {
                 token.type = TOKEN_MUL;
                 break;
-            } else if (ch == '(') {
-                token.type = TOKEN_LPAREN;
-                break;
-            } else if (ch == ')') {
-                token.type = TOKEN_RPAREN;
+            } else if (ch == '/') {
+                token.type = TOKEN_DIV;
                 break;
             }
+
             // Relations
             else if (ch == '=') {
                 state = STATE_ASSIGN;
@@ -255,6 +261,30 @@ token_t get_token(scanner_conf_t *conf) {
                 continue;
             } else if (ch == '!') {
                 state = STATE_NOT;
+                continue;
+            }
+
+            // Other characters
+            else if (ch == '@') {
+                state = STATE_AT;
+                continue;
+            } else if (ch == ',') {
+                token.type = TOKEN_COMMA;
+                break;
+            } else if (ch == ';') {
+                token.type = TOKEN_SEMICOLON;
+                break;
+            } else if (ch == ':') {
+                token.type = TOKEN_COLON;
+                break;
+            } else if (ch == '(') {
+                token.type = TOKEN_LPAREN;
+                break;
+            } else if (ch == ')') {
+                token.type = TOKEN_RPAREN;
+                break;
+            } else if (ch == '.') {
+                state = STATE_DOT;
                 continue;
             }
 
@@ -318,6 +348,50 @@ token_t get_token(scanner_conf_t *conf) {
                 store_char(conf, ch);
                 // Set token type
                 token.type = TOKEN_UNDERSCORE;
+            }
+            break;
+
+        // Annotation @main
+        case STATE_AT:
+            if (ch == 'm') {
+                state = STATE_AT_M;
+                continue;
+            } else {
+                store_char(conf, ch);
+                fprintf(stderr, "Lexical analysis Error 1: Annotation in incorrect format\n");
+                exit(1);
+            }
+            break;
+
+        case STATE_AT_M:
+            if (ch == 'a') {
+                state = STATE_AT_MA;
+                continue;
+            } else {
+                store_char(conf, ch);
+                fprintf(stderr, "Lexical analysis Error 1: Annotation in incorrect format\n");
+                exit(1);
+            }
+            break;
+
+        case STATE_AT_MA:
+            if (ch == 'i') {
+                state = STATE_AT_MAI;
+                continue;
+            } else {
+                store_char(conf, ch);
+                fprintf(stderr, "Lexical analysis Error 1: Annotation in incorrect format\n");
+                exit(1);
+            }
+            break;
+
+        case STATE_AT_MAI:
+            if (ch == 'n') {
+                token.type = TOKEN_ANNOTATION;
+            } else {
+                store_char(conf, ch);
+                fprintf(stderr, "Lexical analysis Error 1: Annotation in incorrect format\n");
+                exit(1);
             }
             break;
 
@@ -584,6 +658,7 @@ token_t get_token(scanner_conf_t *conf) {
                 // Decimal number shift plus the new number
                 // (ch - '0') is a character to integer conversion
                 token.attr.int_val = token.attr.int_val * 10 + (ch - '0');
+                continue;
             }
             // Number ends with an underscore
             else {
@@ -592,6 +667,20 @@ token_t get_token(scanner_conf_t *conf) {
                         "%d%c \n",
                         token.attr.int_val, ch);
                 exit(1);
+            }
+            break;
+
+        case STATE_DOT:
+            // The dot is part of a double number
+            if (isdigit(ch)) {
+                token.attr.double_val = (ch - '0') / 10.0;
+                state = STATE_DOUBLE;
+                continue;
+            }
+            // It is just a dot operator
+            else {
+                store_char(conf, ch);
+                token.type = TOKEN_DOT;
             }
             break;
 

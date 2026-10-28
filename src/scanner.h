@@ -29,8 +29,6 @@ typedef enum {
     TOKEN_INT,
     TOKEN_DOUBLE,
     TOKEN_STRING,
-    TOKEN_UNIT,
-
     // Operators
     TOKEN_PLUS,
     TOKEN_MINUS,
@@ -69,6 +67,7 @@ typedef enum {
     TOKEN_RPAREN,
 
     // Special characters
+    TOKEN_DOT,
     TOKEN_COLON,
     TOKEN_SEMICOLON,
     TOKEN_COMMA,
