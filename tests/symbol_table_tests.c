@@ -189,9 +189,8 @@ void symtable_insert_item_success_test(void **state) {
 
     symtable_data_t data;
     data.type = SYM_TYPE_VAR;
-    data.var.type = SYM_TYPE_INT;
+    data.var.type = SYM_DATATYPE_INT;
     data.var.is_mutable = true;
-    data.var.is_initialized = true;
     data.var.unique_id = 1;
 
     bool res = symtable_insert_item(&symtable_stack, "VAR_X", data);
@@ -243,7 +242,7 @@ void symtable_search_global_found_test(void **state) {
 
     symtable_data_t data = {0};
     data.type = SYM_TYPE_VAR;
-    data.var.type = SYM_TYPE_INT;
+    data.var.type = SYM_DATATYPE_INT;
     symtable_insert_item(&symtable_stack, "VAR_GLOBAL", data);
 
     // Create inner scope
@@ -254,7 +253,7 @@ void symtable_search_global_found_test(void **state) {
 
     // Assert
     assert_non_null(res);
-    assert_int_equal(res->data.var.type, SYM_TYPE_INT);
+    assert_int_equal(res->data.var.type, SYM_DATATYPE_INT);
 
     symtable_stack_delete(&symtable_stack);
 }
@@ -268,14 +267,14 @@ void symtable_search_shadowing_test(void **state) {
 
     symtable_data_t global_data = {0};
     global_data.type = SYM_TYPE_VAR;
-    global_data.var.type = SYM_TYPE_INT;
+    global_data.var.type = SYM_DATATYPE_INT;
     symtable_insert_item(&symtable_stack, "VAR_X", global_data);
 
     // Create inner scope and shadow "VAR_X" with DOUBLE type
     symtable_create_avl(&symtable_stack);
     symtable_data_t local_data = {0};
     local_data.type = SYM_TYPE_VAR;
-    local_data.var.type = SYM_TYPE_DOUBLE;
+    local_data.var.type = SYM_DATATYPE_DOUBLE;
     symtable_insert_item(&symtable_stack, "VAR_X", local_data);
 
     // Search should find the inner (shadowed) variable first
@@ -283,7 +282,7 @@ void symtable_search_shadowing_test(void **state) {
 
     // Assert
     assert_non_null(res);
-    assert_int_equal(res->data.var.type, SYM_TYPE_DOUBLE);
+    assert_int_equal(res->data.var.type, SYM_DATATYPE_DOUBLE);
 
     symtable_stack_delete(&symtable_stack);
 }
@@ -325,21 +324,19 @@ void symtable_stack_search_current_exists_test(void **state) {
 
     symtable_data_t data;
     data.type = SYM_TYPE_VAR;
-    data.var.type = SYM_TYPE_ID;
+    data.var.type = SYM_DATATYPE_ID;
     data.var.is_mutable = false;
-    data.var.is_initialized = true;
     data.var.unique_id = 19;
 
     symtable_insert_item(&symtable_stack, "ID_X", data);
 
-    symtable_node_t *res = symtable_stack_search_current(symtable_stack.top, SYM_TYPE_VAR, "ID_X");
+    symtable_node_t *res = symtable_stack_search_current(&symtable_stack, SYM_TYPE_VAR, "ID_X");
 
     // Assert
     assert_non_null(res);
     assert_int_equal(res->data.type, SYM_TYPE_VAR);
-    assert_int_equal(res->data.var.type, SYM_TYPE_ID);
+    assert_int_equal(res->data.var.type, SYM_DATATYPE_ID);
     assert_false(res->data.var.is_mutable);
-    assert_true(res->data.var.is_initialized);
     assert_int_equal(res->data.var.unique_id, 19);
 
     symtable_stack_delete(&symtable_stack);
@@ -357,16 +354,14 @@ void symtable_stack_search_current_not_exists_test(void **state) {
 
     symtable_data_t data;
     data.type = SYM_TYPE_VAR;
-    data.var.type = SYM_TYPE_ID;
+    data.var.type = SYM_DATATYPE_ID;
     data.var.is_mutable = false;
-    data.var.is_initialized = true;
     data.var.unique_id = 19;
 
     symtable_insert_item(&symtable_stack, "ID_X", data);
 
-    symtable_node_t *res1 =
-        symtable_stack_search_current(symtable_stack.top, SYM_TYPE_FUNC, "ID_X");
-    symtable_node_t *res2 = symtable_stack_search_current(symtable_stack.top, SYM_TYPE_VAR, "ID_Y");
+    symtable_node_t *res1 = symtable_stack_search_current(&symtable_stack, SYM_TYPE_FUNC, "ID_X");
+    symtable_node_t *res2 = symtable_stack_search_current(&symtable_stack, SYM_TYPE_VAR, "ID_Y");
 
     // Assert
     assert_null(res1);

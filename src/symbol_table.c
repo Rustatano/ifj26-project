@@ -264,36 +264,28 @@ symtable_node_t *symtable_search(symtable_stack_t *stack, symtable_type_t type, 
     }
 
     symtable_stack_item_t *top = stack->top;
-    if (top == NULL) {
-        return NULL;
-    }
 
-    symtable_node_t *node = NULL;
     while (top != NULL) {
         symtable_node_t *root = top->tree_root;
-        if (root == NULL) {
-            return NULL;
-        }
 
         // Decide which side to follow
-        int cmp = strcmp(root->key, id);
-        while (cmp != 0 && type != root->data.type) {
-            if (cmp > 0) {
+        while (root != NULL) {
+            // Compare IDs
+            int cmp = strcmp(root->key, id);
+            if (cmp == 0) {
+                if (root->data.type == type) {
+                    return root;
+                }
+                // Symbol type didn't match, go to upper symtable
+                break;
+            } else if (cmp > 0) {
                 root = root->left;
             } else {
                 root = root->right;
             }
-
-            if (root == NULL) {
-                return NULL;
-            }
-
-            cmp = strcmp(root->key, id);
-        }
-        if (node != NULL) {
-            return node;
         }
 
+        // Search in upper symtable
         top = top->next;
     }
 
@@ -334,7 +326,18 @@ void symtable_pop_avl(symtable_stack_t *stack) {
         return;
     }
 
-    delete_node(stack->top->tree_root);
+    symtable_stack_item_t *prev_top = stack->top;
+
+    // Assign new stack top
+    stack->top = prev_top->next;
+
+    // Delete previous stack top
+    delete_node(prev_top->tree_root);
+    free(prev_top);
+
+    if (stack->top == NULL) {
+        stack->global = NULL;
+    }
 }
 
 void symtable_stack_delete(symtable_stack_t *stack) {
