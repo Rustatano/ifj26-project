@@ -1,16 +1,17 @@
 /*
 -------------------------------------------------------
 Name of project: Translator IFJ26
-Authors: Zobal, Tajovský, Ondruška, Svoboda
+Authors: xzobals00 (Stepan Zobal)
 Creation date: 06.10.2026
 File: scanner.h
 
-Description: Header file for Lexical analyzator of the translator, which scans lexems for tokens
+Description: Header file for lexical analyzer, which scans characters
+from input, groups them into lexems and returns tokens.
 
 -------------------------------------------------------
 */
 
-// Include Guard
+// Include guard
 #ifndef SCANNER_H
 #define SCANNER_H
 
@@ -36,7 +37,7 @@ typedef enum {
     TOKEN_MUL,
     TOKEN_DIV,
 
-    // Relation
+    // Relational operators
     TOKEN_ASSIGN,
     TOKEN_EQ,
     TOKEN_NEQ,
@@ -46,22 +47,22 @@ typedef enum {
     TOKEN_LT,
 
     // Keywords
-    TOKEN_KEYWORD_DEF,
-    TOKEN_KEYWORD_DO,
-    TOKEN_KEYWORD_THEN,
-    TOKEN_KEYWORD_IF,
-    TOKEN_KEYWORD_ELSE,
-    TOKEN_KEYWORD_IMPORT,
-    TOKEN_KEYWORD_RETURN,
-    TOKEN_KEYWORD_VAL,
-    TOKEN_KEYWORD_VAR,
-    TOKEN_KEYWORD_WHILE,
+    TOKEN_KW_DEF,
+    TOKEN_KW_DO,
+    TOKEN_KW_THEN,
+    TOKEN_KW_IF,
+    TOKEN_KW_ELSE,
+    TOKEN_KW_IMPORT,
+    TOKEN_KW_RETURN,
+    TOKEN_KW_VAL,
+    TOKEN_KW_VAR,
+    TOKEN_KW_WHILE,
 
     // Keywords - data types
-    TOKEN_KEYWORD_INT,
-    TOKEN_KEYWORD_DOUBLE,
-    TOKEN_KEYWORD_STRING,
-    TOKEN_KEYWORD_UNIT,
+    TOKEN_KW_INT,
+    TOKEN_KW_DOUBLE,
+    TOKEN_KW_STRING,
+    TOKEN_KW_UNIT,
 
     // Parentheses
     TOKEN_LPAREN,
@@ -72,8 +73,9 @@ typedef enum {
     TOKEN_SEMICOLON,
     TOKEN_COMMA,
     TOKEN_ANNOTATION,
+    TOKEN_UNDERSCORE,
 
-    // Spacing
+    // Indentation
     TOKEN_INDENT,
     TOKEN_DEDENT,
 
@@ -100,9 +102,9 @@ typedef struct {
 typedef struct {
     FILE *source_file;
     int unread_chars_stack[UNREAD_CHARS_SIZE];
-    int unread_top;
+    int unread_top; // First unoccupied space
     int indent_stack[INDENT_STACK_SIZE];
-    int indent_top;
+    int indent_top; // First unoccupied space
 
 } scanner_conf_t;
 

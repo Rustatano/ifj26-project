@@ -3,7 +3,7 @@
 Name of project: Translator IFJ26
 Authors: xsvoboj01 (Jakub Svoboda)
 Creation date: 19.10.2026
-File: symtable.h
+File: symbol_table.c
 
 Description: Implementation file for symbol table as a stack of height-balanced AVL trees
 -------------------------------------------------------
@@ -130,8 +130,7 @@ symtable_node_t *rotate_right_left_rl(symtable_node_t *root) {
     return rotate_left_rr(root);
 }
 
-symtable_node_t *insert_node(symtable_node_t *root, symtable_type_t type, char *id,
-                             symtable_data_t data, bool *success) {
+symtable_node_t *insert_node(symtable_node_t *root, char *id, symtable_data_t data, bool *success) {
     if (root == NULL) {
         // Allocation of memory for the node
         symtable_node_t *node = (symtable_node_t *)malloc(sizeof(symtable_node_t));
@@ -161,9 +160,9 @@ symtable_node_t *insert_node(symtable_node_t *root, symtable_type_t type, char *
 
     // Decide which side to follow
     if (cmp > 0) {
-        root->left = insert_node(root->left, type, id, data, success);
+        root->left = insert_node(root->left, id, data, success);
     } else if (cmp < 0) {
-        root->right = insert_node(root->right, type, id, data, success);
+        root->right = insert_node(root->right, id, data, success);
     } else {
         *success = false;
     }
@@ -207,15 +206,14 @@ symtable_node_t *insert_node(symtable_node_t *root, symtable_type_t type, char *
     return root;
 }
 
-bool symtable_insert_item(symtable_stack_t *stack, symtable_type_t type, char *id,
-                          symtable_data_t data) {
+bool symtable_insert_item(symtable_stack_t *stack, char *id, symtable_data_t data) {
     if (stack == NULL || id == NULL) {
         return false;
     }
 
     bool success = true;
 
-    stack->top->tree_root = insert_node(stack->top->tree_root, type, id, data, &success);
+    stack->top->tree_root = insert_node(stack->top->tree_root, id, data, &success);
 
     return success;
 }
@@ -234,23 +232,30 @@ symtable_node_t *symtable_stack_search_current(symtable_stack_t *stack, symtable
         return NULL;
     }
 
-    // Decide which side to follow
+    // Compare IDs
     int cmp = strcmp(root->key, id);
-    while (cmp != 0 && type != root->data.type) {
+    while (cmp != 0) {
+        // Decide which side to follow
         if (cmp > 0) {
             root = root->left;
         } else {
             root = root->right;
         }
 
+        // Node not found
         if (root == NULL) {
             return NULL;
         }
 
+        // Compare IDs
         cmp = strcmp(root->key, id);
     }
 
-    return root;
+    if (root->data.type == type) {
+        return root;
+    }
+
+    return NULL;
 }
 
 symtable_node_t *symtable_search(symtable_stack_t *stack, symtable_type_t type, char *id) {
@@ -330,6 +335,16 @@ void symtable_pop_avl(symtable_stack_t *stack) {
     }
 
     delete_node(stack->top->tree_root);
+<<<<<<< HEAD:src/symbol-table.c
+=======
+
+    stack->top = stack->top->next;
+
+    // There is no tree left in stack
+    if (stack->top == NULL) {
+        stack->global = NULL;
+    }
+>>>>>>> main:src/symbol_table.c
 }
 
 void symtable_stack_delete(symtable_stack_t *stack) {
