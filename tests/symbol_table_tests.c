@@ -40,6 +40,8 @@ void symtable_init_test(void **state) {
     assert_true(res);
     assert_null(symtable_stack.top);
     assert_null(symtable_stack.global);
+
+    symtable_stack_delete(&symtable_stack);
 }
 
 // SECTION: symtable_create_avl
@@ -67,6 +69,8 @@ void symtable_create_avl_first_call_test(void **state) {
     assert_null(symtable_stack.top->tree_root);
     assert_null(symtable_stack.top->next);
     assert_ptr_equal(symtable_stack.top, symtable_stack.global);
+
+    symtable_stack_delete(&symtable_stack);
 }
 
 void symtable_create_avl_second_call_test(void **state) {
@@ -91,6 +95,8 @@ void symtable_create_avl_second_call_test(void **state) {
     assert_ptr_equal(symtable_stack.global, first_call_top);
     assert_null(symtable_stack.top->tree_root);
     assert_ptr_equal(symtable_stack.top->next, first_call_top);
+
+    symtable_stack_delete(&symtable_stack);
 }
 
 // SECTION: symtable_pop_avl
@@ -118,6 +124,8 @@ void symtable_pop_avl_one_tree_test(void **state) {
     // Assert
     assert_null(symtable_stack.global);
     assert_null(symtable_stack.top);
+
+    symtable_stack_delete(&symtable_stack);
 }
 
 void symtable_pop_avl_two_trees_test(void **state) {
@@ -141,6 +149,8 @@ void symtable_pop_avl_two_trees_test(void **state) {
     assert_ptr_equal(prev_global, symtable_stack.global);
     assert_ptr_not_equal(prev_top, symtable_stack.top);
     assert_non_null(symtable_stack.top);
+
+    symtable_stack_delete(&symtable_stack);
 }
 
 void symtable_pop_avl_empty_stack_test(void **state) {
@@ -155,6 +165,8 @@ void symtable_pop_avl_empty_stack_test(void **state) {
     // Assert
     assert_null(symtable_stack.top);
     assert_null(symtable_stack.global);
+
+    symtable_stack_delete(&symtable_stack);
 }
 
 // SECTION: symtable_insert_item
@@ -287,6 +299,8 @@ void symtable_search_null_args_test(void **state) {
     // Assert
     assert_null(res1);
     assert_null(res2);
+
+    symtable_stack_delete(&symtable_stack);
 }
 
 // SECTION: symtable_stack_search_current
@@ -327,6 +341,8 @@ void symtable_stack_search_current_exists_test(void **state) {
     assert_false(res->data.var.is_mutable);
     assert_true(res->data.var.is_initialized);
     assert_int_equal(res->data.var.unique_id, 19);
+
+    symtable_stack_delete(&symtable_stack);
 }
 
 void symtable_stack_search_current_not_exists_test(void **state) {
@@ -355,6 +371,8 @@ void symtable_stack_search_current_not_exists_test(void **state) {
     // Assert
     assert_null(res1);
     assert_null(res2);
+
+    symtable_stack_delete(&symtable_stack);
 }
 
 // SECTION: symtable_stack_delete
