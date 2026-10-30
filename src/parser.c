@@ -225,3 +225,38 @@ ast_node_t *parse_block(parser_context_t *context) {
     load_token(context);
     return block;
 }
+
+ast_node_t *parse_var_declaration(parser_context_t *context) {
+    if (!(verify_token_type(context, TOKEN_KEYWORD_VAR) ||
+          verify_token_type(context, TOKEN_KEYWORD_VAL))) {
+        return NULL;
+    }
+    bool is_mutable;
+    if (context->current_token.type == TOKEN_KEYWORD_VAR) {
+        is_mutable = false;
+    } else if (context->current_token.type == TOKEN_KEYWORD_VAL) {
+        is_mutable = true;
+    } else {
+        return NULL;
+    }
+    int line = context->current_token.line;
+    load_token(context);
+    if (!verify_token_type(context, TOKEN_ID)) {
+        return NULL;
+    }
+    const char *var_id = context->current_token.attr.str_val;
+    load_token(context);
+
+    if (!verify_token_type(context, TOKEN_ASSIGN)) {
+        return NULL;
+    }
+    load_token(context);
+
+    ast_node_t *init_expres = parse_expresion(context);
+    if (init_expres == NULL) {
+        return NULL;
+    }
+
+    return ast_var_declaration_create(var_id, 0, SYM_DATATYPE_UNKNOWN, is_mutable, init_expres,
+                                      line);
+}
