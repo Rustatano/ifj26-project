@@ -1,6 +1,6 @@
 # TEX build files
 doc/build
-*.pdf
+main.pdf
 
 # archive files
 *.zip
