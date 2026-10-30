@@ -371,6 +371,7 @@ bool first_ast_passage(ast_node_t *ast, symtable_stack_t *symtable_stack) {
     }
 
     ast_node_t *current_node = ast;
+    bool main_found = false;
 
     while (current_node != NULL) {
         // Check if node is function definition
@@ -392,17 +393,28 @@ bool first_ast_passage(ast_node_t *ast, symtable_stack_t *symtable_stack) {
             fun_data.fun.params = current_node->fun_definition.params;
             fun_data.fun.return_type = current_node->fun_definition.return_type;
 
+            // Check correct main function setup
+
             // Insert new entry of function to global symtable
             symtable_insert_item(symtable_stack, SYM_TYPE_FUNC, current_node->fun_definition.name,
                                  fun_data);
         } else {
-            // Node is something else, not important in first passage
+            // Node '@main' annotaion or something else unimportant
             if (current_node->type == AST_NODE_PROGRAM) {
-                current_node = current_node->block.first_statement;
-            } else {
-                current_node = current_node->next;
+                if (main_found == true) {
+                    // Semantic error (duplicate declaration of main function)
+                    return false;
+                }
+                main_found = true;
             }
+            current_node = current_node->next;
         }
+    }
+
+    // Check if main function was declared
+    if (main_found == true) {
+        // Semantic error (main functon is not declared)
+        return false;
     }
 
     return true;

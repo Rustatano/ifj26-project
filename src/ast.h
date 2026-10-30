@@ -22,7 +22,7 @@ typedef enum {
     // Program and structural nodes
     AST_NODE_PROGRAM, // Root node of the AST
     AST_NODE_BLOCK,   // Block of statements
-    AST_NODE_CONVERT, // Used in Int  to Double conversion of variable
+    AST_NODE_CONVERT, // Used in Int to Double conversion of variable
 
     // Statements and declarations
     AST_NODE_FUN_DEFINITION,
