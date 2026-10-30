@@ -281,3 +281,25 @@ ast_node_t *parse_assignment(parser_context_t *context) {
 
     return ast_assignment_create(target_var_name, 0, expression, line);
 }
+
+ast_node_t *parse_return(parser_context_t *context) {
+    if (!verify_token_type(context, TOKEN_KEYWORD_RETURN)) {
+        return NULL;
+    }
+
+    int line = context->current_token.line;
+    load_token(context);
+
+    ast_node_t *expression = parse_expresion(context);
+    if (expression == NULL) {
+        return NULL;
+    }
+
+    ast_node_t *new_node = ast_node_create(AST_NODE_STATEMENT_RETURN, line);
+    if (new_node == NULL) {
+        return NULL;
+    }
+    new_node->return_statement.expres = expression;
+
+    return new_node;
+}
