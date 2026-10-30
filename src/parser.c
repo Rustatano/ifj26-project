@@ -260,3 +260,24 @@ ast_node_t *parse_var_declaration(parser_context_t *context) {
     return ast_var_declaration_create(var_id, 0, SYM_DATATYPE_UNKNOWN, is_mutable, init_expres,
                                       line);
 }
+
+ast_node_t *parse_assignment(parser_context_t *context) {
+    if (!verify_token_type(context, TOKEN_ID)) {
+        return NULL;
+    }
+    const char *target_var_name = context->current_token.attr.str_val;
+    int line = context->current_token.line;
+    load_token(context);
+
+    if (!verify_token_type(context, TOKEN_ASSIGN)) {
+        return NULL;
+    }
+    load_token(context);
+
+    ast_node_t *expression = parse_expresion(context);
+    if (expression == NULL) {
+        return NULL;
+    }
+
+    return ast_assignment_create(target_var_name, 0, expression, line);
+}
