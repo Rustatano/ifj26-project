@@ -25,6 +25,7 @@ typedef struct parser_context {
 ast_node_t *parse_term(parser_context_t *context);
 ast_node_t *parse_unary(parser_context_t *context);
 ast_node_t *parse_factor(parser_context_t *context);
+ast_node_t *parse_statement(parser_context_t *context);
 
 parse_result_t parse(ast_node_t **ast_root, scanner_conf_t *scanner_conf) {
     // Create a context
@@ -202,4 +203,25 @@ ast_node_t *parse_factor(parser_context_t *context) {
         context->error_message = "Expected expression factor";
         return NULL;
     }
+}
+
+ast_node_t *parse_block(parser_context_t *context) {
+    if (!verify_token_type(context, TOKEN_INDENT)) {
+        return NULL;
+    }
+    int line = context->current_token.line;
+    ast_node_t *block = ast_block_create(AST_NODE_BLOCK, line);
+    load_token(context);
+    while (context->current_token.type != TOKEN_DEDENT) {
+        ast_node_t *statement = parse_statement(context);
+        if (statement == NULL) {
+            ast_dispose(&block);
+            return NULL;
+        }
+        ast_block_append(block, statement);
+        load_token(context);
+    }
+
+    load_token(context);
+    return block;
 }
