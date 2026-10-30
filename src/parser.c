@@ -53,20 +53,31 @@ bool verify_token_type(parser_context_t *context, token_type_t token_type) {
 ast_node_t *parse_import(parser_context_t *context) {
 
     if (!verify_token_type(context, TOKEN_KEYWORD_IMPORT)) {
+        context->error_line = context->current_token.line;
+        context->error_message = "Expected 'import' keyword";
         return NULL;
     }
 
     load_token(context);
     if (!verify_token_type(context, TOKEN_ID)) {
+        context->error_line = context->current_token.line;
+        context->error_message = "Expected module name identifier after import";
         return NULL;
     }
     char *module_name = context->current_token.attr.str_val;
 
     load_token(context);
     if (!verify_token_type(context, TOKEN_EOL)) {
+        context->error_line = context->current_token.line;
+        context->error_message = "Expected end of line after import statement";
         return NULL;
     }
     ast_node_t *new_node = ast_node_create(AST_NODE_STATEMENT_IMPORT, context->current_token.line);
+    if (!new_node) {
+        context->error_line = context->current_token.line;
+        context->error_message = "Memory allocation failed for import AST node";
+        return NULL;
+    }
     new_node->import_statement.module_name = module_name;
 
     return new_node;
@@ -206,10 +217,17 @@ ast_node_t *parse_factor(parser_context_t *context) {
 
 ast_node_t *parse_block(parser_context_t *context) {
     if (!verify_token_type(context, TOKEN_INDENT)) {
+        context->error_line = context->current_token.line;
+        context->error_message = "Expected indentation for block";
         return NULL;
     }
     int line = context->current_token.line;
     ast_node_t *block = ast_block_create(AST_NODE_BLOCK, line);
+    if (!block) {
+        context->error_line = line;
+        context->error_message = "Memory allocation failed for block AST node";
+        return NULL;
+    }
     load_token(context);
     while (context->current_token.type != TOKEN_DEDENT) {
         ast_node_t *statement = parse_statement(context);
@@ -228,6 +246,8 @@ ast_node_t *parse_block(parser_context_t *context) {
 ast_node_t *parse_var_declaration(parser_context_t *context) {
     if (!(verify_token_type(context, TOKEN_KEYWORD_VAR) ||
           verify_token_type(context, TOKEN_KEYWORD_VAL))) {
+        context->error_line = context->current_token.line;
+        context->error_message = "Expected 'var' or 'val' keyword";
         return NULL;
     }
     bool is_mutable;
@@ -236,17 +256,23 @@ ast_node_t *parse_var_declaration(parser_context_t *context) {
     } else if (context->current_token.type == TOKEN_KEYWORD_VAL) {
         is_mutable = true;
     } else {
+        context->error_line = context->current_token.line;
+        context->error_message = "Expected 'var' or 'val' keyword";
         return NULL;
     }
     int line = context->current_token.line;
     load_token(context);
     if (!verify_token_type(context, TOKEN_ID)) {
+        context->error_line = context->current_token.line;
+        context->error_message = "Expected variable name identifier";
         return NULL;
     }
     const char *var_id = context->current_token.attr.str_val;
     load_token(context);
 
     if (!verify_token_type(context, TOKEN_ASSIGN)) {
+        context->error_line = context->current_token.line;
+        context->error_message = "Expected '=' in variable declaration";
         return NULL;
     }
     load_token(context);
@@ -256,12 +282,20 @@ ast_node_t *parse_var_declaration(parser_context_t *context) {
         return NULL;
     }
 
-    return ast_var_declaration_create(var_id, 0, SYM_DATATYPE_UNKNOWN, is_mutable, init_expres,
-                                      line);
+    ast_node_t *var_node =
+        ast_var_declaration_create(var_id, 0, SYM_DATATYPE_UNKNOWN, is_mutable, init_expres, line);
+    if (!var_node) {
+        context->error_line = line;
+        context->error_message = "Memory allocation failed for variable declaration AST node";
+        return NULL;
+    }
+    return var_node;
 }
 
 ast_node_t *parse_assignment(parser_context_t *context) {
     if (!verify_token_type(context, TOKEN_ID)) {
+        context->error_line = context->current_token.line;
+        context->error_message = "Expected target variable identifier in assignment";
         return NULL;
     }
     const char *target_var_name = context->current_token.attr.str_val;
@@ -269,6 +303,8 @@ ast_node_t *parse_assignment(parser_context_t *context) {
     load_token(context);
 
     if (!verify_token_type(context, TOKEN_ASSIGN)) {
+        context->error_line = context->current_token.line;
+        context->error_message = "Expected '=' in assignment";
         return NULL;
     }
     load_token(context);
@@ -278,11 +314,19 @@ ast_node_t *parse_assignment(parser_context_t *context) {
         return NULL;
     }
 
-    return ast_assignment_create(target_var_name, 0, expression, line);
+    ast_node_t *assign_node = ast_assignment_create(target_var_name, 0, expression, line);
+    if (!assign_node) {
+        context->error_line = line;
+        context->error_message = "Memory allocation failed for assignment AST node";
+        return NULL;
+    }
+    return assign_node;
 }
 
 ast_node_t *parse_return(parser_context_t *context) {
     if (!verify_token_type(context, TOKEN_KEYWORD_RETURN)) {
+        context->error_line = context->current_token.line;
+        context->error_message = "Expected 'return' keyword";
         return NULL;
     }
 
@@ -296,6 +340,8 @@ ast_node_t *parse_return(parser_context_t *context) {
 
     ast_node_t *new_node = ast_node_create(AST_NODE_STATEMENT_RETURN, line);
     if (new_node == NULL) {
+        context->error_line = line;
+        context->error_message = "Memory allocation failed for return statement AST node";
         return NULL;
     }
     new_node->return_statement.expres = expression;
@@ -310,23 +356,34 @@ symtable_datatype_t parse_data_type(parser_context_t *context) {
         return SYM_DATATYPE_DOUBLE;
     } else if (verify_token_type(context, TOKEN_KEYWORD_STRING)) {
         return SYM_DATATYPE_STRING;
+    } else if (verify_token_type(context, TOKEN_KEYWORD_UNIT)) {
+        return SYM_DATATYPE_UNIT;
     }
+    context->error_line = context->current_token.line;
+    context->error_message = "Expected data type (Int, Double, String, or Unit)";
     return SYM_DATATYPE_UNKNOWN;
 }
 
 symtable_fun_param_t *parse_parameter(parser_context_t *context) {
     if (!verify_token_type(context, TOKEN_ID)) {
+        context->error_line = context->current_token.line;
+        context->error_message = "Expected parameter identifier";
         return NULL;
     }
 
     symtable_fun_param_t *param = calloc(1, sizeof(symtable_fun_param_t));
-    if (!param)
+    if (!param) {
+        context->error_line = context->current_token.line;
+        context->error_message = "Memory allocation failed for function parameter";
         return NULL;
+    }
 
     param->name = context->current_token.attr.str_val;
     load_token(context);
 
     if (!verify_token_type(context, TOKEN_COLON)) {
+        context->error_line = context->current_token.line;
+        context->error_message = "Expected ':' after parameter name";
         free(param);
         return NULL;
     }
@@ -343,18 +400,24 @@ symtable_fun_param_t *parse_parameter(parser_context_t *context) {
 
 ast_node_t *parse_fun_definition(parser_context_t *context) {
     if (!verify_token_type(context, TOKEN_KEYWORD_DEF)) {
+        context->error_line = context->current_token.line;
+        context->error_message = "Expected 'def' keyword";
         return NULL;
     }
     int line = context->current_token.line;
 
     load_token(context);
     if (!verify_token_type(context, TOKEN_ID)) {
+        context->error_line = context->current_token.line;
+        context->error_message = "Expected function name identifier";
         return NULL;
     }
     const char *fun_id = context->current_token.attr.str_val;
     load_token(context);
 
     if (!verify_token_type(context, TOKEN_LPAREN)) {
+        context->error_line = context->current_token.line;
+        context->error_message = "Expected '(' after function name";
         return NULL;
     }
     load_token(context);
@@ -379,6 +442,8 @@ ast_node_t *parse_fun_definition(parser_context_t *context) {
                 break;
 
             if (!verify_token_type(context, TOKEN_COMMA)) {
+                context->error_line = context->current_token.line;
+                context->error_message = "Expected ',' between function parameters or ')'";
                 return NULL;
             }
             load_token(context);
@@ -386,25 +451,29 @@ ast_node_t *parse_fun_definition(parser_context_t *context) {
     }
     load_token(context);
 
-    if (!verify_token_type(context, TOKEN_COLON)) {
-        return NULL;
+    symtable_datatype_t return_type = SYM_DATATYPE_UNIT;
+    if (verify_token_type(context, TOKEN_COLON)) {
+        load_token(context);
+        return_type = parse_data_type(context);
+        if (return_type == SYM_DATATYPE_UNKNOWN) {
+            return NULL;
+        }
+        load_token(context);
     }
-    load_token(context);
-
-    symtable_datatype_t return_type = parse_data_type(context);
-    if (return_type == SYM_DATATYPE_UNKNOWN) {
-        return NULL;
-    }
-    load_token(context);
 
     ast_node_t *body_block = parse_block(context);
     if (!body_block) {
+        context->error_line = context->current_token.line;
+        context->error_message = "Expected function body block";
         return NULL;
     }
 
     ast_node_t *new_node = ast_node_create(AST_NODE_FUN_DEFINITION, line);
-    if (!new_node)
+    if (!new_node) {
+        context->error_line = line;
+        context->error_message = "Memory allocation failed for function definition AST node";
         return NULL;
+    }
 
     new_node->fun_definition.name = fun_id;
     new_node->fun_definition.params = head;
