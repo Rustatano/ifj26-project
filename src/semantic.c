@@ -394,8 +394,7 @@ bool first_ast_passage(ast_node_t *ast, symtable_stack_t *symtable_stack) {
             fun_data.fun.return_type = current_node->fun_definition.return_type;
 
             // Insert new entry of function to global symtable
-            symtable_insert_item(symtable_stack, SYM_TYPE_FUNC, current_node->fun_definition.name,
-                                 fun_data);
+            symtable_insert_item(symtable_stack, current_node->fun_definition.name, fun_data);
         } else {
             // Node '@main' annotaion or something else unimportant
             if (current_node->type == AST_NODE_PROGRAM) {
