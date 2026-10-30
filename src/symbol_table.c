@@ -335,16 +335,6 @@ void symtable_pop_avl(symtable_stack_t *stack) {
     }
 
     delete_node(stack->top->tree_root);
-<<<<<<< HEAD:src/symbol-table.c
-=======
-
-    stack->top = stack->top->next;
-
-    // There is no tree left in stack
-    if (stack->top == NULL) {
-        stack->global = NULL;
-    }
->>>>>>> main:src/symbol_table.c
 }
 
 void symtable_stack_delete(symtable_stack_t *stack) {
