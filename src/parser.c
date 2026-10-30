@@ -12,7 +12,9 @@ Description: Parser implementation.
 #include "parser.h"
 #include "ast.h"
 #include "scanner.h"
+#include "symbol_table.h"
 #include <stdbool.h>
+#include <stdlib.h>
 
 typedef struct parser_context {
     token_t current_token;
@@ -28,13 +30,10 @@ ast_node_t *parse_factor(parser_context_t *context);
 ast_node_t *parse_statement(parser_context_t *context);
 
 parse_result_t parse(ast_node_t **ast_root, scanner_conf_t *scanner_conf) {
-    // Create a context
-    //
-    // Start parsing loop
-    //
-    // 			Call the correct parse functions
-    //          Connect the root to main tree
-    // return the tree
+    (void)ast_root;
+    (void)scanner_conf;
+    parse_result_t res = {0};
+    return res;
 }
 
 void load_token(parser_context_t *context) {
@@ -300,6 +299,117 @@ ast_node_t *parse_return(parser_context_t *context) {
         return NULL;
     }
     new_node->return_statement.expres = expression;
+
+    return new_node;
+}
+
+symtable_datatype_t parse_data_type(parser_context_t *context) {
+    if (verify_token_type(context, TOKEN_KEYWORD_INT)) {
+        return SYM_DATATYPE_INT;
+    } else if (verify_token_type(context, TOKEN_KEYWORD_DOUBLE)) {
+        return SYM_DATATYPE_DOUBLE;
+    } else if (verify_token_type(context, TOKEN_KEYWORD_STRING)) {
+        return SYM_DATATYPE_STRING;
+    }
+    return SYM_DATATYPE_UNKNOWN;
+}
+
+symtable_fun_param_t *parse_parameter(parser_context_t *context) {
+    if (!verify_token_type(context, TOKEN_ID)) {
+        return NULL;
+    }
+
+    symtable_fun_param_t *param = calloc(1, sizeof(symtable_fun_param_t));
+    if (!param)
+        return NULL;
+
+    param->name = context->current_token.attr.str_val;
+    load_token(context);
+
+    if (!verify_token_type(context, TOKEN_COLON)) {
+        free(param);
+        return NULL;
+    }
+    load_token(context);
+
+    param->type = parse_data_type(context);
+    if (param->type == SYM_DATATYPE_UNKNOWN) {
+        free(param);
+        return NULL;
+    }
+    load_token(context);
+    return param;
+}
+
+ast_node_t *parse_fun_definition(parser_context_t *context) {
+    if (!verify_token_type(context, TOKEN_KEYWORD_DEF)) {
+        return NULL;
+    }
+    int line = context->current_token.line;
+
+    load_token(context);
+    if (!verify_token_type(context, TOKEN_ID)) {
+        return NULL;
+    }
+    const char *fun_id = context->current_token.attr.str_val;
+    load_token(context);
+
+    if (!verify_token_type(context, TOKEN_LPAREN)) {
+        return NULL;
+    }
+    load_token(context);
+
+    symtable_fun_param_t *head = NULL;
+    symtable_fun_param_t *tail = NULL;
+
+    if (!verify_token_type(context, TOKEN_RPAREN)) {
+        while (true) {
+            symtable_fun_param_t *param = parse_parameter(context);
+            if (!param) {
+                return NULL;
+            }
+
+            if (!head)
+                head = param;
+            else
+                tail->next = param;
+            tail = param;
+
+            if (verify_token_type(context, TOKEN_RPAREN))
+                break;
+
+            if (!verify_token_type(context, TOKEN_COMMA)) {
+                return NULL;
+            }
+            load_token(context);
+        }
+    }
+    load_token(context);
+
+    if (!verify_token_type(context, TOKEN_COLON)) {
+        return NULL;
+    }
+    load_token(context);
+
+    symtable_datatype_t return_type = parse_data_type(context);
+    if (return_type == SYM_DATATYPE_UNKNOWN) {
+        return NULL;
+    }
+    load_token(context);
+
+    ast_node_t *body_block = parse_block(context);
+    if (!body_block) {
+        return NULL;
+    }
+
+    ast_node_t *new_node = ast_node_create(AST_NODE_FUN_DEFINITION, line);
+    if (!new_node)
+        return NULL;
+
+    new_node->fun_definition.name = fun_id;
+    new_node->fun_definition.params = head;
+    new_node->fun_definition.return_type = return_type;
+    new_node->fun_definition.body_block = body_block;
 
     return new_node;
 }
