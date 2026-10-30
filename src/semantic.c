@@ -393,8 +393,6 @@ bool first_ast_passage(ast_node_t *ast, symtable_stack_t *symtable_stack) {
             fun_data.fun.params = current_node->fun_definition.params;
             fun_data.fun.return_type = current_node->fun_definition.return_type;
 
-            // Check correct main function setup
-
             // Insert new entry of function to global symtable
             symtable_insert_item(symtable_stack, SYM_TYPE_FUNC, current_node->fun_definition.name,
                                  fun_data);
