@@ -344,7 +344,13 @@ void symtable_stack_delete(symtable_stack_t *stack) {
 
     // Delete each AVL tree
     while (stack->top != NULL) {
-        symtable_pop_avl(stack);
-        free(stack->top);
+        symtable_stack_item_t *current_item = stack->top;
+        stack->top = current_item->next;
+
+        delete_node(current_item->tree_root);
+        free(current_item);
     }
+
+    stack->top = NULL;
+    stack->global = NULL;
 }
