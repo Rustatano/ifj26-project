@@ -14,6 +14,7 @@ from input, groups them into lexems and returns tokens.
 // Libraries
 #include "scanner.h"
 #include <ctype.h> // For isalpha(), ..
+#include <math.h>  // for pow()
 #include <stdbool.h>
 #include <stdlib.h> // For malloc, realloc, ..
 #include <string.h> // For strcmp, ..
@@ -29,6 +30,7 @@ typedef enum {
     STATE_GT,
     STATE_NOT,
     STATE_ID,
+    STATE_DOT,
     STATE_UNDERSCORE,
     STATE_LPAREN,
     STATE_AT, // @
@@ -51,8 +53,13 @@ typedef enum {
     STATE_WHOLE_NUM_UNDERSCORE,
     STATE_ZERO,
     // Double
-    STATE_DOT,
+    STATE_DOUBLE_DOT,
     STATE_DOUBLE,
+    STATE_DOUBLE_UNDERSCORE,
+    STATE_DOUBLE_EXPO,
+    STATE_DOUBLE_EXPO_SIGN,
+    STATE_DOUBLE_EXPO_FIRST_DIGIT,
+    STATE_DOUBLE_EXPO_UNDERSCORE,
 } state_t;
 
 // Structs
@@ -194,10 +201,19 @@ token_t get_token(scanner_conf_t *conf) {
     // Creates variables for further use
     state_t state = STATE_START;
     token_t token;
-    dynamic_string_t str; // For working with strings
-    int char_buffer;      // Buffer for saving last char for conditions
+    dynamic_string_t str;          // For working with strings
+    int char_buffer = 0;           // Buffer for saving last char for conditions
+    double decimal_scale = 1;      // For double numbers
+    int exponent_value = 0;        // For double numbers
+    bool exponent_sign_pos = true; // Exponent sign positive, for double numbers
+
+    token.attr.double_val = 0;
+    token.attr.int_val = 0;
 
     // State automaton
+    // Key structure elements
+    // break; does break out of the switch and the while as well, always returns a token
+    // continue; usually means switch to another state
     while (1) {
         // Gets a character input
         int ch = get_char(conf);
@@ -298,7 +314,9 @@ token_t get_token(scanner_conf_t *conf) {
 
             // String
             else if (ch == '"') {
+                // Check malloc status
                 string_init_check(&str);
+                // Move to another state
                 state = STATE_FIR_QUOTE;
                 continue;
             }
@@ -316,6 +334,12 @@ token_t get_token(scanner_conf_t *conf) {
                     state = STATE_WHOLE_NUM;
                 }
                 continue;
+            }
+            // Not a valid starting character for any token
+            else {
+                fprintf(stderr,
+                        "Lexical analysis Error 1: Input doesn't match any valid token: %c\n", ch);
+                exit(1);
             }
             break;
 
@@ -353,9 +377,11 @@ token_t get_token(scanner_conf_t *conf) {
 
         // Annotation @main
         case STATE_AT:
+            // Next letter fits the format, move to another state
             if (ch == 'm') {
                 state = STATE_AT_M;
                 continue;
+                // Doesn't match the correct format
             } else {
                 store_char(conf, ch);
                 fprintf(stderr, "Lexical analysis Error 1: Annotation in incorrect format\n");
@@ -364,10 +390,13 @@ token_t get_token(scanner_conf_t *conf) {
             break;
 
         case STATE_AT_M:
+            // Next letter fits the format, move to another state
             if (ch == 'a') {
                 state = STATE_AT_MA;
                 continue;
-            } else {
+            }
+            // Doesn't match the correct format
+            else {
                 store_char(conf, ch);
                 fprintf(stderr, "Lexical analysis Error 1: Annotation in incorrect format\n");
                 exit(1);
@@ -375,10 +404,13 @@ token_t get_token(scanner_conf_t *conf) {
             break;
 
         case STATE_AT_MA:
+            // Next letter fits the format, move to another state
             if (ch == 'i') {
                 state = STATE_AT_MAI;
                 continue;
-            } else {
+            }
+            // Doesn't match the correct format
+            else {
                 store_char(conf, ch);
                 fprintf(stderr, "Lexical analysis Error 1: Annotation in incorrect format\n");
                 exit(1);
@@ -386,9 +418,12 @@ token_t get_token(scanner_conf_t *conf) {
             break;
 
         case STATE_AT_MAI:
+            // Next letter fits the format, move to another state
             if (ch == 'n') {
                 token.type = TOKEN_ANNOTATION;
-            } else {
+            }
+            // Doesn't match the correct format
+            else {
                 store_char(conf, ch);
                 fprintf(stderr, "Lexical analysis Error 1: Annotation in incorrect format\n");
                 exit(1);
@@ -620,7 +655,19 @@ token_t get_token(scanner_conf_t *conf) {
                         ch);
                 exit(1);
             }
-            // Return the unused non number char back for a read
+            // The next character is a dot
+            else if (ch == '.') {
+                token.attr.double_val = 0;
+                state = STATE_DOUBLE_DOT;
+                continue;
+            }
+            // The number has an exponent
+            else if (ch == 'e' || ch == 'E') {
+                state = STATE_DOUBLE_EXPO_SIGN;
+                token.attr.double_val = 0;
+                continue;
+            }
+            // Return the unused non-number char back for a read
             else {
                 store_char(conf, ch);
                 // Exit and return token
@@ -637,6 +684,20 @@ token_t get_token(scanner_conf_t *conf) {
             // Input is underscore, go to the underscore guard state
             else if (ch == '_') {
                 state = STATE_WHOLE_NUM_UNDERSCORE;
+                continue;
+                // The number has a decimal part
+            } else if (ch == '.') {
+                // Move the integer value into the token decimal value
+                token.attr.double_val = token.attr.int_val;
+                // And move to the Double subtree
+                state = STATE_DOUBLE_DOT;
+                continue;
+            }
+            // The number has an exponent
+            else if (ch == 'e' || ch == 'E') {
+                state = STATE_DOUBLE_EXPO_SIGN;
+                // Move the Integer value into the double attribute
+                token.attr.double_val = token.attr.int_val;
                 continue;
             }
             // The next character is a part of another token,
@@ -670,10 +731,13 @@ token_t get_token(scanner_conf_t *conf) {
             }
             break;
 
+        // There was NOT a number before the dot
         case STATE_DOT:
             // The dot is part of a double number
             if (isdigit(ch)) {
-                token.attr.double_val = (ch - '0') / 10.0;
+                token.type = TOKEN_DOUBLE;
+                token.attr.double_val = token.attr.double_val + (ch - '0') / 10.0;
+                decimal_scale = 100.0;
                 state = STATE_DOUBLE;
                 continue;
             }
@@ -681,6 +745,191 @@ token_t get_token(scanner_conf_t *conf) {
             else {
                 store_char(conf, ch);
                 token.type = TOKEN_DOT;
+            }
+            break;
+
+        // There was a number before the dot
+        case STATE_DOUBLE_DOT:
+            // The number changes from integer to double
+            if (isdigit(ch)) {
+                token.type = TOKEN_DOUBLE;
+                token.attr.double_val = token.attr.double_val + (ch - '0') / 10.0;
+                decimal_scale = 100.0;
+                state = STATE_DOUBLE;
+                continue;
+            }
+            // Invalid double sequence
+            else {
+                store_char(conf, ch);
+                fprintf(stderr,
+                        "Lexical analysis Error 1: Invalid double number sequence double number "
+                        "has to have a digit after a dot: "
+                        "%d.%c \n",
+                        (int)token.attr.double_val, ch);
+                exit(1);
+            }
+            break;
+
+        case STATE_DOUBLE:
+            // The number continues
+            if (isdigit(ch)) {
+                // Adds the new digit to the double
+                token.attr.double_val = token.attr.double_val + (ch - '0') / decimal_scale;
+                decimal_scale = decimal_scale * 10;
+                continue;
+            }
+            // The number ends with a suffix -d -D
+            else if (ch == 'd' || ch == 'D') {
+                token.type = TOKEN_DOUBLE;
+                break;
+            }
+            //
+            else if (ch == '_') {
+                state = STATE_DOUBLE_UNDERSCORE;
+                continue;
+            } else if (ch == 'e' || ch == 'E') {
+                state = STATE_DOUBLE_EXPO_SIGN;
+                continue;
+            }
+            // The number has ended, return unused char back for another read
+            else {
+                store_char(conf, ch);
+                token.type = TOKEN_DOUBLE;
+            }
+            break;
+
+        case STATE_DOUBLE_UNDERSCORE:
+            // The input is still an underscore, stay in this state
+            if (ch == '_') {
+                continue;
+            }
+            // The input is a number go back to the number state
+            else if (isdigit(ch)) {
+                state = STATE_DOUBLE;
+                // Adds the new digit to the double
+                // (ch - '0') is a character to integer conversion
+                token.attr.double_val = token.attr.double_val + (ch - '0') / decimal_scale;
+                decimal_scale = decimal_scale * 10;
+                continue;
+            }
+            // Number ends with an underscore
+            else {
+                fprintf(stderr,
+                        "Lexical analysis Error 1: Number literal cannot end with an underscore "
+                        "%f%c \n",
+                        token.attr.double_val, ch);
+                exit(1);
+            }
+            break;
+
+        case STATE_DOUBLE_EXPO_SIGN:
+            // The exponent part is implicitly positive
+            if (isdigit(ch)) {
+                exponent_sign_pos = true;
+                exponent_value = ch - '0';
+                state = STATE_DOUBLE_EXPO; // Already have a first digit
+                continue;
+            }
+            // The exponent is positive
+            else if (ch == '+') {
+                exponent_sign_pos = true;
+                state = STATE_DOUBLE_EXPO_FIRST_DIGIT;
+                continue;
+            }
+            // The exponent is negative
+            else if (ch == '-') {
+                exponent_sign_pos = false;
+                state = STATE_DOUBLE_EXPO_FIRST_DIGIT;
+                continue;
+            }
+            // Not a valid exponent sequence
+            else {
+                fprintf(stderr,
+                        "Lexical analysis Error 1: Not a valid double exponent sequence: e%c \n",
+                        ch);
+                exit(1);
+            }
+            break;
+
+        // The exponent has to contain at least one digit to be valid, so this state checks that
+        case STATE_DOUBLE_EXPO_FIRST_DIGIT:
+            if (isdigit(ch)) {
+                // Shift the number and add the new digit
+                // (ch - '0') is a char to int conversion
+                exponent_value = exponent_value * 10 + (ch - '0');
+                state = STATE_DOUBLE_EXPO;
+                continue;
+            }
+            // The exponent line sequence is empty
+            else {
+                fprintf(stderr,
+                        "Lexical analysis Error 1: Double number has exponent but it doesn't "
+                        "contain any number in it \n");
+                exit(1);
+            }
+
+        case STATE_DOUBLE_EXPO:
+            // The exponent number continues, just add the digit to the whole value and continue
+            // reading
+            if (isdigit(ch)) {
+                // Shift the number and add the new digit
+                // (ch - '0') is a char to int conversion
+                exponent_value = exponent_value * 10 + (ch - '0');
+                continue;
+            }
+            // The exponent contains an underscore
+            else if (ch == '_') {
+                state = STATE_DOUBLE_EXPO_UNDERSCORE;
+                continue;
+            }
+            // The number containg suffix -d -D and ends with it
+            else if (ch == 'd' || ch == 'D') {
+                // Multiply the double with the exponent
+                if (exponent_sign_pos) {
+                    token.attr.double_val = token.attr.double_val * pow(10.0, exponent_value);
+                } else {
+                    exponent_value = 0 - exponent_value;
+                    token.attr.double_val = token.attr.double_val * pow(10.0, exponent_value);
+                }
+                // Return token
+                token.type = TOKEN_DOUBLE;
+                break;
+            }
+            // The number has ended, return unused char back for another read
+            else {
+                store_char(conf, ch);
+                // Multiply the double with the exponent
+                if (exponent_sign_pos) {
+                    token.attr.double_val = token.attr.double_val * pow(10.0, exponent_value);
+                } else {
+                    exponent_value = 0 - exponent_value;
+                    token.attr.double_val = token.attr.double_val * pow(10.0, exponent_value);
+                }
+                // Return token
+                token.type = TOKEN_DOUBLE;
+            }
+            break;
+
+        case STATE_DOUBLE_EXPO_UNDERSCORE:
+            // The input is still an underscore, stay in this state
+            if (ch == '_') {
+                continue;
+            }
+            // The input is a number go back to the double exponent state
+            else if (isdigit(ch)) {
+                state = STATE_DOUBLE_EXPO;
+                // Decimal number shift plus the new number
+                // (ch - '0') is a character to integer conversion
+                exponent_value = exponent_value * 10 + (ch - '0');
+                continue;
+            }
+            // Number ends with an underscore
+            else {
+                fprintf(stderr,
+                        "Lexical analysis Error 1: Number exponent cannot end with an underscore "
+                        "%d%c \n",
+                        exponent_value, ch);
+                exit(1);
             }
             break;
 
