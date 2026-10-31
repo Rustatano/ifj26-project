@@ -60,6 +60,13 @@ typedef enum {
     STATE_DOUBLE_EXPO_SIGN,
     STATE_DOUBLE_EXPO_FIRST_DIGIT,
     STATE_DOUBLE_EXPO_UNDERSCORE,
+    // Comments
+    STATE_SLASH,
+    STATE_COMMENT_LINE,
+    STATE_COMMENT_BLOCK,
+    STATE_COMMENT_BLOCK_STAR,
+    STATE_COMMENT_BLOCK_SLASH,
+    STATE_COMMENT_BLOCK_END_CHECK // To check that after a block comment with '\n' has to be EOF
 } state_t;
 
 // Structs
@@ -114,7 +121,15 @@ void string_init_check(dynamic_string_t *str) {
 
 void string_EOF_check(int ch) {
     if (ch == EOF) {
-        fprintf(stderr, "Lexical analysis Error 1: Invalid string token, cannot include EOF \n");
+        fprintf(stderr, "Lexical analysis Error 1: Invalid string, cannot include EOF \n");
+        exit(1);
+    }
+}
+
+void comment_EOF_check(int ch) {
+    if (ch == EOF) {
+        fprintf(stderr, "Lexical analysis Error 1: Invalid comment block, cannot end file without "
+                        "ending the comment first \n");
         exit(1);
     }
 }
@@ -207,6 +222,9 @@ token_t get_token(scanner_conf_t *conf) {
     int exponent_value = 0;        // For double numbers
     bool exponent_sign_pos = true; // Exponent sign positive, for double numbers
 
+    int comment_depth = 0;
+    bool comment_has_newline = false;
+
     token.attr.double_val = 0;
     token.attr.int_val = 0;
 
@@ -261,8 +279,8 @@ token_t get_token(scanner_conf_t *conf) {
                 token.type = TOKEN_MUL;
                 break;
             } else if (ch == '/') {
-                token.type = TOKEN_DIV;
-                break;
+                state = STATE_SLASH;
+                continue;
             }
 
             // Relations
@@ -929,6 +947,156 @@ token_t get_token(scanner_conf_t *conf) {
                         "Lexical analysis Error 1: Number exponent cannot end with an underscore "
                         "%d%c \n",
                         exponent_value, ch);
+                exit(1);
+            }
+            break;
+
+        // Comments
+        case STATE_SLASH:
+            // The input is a line comment
+            if (ch == '/') {
+                state = STATE_COMMENT_LINE;
+                continue;
+            }
+            // The input is an block comment
+            else if (ch == '*') {
+                state = STATE_COMMENT_BLOCK;
+                continue;
+            }
+            // The slash was just an operator division
+            else {
+                token.type = TOKEN_DIV;
+                // Return token
+            }
+            break;
+
+        case STATE_COMMENT_LINE:
+            // The line comment has ended
+            if (ch == '\n' || ch == EOF) {
+                token.type = TOKEN_EOL;
+            }
+            // The line comment continues
+            else {
+                continue;
+            }
+            break;
+
+        case STATE_COMMENT_BLOCK:
+            // Check for end of file in the block comment
+            comment_EOF_check(ch);
+
+            // The comment contains a new line
+            if (ch == '\n') {
+                comment_has_newline = true;
+                continue;
+            }
+            // The input is a ending comment block character sequence
+            else if (ch == '*') {
+                state = STATE_COMMENT_BLOCK_STAR;
+                continue;
+            }
+            // The input is a starting comment block character sequence
+            else if (ch == '/') {
+                state = STATE_COMMENT_BLOCK_SLASH;
+                continue;
+            }
+            // The input is just a comment data
+            else {
+                continue;
+            }
+            break;
+
+        case STATE_COMMENT_BLOCK_STAR:
+            // Check for end of file in the block comment
+            comment_EOF_check(ch);
+
+            // The input is a finished comment block ending sequence
+            if (ch == '/') {
+                // The block comment isn't inside another block comment
+                if (comment_depth == 0) {
+                    // Return token new line because the comment had '\n' inside
+                    if (comment_has_newline) {
+                        state = STATE_COMMENT_BLOCK_END_CHECK; // Check for EOL after the comment
+                        continue;
+                    }
+                    // Start reading from the start state, the comment has ended
+                    else {
+                        // Set the variables clean for next lexeme
+                        comment_depth = 0;
+                        comment_has_newline = false;
+                        state = STATE_START;
+                        continue;
+                    }
+                }
+                // The block comment is inside another block comment
+                else if (comment_depth > 0) {
+                    comment_depth--;
+                    state = STATE_COMMENT_BLOCK;
+                    continue;
+                }
+                // Else state just to be safe
+                else {
+                    fprintf(stderr,
+                            "Lexical analysis Error 1: The comment depth is somehow negative");
+                    exit(1);
+                }
+            }
+            // Check for new line
+            else if (ch == '\n') {
+                comment_has_newline = true;
+                state = STATE_COMMENT_BLOCK;
+                continue;
+            }
+            // The input didn't finish block comment ending sequence it was just comment data
+            else {
+                store_char(conf, ch);
+                state = STATE_COMMENT_BLOCK;
+                continue;
+            }
+            break;
+
+        case STATE_COMMENT_BLOCK_SLASH:
+            // Check for end of file in the block comment
+            comment_EOF_check(ch);
+
+            // New comment block has started
+            if (ch == '*') {
+                comment_depth++;
+                state = STATE_COMMENT_BLOCK;
+                continue;
+            }
+            // Check for new line
+            else if (ch == '\n') {
+                comment_has_newline = true;
+                state = STATE_COMMENT_BLOCK;
+                continue;
+            }
+            // The comment block starting sequence was not finished it was just comment data
+            else {
+                store_char(conf, ch);
+                state = STATE_COMMENT_BLOCK;
+                continue;
+            }
+            break;
+
+        case STATE_COMMENT_BLOCK_END_CHECK:
+            // Ignore space characters
+            if (ch == ' ' || ch == '\r' || ch == '\t') {
+                continue;
+            }
+            // EOF found the block with newlines is valid
+            else if (ch == '\n' || ch == EOF) {
+                // If EOF was found store it for another read as s separate token after EOL token
+                if (ch == EOF) {
+                    store_char(conf, ch);
+                }
+                token.type = TOKEN_EOL;
+                break;
+            }
+            // After the block comment with new line is not EOL
+            else {
+                fprintf(stderr, "Lexical analysis Error 1: Invalid character after a block comment "
+                                "containing a newline \n");
                 exit(1);
             }
             break;
