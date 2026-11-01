@@ -16,6 +16,7 @@ from input, groups them into lexems and returns tokens.
 #define SCANNER_H
 
 // Libraries
+#include <stdbool.h>
 #include <stdio.h>
 
 // Macros
@@ -103,7 +104,9 @@ typedef struct {
     int unread_chars_stack[UNREAD_CHARS_SIZE];
     int unread_top; // First unoccupied space
     int indent_stack[INDENT_STACK_SIZE];
-    int indent_top; // First unoccupied space
+    int indent_top;    // First unoccupied space
+    bool line_start;   // For indentation
+    int space_counter; // For indentation
 
 } scanner_conf_t;
 

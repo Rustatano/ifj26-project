@@ -13,9 +13,8 @@ from input, groups them into lexems and returns tokens.
 
 // Libraries
 #include "scanner.h"
-#include <ctype.h> // For isalpha(), ..
-#include <math.h>  // for pow()
-#include <stdbool.h>
+#include <ctype.h>  // For isalpha(), ..
+#include <math.h>   // for pow()
 #include <stdlib.h> // For malloc, realloc, ..
 #include <string.h> // For strcmp, ..
 
@@ -66,7 +65,9 @@ typedef enum {
     STATE_COMMENT_BLOCK,
     STATE_COMMENT_BLOCK_STAR,
     STATE_COMMENT_BLOCK_SLASH,
-    STATE_COMMENT_BLOCK_END_CHECK // To check that after a block comment with '\n' has to be EOF
+    STATE_COMMENT_BLOCK_END_CHECK, // To check that after a block comment with '\n' has to be EOF
+    // Indents, dedents
+    STATE_INDENT_COUNT
 } state_t;
 
 // Structs
@@ -189,8 +190,12 @@ token_type_t keyword_check(char *content) {
 void scanner_init(scanner_conf_t *conf, FILE *file) {
 
     conf->source_file = file;
-    conf->indent_top = 0;
-    conf->unread_top = 0;
+    conf->indent_top = 1; // First unoccupied space
+    conf->unread_top = 0; // First unoccupied space
+    conf->line_start = true;
+
+    conf->indent_stack[0] = 0; // Set zero space indent as the base indent
+    conf->space_counter = 0;
 }
 
 // Reads next char, if there are chars on stack it will read them first before reading from input
@@ -222,11 +227,11 @@ token_t get_token(scanner_conf_t *conf) {
     int exponent_value = 0;        // For double numbers
     bool exponent_sign_pos = true; // Exponent sign positive, for double numbers
 
-    int comment_depth = 0;
-    bool comment_has_newline = false;
+    int comment_depth = 0;            // Comments
+    bool comment_has_newline = false; // Comments
 
-    token.attr.double_val = 0;
-    token.attr.int_val = 0;
+    token.attr.double_val = 0; // Set values for safety
+    token.attr.int_val = 0;    // Set values for safety
 
     // State automaton
     // Key structure elements
@@ -249,8 +254,25 @@ token_t get_token(scanner_conf_t *conf) {
                 break;
             }
 
-            // Ignore white spaces
-            else if (ch == ' ' || ch == '\r') {
+            // Ignore carriage return
+            else if (ch == '\r') {
+                continue;
+            }
+
+            // Indent, dedent detection
+            else if (conf->line_start == true) {
+                state = STATE_INDENT_COUNT;
+                store_char(conf, ch);
+                continue;
+            }
+
+            // Ignore spaces
+            else if (ch == ' ' && conf->line_start == false) {
+                continue;
+            }
+
+            // Tabulator in the middle of a line is okay
+            else if (ch == '\t' && conf->line_start == false) {
                 continue;
             }
 
@@ -320,14 +342,6 @@ token_t get_token(scanner_conf_t *conf) {
             } else if (ch == '.') {
                 state = STATE_DOT;
                 continue;
-            }
-
-            // Tabulator
-            else if (ch == '\t') {
-                fprintf(
-                    stderr,
-                    "Lexical analysis Error 1: Tabulator at the beginning of a non empty line\n");
-                exit(1);
             }
 
             // String
@@ -1101,12 +1115,81 @@ token_t get_token(scanner_conf_t *conf) {
             }
             break;
 
+        case STATE_INDENT_COUNT:
+            // Counting spaces
+            if (ch == ' ') {
+                conf->space_counter++;
+                continue;
+            }
+            // New line resets the counting by returning EOL token
+            else if (ch == '\n') {
+                // Reset the counter
+                conf->space_counter = 0;
+
+                token.type = TOKEN_EOL;
+                break;
+            }
+            // Found tabulator while reading the spaces
+            else if (ch == '\t') {
+                fprintf(
+                    stderr,
+                    "Lexical analysis Error 1: Tabulator at the beginning of a non empty line\n");
+                exit(1);
+            }
+            // First non empty character found
+            else {
+                // Store unused char for another read
+                store_char(conf, ch);
+
+                // Checks if we have found more spaces than last indentation
+                if (conf->space_counter > conf->indent_stack[conf->indent_top - 1]) {
+                    // Sets new space count as the stack top
+                    conf->indent_stack[conf->indent_top] = conf->space_counter;
+                    // Increments the top
+                    conf->indent_top++;
+
+                    // Reset the space counter
+                    conf->space_counter = 0;
+
+                    // Returns indent token
+                    token.type = TOKEN_INDENT;
+                    break;
+                }
+                // There are less spaces than before
+                else if (conf->space_counter < conf->indent_stack[conf->indent_top - 1]) {
+
+                    // Decrements the top
+                    conf->indent_top--;
+
+                    // Returns dedent token
+                    token.type = TOKEN_DEDENT;
+                    break;
+                }
+                // The line is at the same indentation as the last
+                else {
+
+                    // Set a clean table for reading further
+                    conf->space_counter = 0;
+                    state = STATE_START;
+                    continue;
+                }
+            }
+            break;
+
         // If not in any valid state
         default:
             fprintf(stderr, "Lexical analysis Error 1: Invalid token type: %c \n", ch);
             exit(1);
             break;
+        } // End of switch case
+
+        // Set line start variable for indentation
+        if (token.type == TOKEN_EOL || token.type == TOKEN_DEDENT) {
+            conf->line_start = true;
+        } else {
+            conf->line_start = false;
         }
+        // Finally return token to parser
         return token;
     }
 }
