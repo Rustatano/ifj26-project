@@ -1170,6 +1170,7 @@ token_t get_token(scanner_conf_t *conf) {
 
                     // Set a clean table for reading further
                     conf->space_counter = 0;
+                    conf->line_start = false; // Sets indentation as done for this line
                     state = STATE_START;
                     continue;
                 }
