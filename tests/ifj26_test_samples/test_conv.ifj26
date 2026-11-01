@@ -1,0 +1,8 @@
+import ifj26.*
+
+@main def main(): Unit =
+    val a: Int = 10
+    val b: Double = 5.5
+    val result = a + b
+    print(result)
+    print("\n")

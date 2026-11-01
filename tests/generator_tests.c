@@ -1,7 +1,7 @@
 /*
 -------------------------------------------------------
 Name of project: Translator IFJ26
-Authors: Zobal, Tajovský, Ondruška, Svoboda
+Authors: AI generated (Gemini), xsvoboj01 (Jakub Svoboda)
 Creation date: 11.10.2026
 File: generator_tests.c
 
