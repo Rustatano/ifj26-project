@@ -23,7 +23,7 @@ all: build doc archive
 
 # build project binary from source code
 build:
-	$(CC) $(CFLAGS) -o $(OUT) $(SRC_DIR)/*.c
+	$(CC) $(CFLAGS) -o $(OUT) $(SRC_DIR)/*.c -lm
 
 # build documentation
 doc:
@@ -40,7 +40,7 @@ check:
 	pre-commit run --all-files
 
 test-build:
-	$(CC) $(CFLAGS) -o $(TEST_OUT) $(TEST_DIR)/*.c $(SRC_FILES) -lcmocka
+	$(CC) $(CFLAGS) -o $(TEST_OUT) $(TEST_DIR)/*.c $(SRC_FILES) -lcmocka -lm
 
 test: test-build
 	./$(TEST_OUT)
