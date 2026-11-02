@@ -20,9 +20,8 @@ typedef struct ast_node ast_node_t;
 
 typedef enum {
     // Program and structural nodes
-    AST_NODE_PROGRAM, // Root node of the AST
-    AST_NODE_BLOCK,   // Block of statements
-    AST_NODE_CONVERT, // Used in Int to Double conversion of variable
+    AST_NODE_MAIN,  // Used only in for main function
+    AST_NODE_BLOCK, // Block of statements
 
     // Statements and declarations
     AST_NODE_FUN_DEFINITION,
@@ -77,12 +76,12 @@ struct ast_node {
 
         // AST_NODE_STATEMENT_IMPORT
         struct {
-            char *module_name;
+            const char *module_name;
         } import_statement;
 
         // AST_NODE_FUN_DEFINITION
         struct {
-            char *name;
+            const char *name;
             symtable_fun_param_t *params;
             symtable_datatype_t return_type;
             ast_node_t *body_block;
@@ -90,7 +89,7 @@ struct ast_node {
 
         // AST_NODE_VAR_DECLARATION
         struct {
-            char *name;
+            const char *name;
             int unique_id;
             symtable_datatype_t var_type;
             bool is_mutable;
@@ -99,7 +98,7 @@ struct ast_node {
 
         // AST_NODE_VALUE_ASSIGNMENT
         struct {
-            char *target_var_name;
+            const char *target_var_name;
             int unique_id;
             ast_node_t *expres; // Expression that gives the value
         } assign_statement;
@@ -138,14 +137,14 @@ struct ast_node {
 
         // AST_NODE_EXPRES_VAR
         struct {
-            char *name;
+            const char *name;
             int unique_id;
         } expressions_var;
 
         // Constants
         int int_value;
         double double_value;
-        char *str_value;
+        const char *str_value;
     };
 };
 
@@ -163,12 +162,12 @@ ast_node_t *ast_expres_operation_create(ast_expres_operator_t op, ast_node_t *le
                                         ast_node_t *right_side, int source_code_line);
 
 // Create variable declaration node
-ast_node_t *ast_var_declaration_create(const char *name, int unique_id, symtable_datatype_t type,
-                                       bool is_mutable, ast_node_t *init_expres,
-                                       int source_code_line);
+ast_node_t *ast_var_declaration_create(const char *name, int unique_id,
+                                       symtable_datatype_t var_type, bool is_mutable,
+                                       ast_node_t *init_expres, int source_code_line);
 
 // Create variable assignment node
-ast_node_t *ast_assignment_create(const char *target_name, int unique_id, ast_node_t *expres,
+ast_node_t *ast_assignment_create(const char *target_var_name, int unique_id, ast_node_t *expres,
                                   int source_code_line);
 
 // Create if-else statement node
