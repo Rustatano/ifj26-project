@@ -28,6 +28,7 @@ ast_node_t *parse_term(parser_context_t *context);
 ast_node_t *parse_unary(parser_context_t *context);
 ast_node_t *parse_factor(parser_context_t *context);
 ast_node_t *parse_statement(parser_context_t *context);
+ast_node_t *parse_equality(parser_context_t *context);
 
 parse_result_t parse(ast_node_t **ast_root, scanner_conf_t *scanner_conf) {
     (void)ast_root;
@@ -90,13 +91,27 @@ ast_expres_operator_t remap_operator(token_type_t operator) {
         return AST_EXPRES_OPERATOR_MUL;
     case TOKEN_DIV:
         return AST_EXPRES_OPERATOR_DIV;
+    case TOKEN_EQ:
+        return AST_EXPRES_OPERATOR_EQUAL;
+    case TOKEN_NEQ:
+        return AST_EXPRES_OPERATOR_NOT_EQUAL;
+    case TOKEN_LT:
+        return AST_EXPRES_OPERATOR_SMALLER;
+    case TOKEN_GT:
+        return AST_EXPRES_OPERATOR_BIGGER;
+    case TOKEN_LE:
+        return AST_EXPRES_OPERATOR_SMALLER_EQUAL;
+    case TOKEN_GE:
+        return AST_EXPRES_OPERATOR_BIGGER_EQUAL;
     default:
         return AST_EXPRES_OPERATOR_ADD;
     }
 }
 
 // Returns NULL on syntax error
-ast_node_t *parse_expresion(parser_context_t *context) {
+ast_node_t *parse_expresion(parser_context_t *context) { return parse_equality(context); }
+
+ast_node_t *parse_additive(parser_context_t *context) {
     ast_node_t *left = parse_term(context);
     if (left == NULL) {
         return NULL;
@@ -114,6 +129,43 @@ ast_node_t *parse_expresion(parser_context_t *context) {
         left = ast_expres_operation_create(remap_operator(operator), left, right, line);
     }
 
+    return left;
+}
+
+ast_node_t *parse_comparison(parser_context_t *context) {
+    ast_node_t *left = parse_additive(context);
+    if (left == NULL) {
+        return NULL;
+    }
+    while (context->current_token.type == TOKEN_LT || context->current_token.type == TOKEN_GT ||
+           context->current_token.type == TOKEN_LE || context->current_token.type == TOKEN_GE) {
+        token_type_t operator= context->current_token.type;
+        int line = context->current_token.line;
+        load_token(context);
+        ast_node_t *right = parse_additive(context);
+        if (right == NULL) {
+            return NULL;
+        }
+        left = ast_expres_operation_create(remap_operator(operator), left, right, line);
+    }
+    return left;
+}
+
+ast_node_t *parse_equality(parser_context_t *context) {
+    ast_node_t *left = parse_comparison(context);
+    if (left == NULL) {
+        return NULL;
+    }
+    while (context->current_token.type == TOKEN_EQ || context->current_token.type == TOKEN_NEQ) {
+        token_type_t operator= context->current_token.type;
+        int line = context->current_token.line;
+        load_token(context);
+        ast_node_t *right = parse_comparison(context);
+        if (right == NULL) {
+            return NULL;
+        }
+        left = ast_expres_operation_create(remap_operator(operator), left, right, line);
+    }
     return left;
 }
 
