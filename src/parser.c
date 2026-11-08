@@ -323,6 +323,64 @@ ast_node_t *parse_assignment(parser_context_t *context) {
     return assign_node;
 }
 
+ast_node_t *parse_fun_call(parser_context_t *context) {
+    if (!verify_token_type(context, TOKEN_ID)) {
+        context->error_line = context->current_token.line;
+        context->error_message = "Expected function name identifier";
+        return NULL;
+    }
+    char *fun_name = context->current_token.attr.str_val;
+    int line = context->current_token.line;
+    load_token(context);
+
+    if (!verify_token_type(context, TOKEN_LPAREN)) {
+        context->error_line = context->current_token.line;
+        context->error_message = "Expected '(' after function name";
+        return NULL;
+    }
+    load_token(context);
+
+    ast_node_t *params = NULL;
+    ast_node_t *last_param = NULL;
+    int params_count = 0;
+
+    if (!verify_token_type(context, TOKEN_RPAREN)) {
+        while (true) {
+            ast_node_t *arg = parse_expresion(context);
+            if (!arg) {
+                return NULL;
+            }
+
+            if (!params) {
+                params = arg;
+            } else {
+                last_param->next = arg;
+            }
+            last_param = arg;
+            params_count++;
+
+            if (verify_token_type(context, TOKEN_RPAREN))
+                break;
+
+            if (!verify_token_type(context, TOKEN_COMMA)) {
+                context->error_line = context->current_token.line;
+                context->error_message = "Expected ',' or ')' in function call arguments";
+                return NULL;
+            }
+            load_token(context);
+        }
+    }
+    load_token(context);
+
+    ast_node_t *fun_call = ast_expres_fun_call_create(fun_name, params, params_count, line);
+    if (!fun_call) {
+        context->error_line = line;
+        context->error_message = "Memory allocation failed for function call AST node";
+        return NULL;
+    }
+    return fun_call;
+}
+
 ast_node_t *parse_return(parser_context_t *context) {
     if (!verify_token_type(context, TOKEN_KEYWORD_RETURN)) {
         context->error_line = context->current_token.line;

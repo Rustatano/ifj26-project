@@ -148,6 +148,18 @@ ast_node_t *ast_const_string_create(const char *value, int source_code_line) {
     return new_node;
 }
 
+ast_node_t *ast_expres_fun_call_create(char *fun_name, ast_node_t *params, int params_count,
+                                       int source_code_line) {
+    ast_node_t *new_node = ast_node_create(AST_NODE_EXPRES_FUN_CALL, source_code_line);
+    if (new_node == NULL) {
+        return NULL;
+    }
+    new_node->expres_fun_call.fun_name = fun_name;
+    new_node->expres_fun_call.params = params;
+    new_node->expres_fun_call.params_count = params_count;
+    return new_node;
+}
+
 void ast_dispose(ast_node_t **root) {
     if (root == NULL || *root == NULL) {
         return;
