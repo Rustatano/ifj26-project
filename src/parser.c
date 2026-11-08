@@ -29,12 +29,62 @@ ast_node_t *parse_unary(parser_context_t *context);
 ast_node_t *parse_factor(parser_context_t *context);
 ast_node_t *parse_statement(parser_context_t *context);
 ast_node_t *parse_equality(parser_context_t *context);
+void load_token(parser_context_t *context);
+bool check_token(parser_context_t *context, token_type_t token_type);
 
 parse_result_t parse(ast_node_t **ast_root, scanner_conf_t *scanner_conf) {
-    (void)ast_root;
-    (void)scanner_conf;
-    parse_result_t res = {0};
-    return res;
+    parse_result_t result = {
+        .success = false, .error_code = PARSE_SUCCESS, .error_line = 0, .error_msg = NULL};
+
+    if (ast_root == NULL || scanner_conf == NULL) {
+        result.error_code = PARSE_ERR_INTERNAL;
+        result.error_msg = "Invalid parameters passed to parse()";
+        return result;
+    }
+
+    parser_context_t context = {
+        .scanner_conf = scanner_conf, .error_line = 0, .error_message = NULL};
+
+    load_token(&context);
+
+    ast_node_t *root = ast_block_create(AST_NODE_MAIN, context.current_token.line);
+    if (root == NULL) {
+        result.error_code = PARSE_ERR_INTERNAL;
+        result.error_msg = "Failed to allocate root AST node";
+        return result;
+    }
+
+    while (!check_token(&context, TOKEN_EOF)) {
+        while (check_token(&context, TOKEN_EOL)) {
+            load_token(&context);
+        }
+        if (check_token(&context, TOKEN_EOF)) {
+            break;
+        }
+
+        ast_node_t *stmt = parse_statement(&context);
+        if (stmt == NULL) {
+            ast_dispose(&root);
+            *ast_root = NULL;
+
+            result.success = false;
+            result.error_code = PARSE_ERR_SYNTAX;
+            result.error_line = context.error_line;
+            result.error_msg = context.error_message;
+            return result;
+        }
+
+        ast_block_append(root, stmt);
+
+        if (check_token(&context, TOKEN_EOL)) {
+            load_token(&context);
+        }
+    }
+
+    *ast_root = root;
+    result.success = true;
+    result.error_code = PARSE_SUCCESS;
+    return result;
 }
 
 void load_token(parser_context_t *context) {
