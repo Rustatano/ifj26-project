@@ -346,7 +346,7 @@ ast_node_t *parse_var_declaration(parser_context_t *context) {
         context->error_message = "Expected 'var' or 'val' keyword";
         return NULL;
     }
-    bool is_mutable = check_token(context, TOKEN_KEYWORD_VAL);
+    bool is_mutable = check_token(context, TOKEN_KEYWORD_VAR);
     int line = context->current_token.line;
     load_token(context);
     if (!expect_token(context, TOKEN_ID, "Expected variable name identifier")) {
@@ -598,4 +598,36 @@ ast_node_t *parse_fun_definition(parser_context_t *context) {
     new_node->fun_definition.body_block = body_block;
 
     return new_node;
+}
+
+ast_node_t *parse_if(parser_context_t *context) {
+    if (!expect_token(context, TOKEN_KEYWORD_IF, "Expected 'if' keyword")) {
+        return NULL;
+    }
+    int line = context->current_token.line;
+    load_token(context);
+    ast_node_t *condition = parse_expresion(context);
+    if (condition == NULL) {
+        return NULL;
+    }
+    if (!expect_token(context, TOKEN_KEYWORD_THEN, "Expected 'then' after if condition")) {
+        return NULL;
+    }
+    load_token(context);
+    ast_node_t *if_block = parse_block(context);
+    if (if_block == NULL) {
+        ast_dispose(&condition);
+        return NULL;
+    }
+    ast_node_t *else_block = NULL;
+    if (check_token(context, TOKEN_KEYWORD_ELSE)) {
+        load_token(context);
+        else_block = parse_block(context);
+        if (else_block == NULL) {
+            ast_dispose(&condition);
+            ast_dispose(&if_block);
+            return NULL;
+        }
+    };
+    return ast_if_create(condition, if_block, else_block, line);
 }
