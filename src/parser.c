@@ -106,7 +106,7 @@ bool expect_token(parser_context_t *context, token_type_t token_type, const char
 }
 
 ast_node_t *parse_import(parser_context_t *context) {
-    if (!expect_token(context, TOKEN_KEYWORD_IMPORT, "Expected 'import' keyword")) {
+    if (!expect_token(context, TOKEN_KW_IMPORT, "Expected 'import' keyword")) {
         return NULL;
     }
 
@@ -391,12 +391,12 @@ ast_node_t *parse_block(parser_context_t *context) {
 }
 
 ast_node_t *parse_var_declaration(parser_context_t *context) {
-    if (!(check_token(context, TOKEN_KEYWORD_VAR) || check_token(context, TOKEN_KEYWORD_VAL))) {
+    if (!(check_token(context, TOKEN_KW_VAR) || check_token(context, TOKEN_KW_VAL))) {
         context->error_line = context->current_token.line;
-        context->error_message = "Expected 'var' or 'val' keyword";
+        context->error_message = "Expected 'var' or 'val' KW";
         return NULL;
     }
-    bool is_mutable = check_token(context, TOKEN_KEYWORD_VAR);
+    bool is_mutable = check_token(context, TOKEN_KW_VAR);
     int line = context->current_token.line;
     load_token(context);
     if (!expect_token(context, TOKEN_ID, "Expected variable name identifier")) {
@@ -506,7 +506,7 @@ ast_node_t *parse_fun_call(parser_context_t *context) {
 }
 
 ast_node_t *parse_return(parser_context_t *context) {
-    if (!expect_token(context, TOKEN_KEYWORD_RETURN, "Expected 'return' keyword")) {
+    if (!expect_token(context, TOKEN_KW_RETURN, "Expected 'return' keyword")) {
         return NULL;
     }
 
@@ -530,13 +530,13 @@ ast_node_t *parse_return(parser_context_t *context) {
 }
 
 symtable_datatype_t parse_data_type(parser_context_t *context) {
-    if (check_token(context, TOKEN_KEYWORD_INT)) {
+    if (check_token(context, TOKEN_KW_INT)) {
         return SYM_DATATYPE_INT;
-    } else if (check_token(context, TOKEN_KEYWORD_DOUBLE)) {
+    } else if (check_token(context, TOKEN_KW_DOUBLE)) {
         return SYM_DATATYPE_DOUBLE;
-    } else if (check_token(context, TOKEN_KEYWORD_STRING)) {
+    } else if (check_token(context, TOKEN_KW_STRING)) {
         return SYM_DATATYPE_STRING;
-    } else if (check_token(context, TOKEN_KEYWORD_UNIT)) {
+    } else if (check_token(context, TOKEN_KW_UNIT)) {
         return SYM_DATATYPE_UNIT;
     }
     context->error_line = context->current_token.line;
@@ -575,7 +575,7 @@ symtable_fun_param_t *parse_parameter(parser_context_t *context) {
 }
 
 ast_node_t *parse_fun_definition(parser_context_t *context) {
-    if (!expect_token(context, TOKEN_KEYWORD_DEF, "Expected 'def' keyword")) {
+    if (!expect_token(context, TOKEN_KW_DEF, "Expected 'def' keyword")) {
         return NULL;
     }
     int line = context->current_token.line;
@@ -651,7 +651,7 @@ ast_node_t *parse_fun_definition(parser_context_t *context) {
 }
 
 ast_node_t *parse_if(parser_context_t *context) {
-    if (!expect_token(context, TOKEN_KEYWORD_IF, "Expected 'if' keyword")) {
+    if (!expect_token(context, TOKEN_KW_IF, "Expected 'if' keyword")) {
         return NULL;
     }
     int line = context->current_token.line;
@@ -660,7 +660,7 @@ ast_node_t *parse_if(parser_context_t *context) {
     if (condition == NULL) {
         return NULL;
     }
-    if (!expect_token(context, TOKEN_KEYWORD_THEN, "Expected 'then' after if condition")) {
+    if (!expect_token(context, TOKEN_KW_THEN, "Expected 'then' after if condition")) {
         return NULL;
     }
     load_token(context);
@@ -670,7 +670,7 @@ ast_node_t *parse_if(parser_context_t *context) {
         return NULL;
     }
     ast_node_t *else_block = NULL;
-    if (check_token(context, TOKEN_KEYWORD_ELSE)) {
+    if (check_token(context, TOKEN_KW_ELSE)) {
         load_token(context);
         else_block = parse_block(context);
         if (else_block == NULL) {
@@ -683,7 +683,7 @@ ast_node_t *parse_if(parser_context_t *context) {
 }
 
 ast_node_t *parse_while(parser_context_t *context) {
-    if (!expect_token(context, TOKEN_KEYWORD_WHILE, "Expected 'while' keyword")) {
+    if (!expect_token(context, TOKEN_KW_WHILE, "Expected 'while' keyword")) {
         return NULL;
     }
     int line = context->current_token.line;
@@ -692,7 +692,7 @@ ast_node_t *parse_while(parser_context_t *context) {
     if (condition == NULL) {
         return NULL;
     }
-    if (!expect_token(context, TOKEN_KEYWORD_DO, "Expected 'do' after while condition")) {
+    if (!expect_token(context, TOKEN_KW_DO, "Expected 'do' after while condition")) {
         ast_dispose(&condition);
         return NULL;
     }
@@ -706,22 +706,22 @@ ast_node_t *parse_while(parser_context_t *context) {
 }
 
 ast_node_t *parse_statement(parser_context_t *context) {
-    if (check_token(context, TOKEN_KEYWORD_VAR) || check_token(context, TOKEN_KEYWORD_VAL)) {
+    if (check_token(context, TOKEN_KW_VAR) || check_token(context, TOKEN_KW_VAL)) {
         return parse_var_declaration(context);
     }
-    if (check_token(context, TOKEN_KEYWORD_IF)) {
+    if (check_token(context, TOKEN_KW_IF)) {
         return parse_if(context);
     }
-    if (check_token(context, TOKEN_KEYWORD_WHILE)) {
+    if (check_token(context, TOKEN_KW_WHILE)) {
         return parse_while(context);
     }
-    if (check_token(context, TOKEN_KEYWORD_RETURN)) {
+    if (check_token(context, TOKEN_KW_RETURN)) {
         return parse_return(context);
     }
-    if (check_token(context, TOKEN_KEYWORD_DEF)) {
+    if (check_token(context, TOKEN_KW_DEF)) {
         return parse_fun_definition(context);
     }
-    if (check_token(context, TOKEN_KEYWORD_IMPORT)) {
+    if (check_token(context, TOKEN_KW_IMPORT)) {
         return parse_import(context);
     }
 

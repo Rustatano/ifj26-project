@@ -3,7 +3,7 @@
 Name of project: Translator IFJ26
 Authors: Zobal, Tajovský, Ondruška, Svoboda
 Creation date: 14.10.2026
-File: symtable.h
+File: symbol_table.h
 
 Description: Header file for symbol table as a stack of height-balanced AVL trees
 -------------------------------------------------------
@@ -92,11 +92,10 @@ bool symtable_init(symtable_stack_t *stack);
 bool symtable_create_avl(symtable_stack_t *stack);
 
 // Delete the AVL that is currently on top of symbol table stack
-void symtable_pop_avl(symtable_stack_item_t *stack_top);
+void symtable_pop_avl(symtable_stack_t *stack);
 
 // Insert item to highest AVL
-bool symtable_insert_item(symtable_stack_t *stack, symtable_type_t type, char *id,
-                          symtable_data_t data);
+bool symtable_insert_item(symtable_stack_t *stack, char *id, symtable_data_t data);
 
 // Search item through every scope from top to bottom/global
 symtable_node_t *symtable_search(symtable_stack_t *stack, symtable_type_t type, char *id);
