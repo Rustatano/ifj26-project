@@ -186,6 +186,14 @@ void ast_dispose(ast_node_t **root) {
         if (node->fun_definition.body_block != NULL) {
             ast_dispose(&(node->fun_definition.body_block));
         }
+        {
+            symtable_fun_param_t *param = node->fun_definition.params;
+            while (param != NULL) {
+                symtable_fun_param_t *next = param->next;
+                free(param);
+                param = next;
+            }
+        }
         break;
 
     case AST_NODE_VAR_DECLARATION:

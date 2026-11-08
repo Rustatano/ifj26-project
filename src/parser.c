@@ -41,35 +41,32 @@ void load_token(parser_context_t *context) {
     context->current_token = loaded_token;
 }
 
-bool verify_token_type(parser_context_t *context, token_type_t token_type) {
+bool check_token(parser_context_t *context, token_type_t token_type) {
+    return context->current_token.type == token_type;
+}
+
+bool expect_token(parser_context_t *context, token_type_t token_type, const char *error_message) {
     if (context->current_token.type == token_type) {
         return true;
     }
     context->error_line = context->current_token.line;
-    context->error_message = "Generic syntax error message. Grrrr";
+    context->error_message = error_message;
     return false;
 }
 
 ast_node_t *parse_import(parser_context_t *context) {
-
-    if (!verify_token_type(context, TOKEN_KEYWORD_IMPORT)) {
-        context->error_line = context->current_token.line;
-        context->error_message = "Expected 'import' keyword";
+    if (!expect_token(context, TOKEN_KEYWORD_IMPORT, "Expected 'import' keyword")) {
         return NULL;
     }
 
     load_token(context);
-    if (!verify_token_type(context, TOKEN_ID)) {
-        context->error_line = context->current_token.line;
-        context->error_message = "Expected module name identifier after import";
+    if (!expect_token(context, TOKEN_ID, "Expected module name identifier after import")) {
         return NULL;
     }
     char *module_name = context->current_token.attr.str_val;
 
     load_token(context);
-    if (!verify_token_type(context, TOKEN_EOL)) {
-        context->error_line = context->current_token.line;
-        context->error_message = "Expected end of line after import statement";
+    if (!expect_token(context, TOKEN_EOL, "Expected end of line after import statement")) {
         return NULL;
     }
     ast_node_t *new_node = ast_node_create(AST_NODE_STATEMENT_IMPORT, context->current_token.line);
@@ -186,9 +183,45 @@ ast_node_t *parse_factor(parser_context_t *context) {
 
     case TOKEN_ID: {
         char *name = token.attr.str_val;
-        ast_node_t *node = ast_expres_var_create(name, 0, SYM_DATATYPE_ID, token.line);
         load_token(context);
-        return node;
+
+        if (check_token(context, TOKEN_LPAREN)) {
+            int line = token.line;
+            load_token(context);
+
+            ast_node_t *params = NULL;
+            ast_node_t *last_param = NULL;
+            int params_count = 0;
+
+            if (!check_token(context, TOKEN_RPAREN)) {
+                while (true) {
+                    ast_node_t *arg = parse_expresion(context);
+                    if (!arg)
+                        return NULL;
+
+                    if (!params)
+                        params = arg;
+                    else
+                        last_param->next = arg;
+                    last_param = arg;
+                    params_count++;
+
+                    if (check_token(context, TOKEN_RPAREN))
+                        break;
+
+                    if (!expect_token(context, TOKEN_COMMA,
+                                      "Expected ',' or ')' in function call arguments")) {
+                        return NULL;
+                    }
+                    load_token(context);
+                }
+            }
+            load_token(context);
+
+            return ast_expres_fun_call_create(name, params, params_count, line);
+        } else {
+            return ast_expres_var_create(name, 0, SYM_DATATYPE_ID, token.line);
+        }
     }
 
     case TOKEN_LPAREN: {
@@ -199,7 +232,7 @@ ast_node_t *parse_factor(parser_context_t *context) {
             return NULL;
         }
 
-        if (!verify_token_type(context, TOKEN_RPAREN)) {
+        if (!expect_token(context, TOKEN_RPAREN, "Expected ')' after expression")) {
             return NULL;
         }
 
@@ -216,9 +249,7 @@ ast_node_t *parse_factor(parser_context_t *context) {
 }
 
 ast_node_t *parse_block(parser_context_t *context) {
-    if (!verify_token_type(context, TOKEN_INDENT)) {
-        context->error_line = context->current_token.line;
-        context->error_message = "Expected indentation for block";
+    if (!expect_token(context, TOKEN_INDENT, "Expected indentation for block")) {
         return NULL;
     }
     int line = context->current_token.line;
@@ -229,50 +260,50 @@ ast_node_t *parse_block(parser_context_t *context) {
         return NULL;
     }
     load_token(context);
-    while (context->current_token.type != TOKEN_DEDENT) {
+    while (!check_token(context, TOKEN_DEDENT) && !check_token(context, TOKEN_EOF)) {
+        while (check_token(context, TOKEN_EOL)) {
+            load_token(context);
+        }
+        if (check_token(context, TOKEN_DEDENT) || check_token(context, TOKEN_EOF)) {
+            break;
+        }
+
         ast_node_t *statement = parse_statement(context);
         if (statement == NULL) {
             ast_dispose(&block);
             return NULL;
         }
         ast_block_append(block, statement);
-        load_token(context);
+
+        if (check_token(context, TOKEN_EOL)) {
+            load_token(context);
+        }
     }
 
+    if (!expect_token(context, TOKEN_DEDENT, "Expected dedent at the end of block")) {
+        ast_dispose(&block);
+        return NULL;
+    }
     load_token(context);
     return block;
 }
 
 ast_node_t *parse_var_declaration(parser_context_t *context) {
-    if (!(verify_token_type(context, TOKEN_KEYWORD_VAR) ||
-          verify_token_type(context, TOKEN_KEYWORD_VAL))) {
+    if (!(check_token(context, TOKEN_KEYWORD_VAR) || check_token(context, TOKEN_KEYWORD_VAL))) {
         context->error_line = context->current_token.line;
         context->error_message = "Expected 'var' or 'val' keyword";
         return NULL;
     }
-    bool is_mutable;
-    if (context->current_token.type == TOKEN_KEYWORD_VAR) {
-        is_mutable = false;
-    } else if (context->current_token.type == TOKEN_KEYWORD_VAL) {
-        is_mutable = true;
-    } else {
-        context->error_line = context->current_token.line;
-        context->error_message = "Expected 'var' or 'val' keyword";
-        return NULL;
-    }
+    bool is_mutable = check_token(context, TOKEN_KEYWORD_VAL);
     int line = context->current_token.line;
     load_token(context);
-    if (!verify_token_type(context, TOKEN_ID)) {
-        context->error_line = context->current_token.line;
-        context->error_message = "Expected variable name identifier";
+    if (!expect_token(context, TOKEN_ID, "Expected variable name identifier")) {
         return NULL;
     }
     const char *var_id = context->current_token.attr.str_val;
     load_token(context);
 
-    if (!verify_token_type(context, TOKEN_ASSIGN)) {
-        context->error_line = context->current_token.line;
-        context->error_message = "Expected '=' in variable declaration";
+    if (!expect_token(context, TOKEN_ASSIGN, "Expected '=' in variable declaration")) {
         return NULL;
     }
     load_token(context);
@@ -293,18 +324,14 @@ ast_node_t *parse_var_declaration(parser_context_t *context) {
 }
 
 ast_node_t *parse_assignment(parser_context_t *context) {
-    if (!verify_token_type(context, TOKEN_ID)) {
-        context->error_line = context->current_token.line;
-        context->error_message = "Expected target variable identifier in assignment";
+    if (!expect_token(context, TOKEN_ID, "Expected target variable identifier in assignment")) {
         return NULL;
     }
     const char *target_var_name = context->current_token.attr.str_val;
     int line = context->current_token.line;
     load_token(context);
 
-    if (!verify_token_type(context, TOKEN_ASSIGN)) {
-        context->error_line = context->current_token.line;
-        context->error_message = "Expected '=' in assignment";
+    if (!expect_token(context, TOKEN_ASSIGN, "Expected '=' in assignment")) {
         return NULL;
     }
     load_token(context);
@@ -324,18 +351,14 @@ ast_node_t *parse_assignment(parser_context_t *context) {
 }
 
 ast_node_t *parse_fun_call(parser_context_t *context) {
-    if (!verify_token_type(context, TOKEN_ID)) {
-        context->error_line = context->current_token.line;
-        context->error_message = "Expected function name identifier";
+    if (!expect_token(context, TOKEN_ID, "Expected function name identifier")) {
         return NULL;
     }
     char *fun_name = context->current_token.attr.str_val;
     int line = context->current_token.line;
     load_token(context);
 
-    if (!verify_token_type(context, TOKEN_LPAREN)) {
-        context->error_line = context->current_token.line;
-        context->error_message = "Expected '(' after function name";
+    if (!expect_token(context, TOKEN_LPAREN, "Expected '(' after function name")) {
         return NULL;
     }
     load_token(context);
@@ -344,7 +367,7 @@ ast_node_t *parse_fun_call(parser_context_t *context) {
     ast_node_t *last_param = NULL;
     int params_count = 0;
 
-    if (!verify_token_type(context, TOKEN_RPAREN)) {
+    if (!check_token(context, TOKEN_RPAREN)) {
         while (true) {
             ast_node_t *arg = parse_expresion(context);
             if (!arg) {
@@ -359,12 +382,11 @@ ast_node_t *parse_fun_call(parser_context_t *context) {
             last_param = arg;
             params_count++;
 
-            if (verify_token_type(context, TOKEN_RPAREN))
+            if (check_token(context, TOKEN_RPAREN))
                 break;
 
-            if (!verify_token_type(context, TOKEN_COMMA)) {
-                context->error_line = context->current_token.line;
-                context->error_message = "Expected ',' or ')' in function call arguments";
+            if (!expect_token(context, TOKEN_COMMA,
+                              "Expected ',' or ')' in function call arguments")) {
                 return NULL;
             }
             load_token(context);
@@ -382,9 +404,7 @@ ast_node_t *parse_fun_call(parser_context_t *context) {
 }
 
 ast_node_t *parse_return(parser_context_t *context) {
-    if (!verify_token_type(context, TOKEN_KEYWORD_RETURN)) {
-        context->error_line = context->current_token.line;
-        context->error_message = "Expected 'return' keyword";
+    if (!expect_token(context, TOKEN_KEYWORD_RETURN, "Expected 'return' keyword")) {
         return NULL;
     }
 
@@ -408,13 +428,13 @@ ast_node_t *parse_return(parser_context_t *context) {
 }
 
 symtable_datatype_t parse_data_type(parser_context_t *context) {
-    if (verify_token_type(context, TOKEN_KEYWORD_INT)) {
+    if (check_token(context, TOKEN_KEYWORD_INT)) {
         return SYM_DATATYPE_INT;
-    } else if (verify_token_type(context, TOKEN_KEYWORD_DOUBLE)) {
+    } else if (check_token(context, TOKEN_KEYWORD_DOUBLE)) {
         return SYM_DATATYPE_DOUBLE;
-    } else if (verify_token_type(context, TOKEN_KEYWORD_STRING)) {
+    } else if (check_token(context, TOKEN_KEYWORD_STRING)) {
         return SYM_DATATYPE_STRING;
-    } else if (verify_token_type(context, TOKEN_KEYWORD_UNIT)) {
+    } else if (check_token(context, TOKEN_KEYWORD_UNIT)) {
         return SYM_DATATYPE_UNIT;
     }
     context->error_line = context->current_token.line;
@@ -423,9 +443,7 @@ symtable_datatype_t parse_data_type(parser_context_t *context) {
 }
 
 symtable_fun_param_t *parse_parameter(parser_context_t *context) {
-    if (!verify_token_type(context, TOKEN_ID)) {
-        context->error_line = context->current_token.line;
-        context->error_message = "Expected parameter identifier";
+    if (!expect_token(context, TOKEN_ID, "Expected parameter identifier")) {
         return NULL;
     }
 
@@ -439,9 +457,7 @@ symtable_fun_param_t *parse_parameter(parser_context_t *context) {
     param->name = context->current_token.attr.str_val;
     load_token(context);
 
-    if (!verify_token_type(context, TOKEN_COLON)) {
-        context->error_line = context->current_token.line;
-        context->error_message = "Expected ':' after parameter name";
+    if (!expect_token(context, TOKEN_COLON, "Expected ':' after parameter name")) {
         free(param);
         return NULL;
     }
@@ -457,25 +473,19 @@ symtable_fun_param_t *parse_parameter(parser_context_t *context) {
 }
 
 ast_node_t *parse_fun_definition(parser_context_t *context) {
-    if (!verify_token_type(context, TOKEN_KEYWORD_DEF)) {
-        context->error_line = context->current_token.line;
-        context->error_message = "Expected 'def' keyword";
+    if (!expect_token(context, TOKEN_KEYWORD_DEF, "Expected 'def' keyword")) {
         return NULL;
     }
     int line = context->current_token.line;
 
     load_token(context);
-    if (!verify_token_type(context, TOKEN_ID)) {
-        context->error_line = context->current_token.line;
-        context->error_message = "Expected function name identifier";
+    if (!expect_token(context, TOKEN_ID, "Expected function name identifier")) {
         return NULL;
     }
     const char *fun_id = context->current_token.attr.str_val;
     load_token(context);
 
-    if (!verify_token_type(context, TOKEN_LPAREN)) {
-        context->error_line = context->current_token.line;
-        context->error_message = "Expected '(' after function name";
+    if (!expect_token(context, TOKEN_LPAREN, "Expected '(' after function name")) {
         return NULL;
     }
     load_token(context);
@@ -483,7 +493,7 @@ ast_node_t *parse_fun_definition(parser_context_t *context) {
     symtable_fun_param_t *head = NULL;
     symtable_fun_param_t *tail = NULL;
 
-    if (!verify_token_type(context, TOKEN_RPAREN)) {
+    if (!check_token(context, TOKEN_RPAREN)) {
         while (true) {
             symtable_fun_param_t *param = parse_parameter(context);
             if (!param) {
@@ -496,12 +506,11 @@ ast_node_t *parse_fun_definition(parser_context_t *context) {
                 tail->next = param;
             tail = param;
 
-            if (verify_token_type(context, TOKEN_RPAREN))
+            if (check_token(context, TOKEN_RPAREN))
                 break;
 
-            if (!verify_token_type(context, TOKEN_COMMA)) {
-                context->error_line = context->current_token.line;
-                context->error_message = "Expected ',' between function parameters or ')'";
+            if (!expect_token(context, TOKEN_COMMA,
+                              "Expected ',' between function parameters or ')'")) {
                 return NULL;
             }
             load_token(context);
@@ -510,7 +519,7 @@ ast_node_t *parse_fun_definition(parser_context_t *context) {
     load_token(context);
 
     symtable_datatype_t return_type = SYM_DATATYPE_UNIT;
-    if (verify_token_type(context, TOKEN_COLON)) {
+    if (check_token(context, TOKEN_COLON)) {
         load_token(context);
         return_type = parse_data_type(context);
         if (return_type == SYM_DATATYPE_UNKNOWN) {
@@ -521,8 +530,6 @@ ast_node_t *parse_fun_definition(parser_context_t *context) {
 
     ast_node_t *body_block = parse_block(context);
     if (!body_block) {
-        context->error_line = context->current_token.line;
-        context->error_message = "Expected function body block";
         return NULL;
     }
 
