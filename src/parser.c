@@ -654,3 +654,81 @@ ast_node_t *parse_while(parser_context_t *context) {
     }
     return ast_while_create(condition, while_block, line);
 }
+
+ast_node_t *parse_statement(parser_context_t *context) {
+    if (check_token(context, TOKEN_KEYWORD_VAR) || check_token(context, TOKEN_KEYWORD_VAL)) {
+        return parse_var_declaration(context);
+    }
+    if (check_token(context, TOKEN_KEYWORD_IF)) {
+        return parse_if(context);
+    }
+    if (check_token(context, TOKEN_KEYWORD_WHILE)) {
+        return parse_while(context);
+    }
+    if (check_token(context, TOKEN_KEYWORD_RETURN)) {
+        return parse_return(context);
+    }
+    if (check_token(context, TOKEN_KEYWORD_DEF)) {
+        return parse_fun_definition(context);
+    }
+    if (check_token(context, TOKEN_KEYWORD_IMPORT)) {
+        return parse_import(context);
+    }
+
+    if (check_token(context, TOKEN_ID)) {
+        char *id_name = context->current_token.attr.str_val;
+        int id_line = context->current_token.line;
+        load_token(context);
+
+        if (check_token(context, TOKEN_ASSIGN)) {
+            load_token(context);
+            ast_node_t *expr = parse_expresion(context);
+            if (expr == NULL) {
+                return NULL;
+            }
+            return ast_assignment_create(id_name, 0, expr, id_line);
+        }
+
+        if (check_token(context, TOKEN_LPAREN)) {
+            load_token(context);
+            ast_node_t *params = NULL;
+            ast_node_t *last_param = NULL;
+            int params_count = 0;
+
+            if (!check_token(context, TOKEN_RPAREN)) {
+                while (true) {
+                    ast_node_t *arg = parse_expresion(context);
+                    if (!arg) {
+                        ast_dispose(&params);
+                        return NULL;
+                    }
+                    if (!params) {
+                        params = arg;
+                    } else {
+                        last_param->next = arg;
+                    }
+                    last_param = arg;
+                    params_count++;
+
+                    if (check_token(context, TOKEN_RPAREN))
+                        break;
+                    if (!expect_token(context, TOKEN_COMMA, "Expected ',' or ')'")) {
+                        ast_dispose(&params);
+                        return NULL;
+                    }
+                    load_token(context);
+                }
+            }
+            load_token(context);
+            return ast_expres_fun_call_create(id_name, params, params_count, id_line);
+        }
+
+        context->error_line = context->current_token.line;
+        context->error_message = "Expected '=' or '(' after identifier";
+        return NULL;
+    }
+
+    context->error_line = context->current_token.line;
+    context->error_message = "Unexpected token at start of statement";
+    return NULL;
+}
