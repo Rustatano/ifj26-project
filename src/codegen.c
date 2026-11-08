@@ -79,8 +79,14 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
                     node->var_declaration.unique_id);
         }
         break;
+
     case AST_NODE_VALUE_ASSIGNMENT:
+        // same as variable declaration but just the assignment part
+        handle_node(node->assign_statement.expres, context);
+        fprintf(context->file, "POPS LF@%s$%s\n", node->assign_statement.target_var_name,
+                node->assign_statement.unique_id);
         break;
+
     case AST_NODE_STATEMENT_IF:
         break;
     case AST_NODE_STATEMENT_WHILE:
