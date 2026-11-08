@@ -18,11 +18,6 @@ Description: Header file for code generation
 #include <stdbool.h>
 #include <stdio.h>
 
-typedef struct {
-    FILE *file;
-    int label_counter;
-} codegen_context_t;
-
 bool codegen(ast_node_t *ast_root, const char *output_file);
 
 #endif
