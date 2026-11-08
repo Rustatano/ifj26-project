@@ -11,24 +11,14 @@ Description: Parser implementation.
 */
 #include "parser.h"
 #include "ast.h"
+#include "parse_expresion.h"
 #include "scanner.h"
 #include "symbol_table.h"
 #include <stdbool.h>
 #include <stdlib.h>
 
-typedef struct parser_context {
-    token_t current_token;
-    int error_line;
-    const char *error_message;
-    scanner_conf_t *scanner_conf;
-} parser_context_t;
-
 // Forward declarations
-ast_node_t *parse_term(parser_context_t *context);
-ast_node_t *parse_unary(parser_context_t *context);
-ast_node_t *parse_factor(parser_context_t *context);
 ast_node_t *parse_statement(parser_context_t *context);
-ast_node_t *parse_equality(parser_context_t *context);
 void load_token(parser_context_t *context);
 bool check_token(parser_context_t *context, token_type_t token_type);
 
@@ -131,226 +121,11 @@ ast_node_t *parse_import(parser_context_t *context) {
     return new_node;
 }
 
-ast_expres_operator_t remap_operator(token_type_t operator) {
-    switch (operator) {
-    case TOKEN_PLUS:
-        return AST_EXPRES_OPERATOR_ADD;
-    case TOKEN_MINUS:
-        return AST_EXPRES_OPERATOR_SUB;
-    case TOKEN_MUL:
-        return AST_EXPRES_OPERATOR_MUL;
-    case TOKEN_DIV:
-        return AST_EXPRES_OPERATOR_DIV;
-    case TOKEN_EQ:
-        return AST_EXPRES_OPERATOR_EQUAL;
-    case TOKEN_NEQ:
-        return AST_EXPRES_OPERATOR_NOT_EQUAL;
-    case TOKEN_LT:
-        return AST_EXPRES_OPERATOR_SMALLER;
-    case TOKEN_GT:
-        return AST_EXPRES_OPERATOR_BIGGER;
-    case TOKEN_LE:
-        return AST_EXPRES_OPERATOR_SMALLER_EQUAL;
-    case TOKEN_GE:
-        return AST_EXPRES_OPERATOR_BIGGER_EQUAL;
-    default:
-        return AST_EXPRES_OPERATOR_ADD;
-    }
-}
-
-// Returns NULL on syntax error
-ast_node_t *parse_expresion(parser_context_t *context) { return parse_equality(context); }
-
-ast_node_t *parse_additive(parser_context_t *context) {
-    ast_node_t *left = parse_term(context);
-    if (left == NULL) {
-        return NULL;
-    }
-
-    while (context->current_token.type == TOKEN_PLUS ||
-           context->current_token.type == TOKEN_MINUS) {
-        token_type_t operator= context->current_token.type;
-        int line = context->current_token.line;
-        load_token(context);
-        ast_node_t *right = parse_term(context);
-        if (right == NULL) {
-            return NULL;
-        }
-        left = ast_expres_operation_create(remap_operator(operator), left, right, line);
-    }
-
-    return left;
-}
-
-ast_node_t *parse_comparison(parser_context_t *context) {
-    ast_node_t *left = parse_additive(context);
-    if (left == NULL) {
-        return NULL;
-    }
-    while (context->current_token.type == TOKEN_LT || context->current_token.type == TOKEN_GT ||
-           context->current_token.type == TOKEN_LE || context->current_token.type == TOKEN_GE) {
-        token_type_t operator= context->current_token.type;
-        int line = context->current_token.line;
-        load_token(context);
-        ast_node_t *right = parse_additive(context);
-        if (right == NULL) {
-            return NULL;
-        }
-        left = ast_expres_operation_create(remap_operator(operator), left, right, line);
-    }
-    return left;
-}
-
-ast_node_t *parse_equality(parser_context_t *context) {
-    ast_node_t *left = parse_comparison(context);
-    if (left == NULL) {
-        return NULL;
-    }
-    while (context->current_token.type == TOKEN_EQ || context->current_token.type == TOKEN_NEQ) {
-        token_type_t operator= context->current_token.type;
-        int line = context->current_token.line;
-        load_token(context);
-        ast_node_t *right = parse_comparison(context);
-        if (right == NULL) {
-            return NULL;
-        }
-        left = ast_expres_operation_create(remap_operator(operator), left, right, line);
-    }
-    return left;
-}
-
-ast_node_t *parse_term(parser_context_t *context) {
-    ast_node_t *left = parse_unary(context);
-    if (left == NULL) {
-        return NULL;
-    }
-
-    while (context->current_token.type == TOKEN_MUL || context->current_token.type == TOKEN_DIV) {
-        token_type_t operator= context->current_token.type;
-        int line = context->current_token.line;
-        load_token(context);
-        ast_node_t *right = parse_unary(context);
-        if (right == NULL) {
-            return NULL;
-        }
-        left = ast_expres_operation_create(remap_operator(operator), left, right, line);
-    }
-
-    return left;
-}
-
-ast_node_t *parse_unary(parser_context_t *context) {
-    if (context->current_token.type == TOKEN_PLUS) {
-        load_token(context);
-        return parse_unary(context);
-    }
-
-    if (context->current_token.type == TOKEN_MINUS) {
-        int line = context->current_token.line;
-        load_token(context);
-
-        ast_node_t *operand = parse_unary(context);
-        if (operand == NULL) {
-            return NULL;
-        }
-
-        return ast_expres_operation_create(AST_EXPRES_OPERATOR_SUB, ast_const_int_create(0, line),
-                                           operand, line);
-    }
-
-    return parse_factor(context);
-}
-
-ast_node_t *parse_factor(parser_context_t *context) {
-    token_t token = context->current_token;
-
-    switch (token.type) {
-    case TOKEN_INT: {
-        ast_node_t *node = ast_const_int_create(token.attr.int_val, token.line);
-        load_token(context);
-        return node;
-    }
-
-    case TOKEN_DOUBLE: {
-        ast_node_t *node = ast_const_double_create(token.attr.double_val, token.line);
-        load_token(context);
-        return node;
-    }
-
-    case TOKEN_STRING: {
-        ast_node_t *node = ast_const_string_create(token.attr.str_val, token.line);
-        load_token(context);
-        return node;
-    }
-
-    case TOKEN_ID: {
-        char *name = token.attr.str_val;
-        load_token(context);
-
-        if (check_token(context, TOKEN_LPAREN)) {
-            int line = token.line;
-            load_token(context);
-
-            ast_node_t *params = NULL;
-            ast_node_t *last_param = NULL;
-            int params_count = 0;
-
-            if (!check_token(context, TOKEN_RPAREN)) {
-                while (true) {
-                    ast_node_t *arg = parse_expresion(context);
-                    if (!arg)
-                        return NULL;
-
-                    if (!params)
-                        params = arg;
-                    else
-                        last_param->next = arg;
-                    last_param = arg;
-                    params_count++;
-
-                    if (check_token(context, TOKEN_RPAREN))
-                        break;
-
-                    if (!expect_token(context, TOKEN_COMMA,
-                                      "Expected ',' or ')' in function call arguments")) {
-                        return NULL;
-                    }
-                    load_token(context);
-                }
-            }
-            load_token(context);
-
-            return ast_expres_fun_call_create(name, params, params_count, line);
-        } else {
-            return ast_expres_var_create(name, 0, SYM_DATATYPE_ID, token.line);
-        }
-    }
-
-    case TOKEN_LPAREN: {
-        load_token(context);
-
-        ast_node_t *expression = parse_expresion(context);
-        if (expression == NULL) {
-            return NULL;
-        }
-
-        if (!expect_token(context, TOKEN_RPAREN, "Expected ')' after expression")) {
-            return NULL;
-        }
-
-        load_token(context);
-
-        return expression;
-    }
-
-    default:
-        context->error_line = token.line;
-        context->error_message = "Expected expression factor";
-        return NULL;
-    }
-}
-
 ast_node_t *parse_block(parser_context_t *context) {
+    while (check_token(context, TOKEN_EOL)) {
+        load_token(context);
+    }
+
     if (!expect_token(context, TOKEN_INDENT, "Expected indentation for block")) {
         return NULL;
     }
@@ -670,6 +445,9 @@ ast_node_t *parse_if(parser_context_t *context) {
         return NULL;
     }
     ast_node_t *else_block = NULL;
+    while (check_token(context, TOKEN_EOL)) {
+        load_token(context);
+    }
     if (check_token(context, TOKEN_KW_ELSE)) {
         load_token(context);
         else_block = parse_block(context);
