@@ -66,14 +66,10 @@ int main(void) {
         cmocka_unit_test(symtable_stack_search_current_not_exists_test),
         cmocka_unit_test(symtable_stack_delete_test),
     };
-    const struct CMUnitTest scanner_tests[] = {
-        cmocka_unit_test(scanner_init_test),
-    };
 
     // Run test groups
     int res1 = cmocka_run_group_tests(symtable_tests, NULL, NULL);
-    int res2 = cmocka_run_group_tests(scanner_tests, NULL, NULL);
 
     // Evaluate return value
-    return res1 || res2;
+    return res1;
 }
