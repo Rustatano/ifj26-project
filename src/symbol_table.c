@@ -130,7 +130,8 @@ symtable_node_t *rotate_right_left_rl(symtable_node_t *root) {
     return rotate_left_rr(root);
 }
 
-symtable_node_t *insert_node(symtable_node_t *root, char *id, symtable_data_t data, bool *success) {
+symtable_node_t *insert_node(symtable_node_t *root, const char *id, symtable_data_t data,
+                             bool *success) {
     if (root == NULL) {
         // Allocation of memory for the node
         symtable_node_t *node = (symtable_node_t *)malloc(sizeof(symtable_node_t));
@@ -206,7 +207,7 @@ symtable_node_t *insert_node(symtable_node_t *root, char *id, symtable_data_t da
     return root;
 }
 
-bool symtable_insert_item(symtable_stack_t *stack, char *id, symtable_data_t data) {
+bool symtable_insert_item(symtable_stack_t *stack, const char *id, symtable_data_t data) {
     if (stack == NULL || id == NULL) {
         return false;
     }
@@ -219,7 +220,7 @@ bool symtable_insert_item(symtable_stack_t *stack, char *id, symtable_data_t dat
 }
 
 symtable_node_t *symtable_stack_search_current(symtable_stack_t *stack, symtable_type_t type,
-                                               char *id) {
+                                               const char *id) {
     if (stack == NULL || id == NULL) {
         return NULL;
     }
@@ -258,7 +259,7 @@ symtable_node_t *symtable_stack_search_current(symtable_stack_t *stack, symtable
     return NULL;
 }
 
-symtable_node_t *symtable_search(symtable_stack_t *stack, symtable_type_t type, char *id) {
+symtable_node_t *symtable_search(symtable_stack_t *stack, symtable_type_t type, const char *id) {
     if (stack == NULL || id == NULL) {
         return NULL;
     }

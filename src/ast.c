@@ -235,6 +235,7 @@ void ast_dispose(ast_node_t **root) {
     case AST_NODE_CONST_DOUBLE:
     case AST_NODE_CONST_STRING:
     case AST_NODE_CONST_UNIT:
+    default:
         break;
     }
 

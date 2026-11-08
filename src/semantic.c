@@ -397,7 +397,7 @@ bool first_ast_passage(ast_node_t *ast, symtable_stack_t *symtable_stack) {
             symtable_insert_item(symtable_stack, current_node->fun_definition.name, fun_data);
         } else {
             // Node '@main' annotaion or something else unimportant
-            if (current_node->type == AST_NODE_PROGRAM) {
+            if (current_node->type == AST_NODE_MAIN) {
                 if (main_found == true) {
                     // Semantic error (duplicate declaration of main function)
                     return false;
@@ -439,7 +439,7 @@ bool second_ast_passage(ast_node_t *ast, symtable_stack_t *symtable_stack) {
         }
 
         // New current node
-        if (current_node->type == AST_NODE_PROGRAM) {
+        if (current_node->type == AST_NODE_MAIN) {
             current_node = current_node->block.first_statement;
         } else {
             current_node = current_node->next;

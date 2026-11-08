@@ -29,6 +29,11 @@ ast_node_t *parse_unary(parser_context_t *context);
 ast_node_t *parse_factor(parser_context_t *context);
 ast_node_t *parse_statement(parser_context_t *context);
 
+ast_node_t *parse_statement(parser_context_t *context) {
+    (void)context;
+    return NULL;
+}
+
 parse_result_t parse(ast_node_t **ast_root, scanner_conf_t *scanner_conf) {
     (void)ast_root;
     (void)scanner_conf;
@@ -52,7 +57,7 @@ bool verify_token_type(parser_context_t *context, token_type_t token_type) {
 
 ast_node_t *parse_import(parser_context_t *context) {
 
-    if (!verify_token_type(context, TOKEN_KEYWORD_IMPORT)) {
+    if (!verify_token_type(context, TOKEN_KW_IMPORT)) {
         context->error_line = context->current_token.line;
         context->error_message = "Expected 'import' keyword";
         return NULL;
@@ -244,16 +249,15 @@ ast_node_t *parse_block(parser_context_t *context) {
 }
 
 ast_node_t *parse_var_declaration(parser_context_t *context) {
-    if (!(verify_token_type(context, TOKEN_KEYWORD_VAR) ||
-          verify_token_type(context, TOKEN_KEYWORD_VAL))) {
+    if (!(verify_token_type(context, TOKEN_KW_VAR) || verify_token_type(context, TOKEN_KW_VAL))) {
         context->error_line = context->current_token.line;
         context->error_message = "Expected 'var' or 'val' keyword";
         return NULL;
     }
     bool is_mutable;
-    if (context->current_token.type == TOKEN_KEYWORD_VAR) {
+    if (context->current_token.type == TOKEN_KW_VAR) {
         is_mutable = false;
-    } else if (context->current_token.type == TOKEN_KEYWORD_VAL) {
+    } else if (context->current_token.type == TOKEN_KW_VAL) {
         is_mutable = true;
     } else {
         context->error_line = context->current_token.line;
@@ -324,7 +328,7 @@ ast_node_t *parse_assignment(parser_context_t *context) {
 }
 
 ast_node_t *parse_return(parser_context_t *context) {
-    if (!verify_token_type(context, TOKEN_KEYWORD_RETURN)) {
+    if (!verify_token_type(context, TOKEN_KW_RETURN)) {
         context->error_line = context->current_token.line;
         context->error_message = "Expected 'return' keyword";
         return NULL;
@@ -350,13 +354,13 @@ ast_node_t *parse_return(parser_context_t *context) {
 }
 
 symtable_datatype_t parse_data_type(parser_context_t *context) {
-    if (verify_token_type(context, TOKEN_KEYWORD_INT)) {
+    if (verify_token_type(context, TOKEN_KW_INT)) {
         return SYM_DATATYPE_INT;
-    } else if (verify_token_type(context, TOKEN_KEYWORD_DOUBLE)) {
+    } else if (verify_token_type(context, TOKEN_KW_DOUBLE)) {
         return SYM_DATATYPE_DOUBLE;
-    } else if (verify_token_type(context, TOKEN_KEYWORD_STRING)) {
+    } else if (verify_token_type(context, TOKEN_KW_STRING)) {
         return SYM_DATATYPE_STRING;
-    } else if (verify_token_type(context, TOKEN_KEYWORD_UNIT)) {
+    } else if (verify_token_type(context, TOKEN_KW_UNIT)) {
         return SYM_DATATYPE_UNIT;
     }
     context->error_line = context->current_token.line;
@@ -399,7 +403,7 @@ symtable_fun_param_t *parse_parameter(parser_context_t *context) {
 }
 
 ast_node_t *parse_fun_definition(parser_context_t *context) {
-    if (!verify_token_type(context, TOKEN_KEYWORD_DEF)) {
+    if (!verify_token_type(context, TOKEN_KW_DEF)) {
         context->error_line = context->current_token.line;
         context->error_message = "Expected 'def' keyword";
         return NULL;

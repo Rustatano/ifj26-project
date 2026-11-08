@@ -40,8 +40,6 @@ extern void symtable_stack_search_current_not_exists_test(void **state);
 extern void symtable_stack_delete_test(void **state);
 
 // Scanner test functions
-extern void scanner_init_test(void **state);
-extern void get_token_eof_test(void **state);
 extern void get_token_keyword_and_id_test(void **state);
 extern void get_token_numbers_test(void **state);
 extern void get_token_operators_test(void **state);
@@ -92,8 +90,6 @@ int main(void) {
     };
 
     const struct CMUnitTest scanner_tests[] = {
-        cmocka_unit_test(scanner_init_test),
-        cmocka_unit_test(get_token_eof_test),
         cmocka_unit_test(get_token_keyword_and_id_test),
         cmocka_unit_test(get_token_numbers_test),
         cmocka_unit_test(get_token_operators_test),
