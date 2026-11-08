@@ -1,7 +1,7 @@
 /*
 -------------------------------------------------------
 Name of project: Translator IFJ26
-Authors: Zobal, Tajovský, Ondruška, Svoboda
+Authors: xondrus00 (Sebastian Ondruska), xsvoboj01 (Jakub Svoboda)
 Creation date: 14.10.2026
 File: symbol_table.h
 
@@ -21,14 +21,19 @@ Description: Header file for symbol table as a stack of height-balanced AVL tree
 #define SYM_PREFIX_VAR "VAR_"
 #define SYM_PREFIX_FUN "FUN_"
 
-typedef enum { SYM_TYPE_VAR, SYM_TYPE_FUNC } symtable_type_t;
+typedef enum {
+    SYM_TYPE_VAR,
+    SYM_TYPE_FUNC,
+} symtable_type_t;
 
 typedef enum {
-    SYM_TYPE_ID,
-    SYM_TYPE_INT,
-    SYM_TYPE_DOUBLE,
-    SYM_TYPE_STRING,
-    SYM_TYPE_UNIT,
+    SYM_DATATYPE_UNKNOWN,
+    SYM_DATATYPE_ERROR,
+    SYM_DATATYPE_ID,
+    SYM_DATATYPE_INT,
+    SYM_DATATYPE_DOUBLE,
+    SYM_DATATYPE_STRING,
+    SYM_DATATYPE_UNIT,
 } symtable_datatype_t;
 
 // Linked list representing parameters of functions
@@ -47,7 +52,6 @@ typedef struct {
         struct {
             symtable_datatype_t type;
             bool is_mutable;
-            bool is_initialized;
             int unique_id; // ID is used by code generator
         } var;
 
@@ -97,8 +101,8 @@ bool symtable_insert_item(symtable_stack_t *stack, char *id, symtable_data_t dat
 symtable_node_t *symtable_search(symtable_stack_t *stack, symtable_type_t type, char *id);
 
 // Search item in the current top AVL only
-symtable_node_t *symtable_stack_search_current(symtable_stack_item_t *stack_top,
-                                               symtable_type_t type, char *id);
+symtable_node_t *symtable_stack_search_current(symtable_stack_t *stack, symtable_type_t type,
+                                               char *id);
 
 // Delete whole symbol table and free all the memory
 void symtable_stack_delete(symtable_stack_t *stack);
