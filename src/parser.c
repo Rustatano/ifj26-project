@@ -631,3 +631,26 @@ ast_node_t *parse_if(parser_context_t *context) {
     };
     return ast_if_create(condition, if_block, else_block, line);
 }
+
+ast_node_t *parse_while(parser_context_t *context) {
+    if (!expect_token(context, TOKEN_KEYWORD_WHILE, "Expected 'while' keyword")) {
+        return NULL;
+    }
+    int line = context->current_token.line;
+    load_token(context);
+    ast_node_t *condition = parse_expresion(context);
+    if (condition == NULL) {
+        return NULL;
+    }
+    if (!expect_token(context, TOKEN_KEYWORD_DO, "Expected 'do' after while condition")) {
+        ast_dispose(&condition);
+        return NULL;
+    }
+    load_token(context);
+    ast_node_t *while_block = parse_block(context);
+    if (while_block == NULL) {
+        ast_dispose(&condition);
+        return NULL;
+    }
+    return ast_while_create(condition, while_block, line);
+}
