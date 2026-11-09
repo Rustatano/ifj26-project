@@ -11,6 +11,8 @@ Description: Generates IFJcode26 from the Abstract Syntax Tree
 */
 
 #include "codegen.h"
+#define INT32_MAX 2147483647
+#define INT32_MIN -2147483648
 
 typedef struct {
     FILE *file;
@@ -49,6 +51,66 @@ void destroy_codegen_context(codegen_context_t *context) {
         }
         free(context);
     }
+}
+
+void generate_oveflow_check(codegen_context_t *context) {
+    fprintf(context->file, "LABEL $OVERFLOW_CHECK\n");
+    // assuming result (int) on top of the stack
+    fprintf(context->file, "POPS GF@tmp0\n");
+    fprintf(context->file, "PUSHS GF@tmp0\n");
+    fprintf(context->file, "PUSHS int@%d\n", INT32_MAX);
+    fprintf(context->file, "GTS\n");
+    fprintf(context->file, "JUMPIFEQS $OVERFLOW_POSITIVE\n");
+
+    fprintf(context->file, "PUSHS GF@tmp0\n");
+    fprintf(context->file, "PUSHS int@%d\n", INT32_MIN);
+    fprintf(context->file, "LTS\n");
+    fprintf(context->file, "JUMPIFEQS $OVERFLOW_NEGATIVE\n");
+
+    // if no overflow, push back the original value and return
+    fprintf(context->file, "PUSHS GF@tmp0\n");
+    fprintf(context->file, "RETURN\n");
+
+    // positive overflow
+    fprintf(context->file, "LABEL $OVERFLOW_POSITIVE\n");
+    fprintf(context->file, "PUSHS int@%d\n", INT32_MIN);
+    fprintf(context->file, "PUSHS int@2\n");
+    fprintf(context->file, "MULS\n");
+    fprintf(context->file, "PUSHS GF@tmp0\n");
+    fprintf(context->file, "ADDS\n");
+    fprintf(context->file, "RETURN\n");
+
+    // negative overflow
+    fprintf(context->file, "LABEL $OVERFLOW_NEGATIVE\n");
+    fprintf(context->file, "PUSHS int@%d\n", INT32_MAX + 1);
+    fprintf(context->file, "PUSHS int@2\n");
+    fprintf(context->file, "MULS\n");
+    fprintf(context->file, "PUSHS GF@tmp0\n");
+    fprintf(context->file, "ADDS\n");
+    fprintf(context->file, "RETURN\n");
+}
+
+void check_and_correct_inf_overflow(ast_node_t *node, codegen_context_t *context) {
+    if (node->expres_operator.left_side->result_type != SYM_TYPE_INT ||
+        node->expres_operator.right_side->result_type != SYM_TYPE_INT) {
+        return;
+    }
+    fprintf(context->file, "CALL $OVERFLOW_CHECK\n");
+}
+
+// this is used to extract variable declarations from block nodes
+// so there is no multiple var declarations in case of a loop block
+void extract_var_declarations(ast_node_t *node, codegen_context_t *context) {
+    if (node == NULL) {
+        return true;
+    }
+
+    if (node->type == AST_NODE_VAR_DECLARATION) {
+        fprintf(context->file, "DEFVAR LF@%s$%s\n", node->var_declaration.name,
+                node->var_declaration.unique_id);
+    }
+
+    extract_var_declarations(node->next, context);
 }
 
 bool handle_node(ast_node_t *node, codegen_context_t *context) {
@@ -165,20 +227,24 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
                 fprintf(context->file, "ADDS\n");
             }
             fprintf(context->file, "ADDS\n");
+            check_and_correct_inf_overflow(node, context);
             break;
 
         case AST_EXPRES_OPERATOR_SUB:
             fprintf(context->file, "SUBS\n");
+            check_and_correct_inf_overflow(node, context);
             break;
 
         case AST_EXPRES_OPERATOR_MUL:
             fprintf(context->file, "MULS\n");
+            check_and_correct_inf_overflow(node, context);
             break;
 
         case AST_EXPRES_OPERATOR_DIV:
             if (node->expres_operator.left_side->result_type == SYM_TYPE_INT &&
                 node->expres_operator.right_side->result_type == SYM_TYPE_INT) {
                 fprintf(context->file, "IDIVS\n");
+                check_and_correct_inf_overflow(node, context);
             } else {
                 fprintf(context->file, "DIVS\n");
             }
@@ -272,20 +338,6 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
     handle_node(node->next, context);
     return true;
 }
-// this is used to extract variable declarations from block nodes
-// so there is no multiple var declarations in case of a loop block
-void extract_var_declarations(ast_node_t *node, codegen_context_t *context) {
-    if (node == NULL) {
-        return true;
-    }
-
-    if (node->type == AST_NODE_VAR_DECLARATION) {
-        fprintf(context->file, "DEFVAR LF@%s$%s\n", node->var_declaration.name,
-                node->var_declaration.unique_id);
-    }
-
-    extract_var_declarations(node->next, context);
-}
 
 // main function for code generation
 bool codegen(ast_node_t *ast_root, const char *output_file) {
@@ -299,6 +351,7 @@ bool codegen(ast_node_t *ast_root, const char *output_file) {
     fprintf(context->file, ".IFJcode26\n");
     fprintf(context->file, "DEFVAR GF@tmp0\n");
     fprintf(context->file, "DEFVAR GF@tmp1\n");
+    generate_oveflow_check(context);
     fprintf(context->file, "JUMP main\n");
 
     // handle AST nodes
