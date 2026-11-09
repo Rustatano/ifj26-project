@@ -176,7 +176,12 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
             break;
 
         case AST_EXPRES_OPERATOR_DIV:
-            fprintf(context->file, "DIVS\n");
+            if (node->expres_operator.left_side->result_type == SYM_TYPE_INT &&
+                node->expres_operator.right_side->result_type == SYM_TYPE_INT) {
+                fprintf(context->file, "IDIVS\n");
+            } else {
+                fprintf(context->file, "DIVS\n");
+            }
             break;
 
         case AST_EXPRES_OPERATOR_EQUAL:
