@@ -61,9 +61,11 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
     case AST_NODE_PROGRAM:
         handle_node(node->block.first_statement, context);
         break;
+
     case AST_NODE_BLOCK:
         handle_node(node->block.first_statement, context);
         break;
+
     case AST_NODE_FUN_DEFINITION:
         break;
     case AST_NODE_VAR_DECLARATION:
@@ -134,7 +136,11 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
         break;
 
     case AST_NODE_STATEMENT_RETURN:
+        handle_node(node->return_statement.expres, context);
+        fprintf(context->file, "POPFRAME\n");
+        fprintf(context->file, "RETURN\n");
         break;
+
     case AST_NODE_STATEMENT_IMPORT:
         // dont need do anything here, header is already in startup code
         break;
