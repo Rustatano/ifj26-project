@@ -105,8 +105,8 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
         handle_node(node->while_statement.condition, context);
         // result of the condition is on top of the stack
         // push true to the stack and check if the condition is true
-        printfs(context->file, "PUSHS bool@true\n");
-        printfs(context->file, "JUMPIFEQS $WHILE$%d\n", label_id);
+        fprintf(context->file, "PUSHS bool@true\n");
+        fprintf(context->file, "JUMPIFEQS $WHILE$%d\n", label_id);
 
         context->is_in_loop = false;
         break;
@@ -252,10 +252,10 @@ bool codegen(ast_node_t *ast_root, const char *output_file) {
     }
 
     // startup code
-    printfs(context->file, ".IFJcode26\n");
-    printfs(context->file, "DEFVAR GF@tmp0\n");
-    printfs(context->file, "DEFVAR GF@tmp1\n");
-    printfs(context->file, "JUMP main\n");
+    fprintf(context->file, ".IFJcode26\n");
+    fprintf(context->file, "DEFVAR GF@tmp0\n");
+    fprintf(context->file, "DEFVAR GF@tmp1\n");
+    fprintf(context->file, "JUMP main\n");
 
     // handle AST nodes
     bool result = handle_node(ast_root, context);
