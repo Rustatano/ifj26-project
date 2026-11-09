@@ -90,6 +90,7 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
     case AST_NODE_STATEMENT_IF:
         break;
     case AST_NODE_STATEMENT_WHILE:
+        // set in loop to alter var declaration behavior
         context->is_in_loop = true;
         // extract variable declarations first in case this block is a loop block
         extract_var_declarations(node->next->block.first_statement, context);
@@ -115,19 +116,108 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
     case AST_NODE_STATEMENT_IMPORT:
         break;
     case AST_NODE_EXPRES_OPERATOR:
-        break;
+        // first handle left and right side
+        handle_node(node->expres_operator.left_side, context);
+        handle_node(node->expres_operator.right_side, context);
+
+        // then handle operator on the top of the stack
+        switch (node->expres_operator.op) {
+        case AST_EXPRES_OPERATOR_ADD:
+            fprintf(context->file, "ADDS\n");
+            break;
+
+        case AST_EXPRES_OPERATOR_SUB:
+            fprintf(context->file, "SUBS\n");
+            break;
+
+        case AST_EXPRES_OPERATOR_MUL:
+            fprintf(context->file, "MULS\n");
+            break;
+
+        case AST_EXPRES_OPERATOR_DIV:
+            fprintf(context->file, "DIVS\n");
+            break;
+
+        case AST_EXPRES_OPERATOR_EQUAL:
+            fprintf(context->file, "EQS\n");
+            break;
+
+        case AST_EXPRES_OPERATOR_NOT_EQUAL:
+            fprintf(context->file, "EQS\n");
+            fprintf(context->file, "NOTS\n");
+            break;
+
+        case AST_EXPRES_OPERATOR_SMALLER:
+            fprintf(context->file, "LTS\n");
+            break;
+
+        case AST_EXPRES_OPERATOR_SMALLER_EQUAL:
+            // < or =
+            // save vars to temp
+            fprintf(context->file, "POPS GF@tmp0\n");
+            fprintf(context->file, "POPS GF@tmp1\n");
+            // push them back for <
+            fprintf(context->file, "PUSHS GF@tmp0\n");
+            fprintf(context->file, "PUSHS GF@tmp1\n");
+            fprintf(context->file, "LTS\n");
+            // push them back again for =
+            fprintf(context->file, "PUSHS GF@tmp0\n");
+            fprintf(context->file, "PUSHS GF@tmp1\n");
+            fprintf(context->file, "EQS\n");
+            // check if < or = is true
+            fprintf(context->file, "ORS\n");
+            break;
+
+        case AST_EXPRES_OPERATOR_BIGGER:
+            fprintf(context->file, "GTS\n");
+            break;
+
+        case AST_EXPRES_OPERATOR_BIGGER_EQUAL:
+            // > or =
+            // save vars to temp
+            fprintf(context->file, "POPS GF@tmp0\n");
+            fprintf(context->file, "POPS GF@tmp1\n");
+            // push them back for >
+            fprintf(context->file, "PUSHS GF@tmp0\n");
+            fprintf(context->file, "PUSHS GF@tmp1\n");
+            fprintf(context->file, "GTS\n");
+            // push them back again for =
+            fprintf(context->file, "PUSHS GF@tmp0\n");
+            fprintf(context->file, "PUSHS GF@tmp1\n");
+            fprintf(context->file, "EQS\n");
+            // check if > or = is true
+            fprintf(context->file, "ORS\n");
+            break;
+
+        default:
+            fprintf(stderr, "Unknown AST operator\n");
+            return false;
+        }
+
     case AST_NODE_EXPRES_FUN_CALL:
         break;
+
     case AST_NODE_EXPRES_VAR:
+        fprintf(context->file, "PUSHS LF@%s$%s\n", node->expressions_var.name,
+                node->expressions_var.unique_id);
         break;
+
     case AST_NODE_CONST_INT:
+        fprintf(context->file, "PUSHS int@%d\n", node->int_value);
         break;
+
     case AST_NODE_CONST_DOUBLE:
+        fprintf(context->file, "PUSHS float@%f\n", node->double_value);
         break;
+
     case AST_NODE_CONST_STRING:
+        fprintf(context->file, "PUSHS string@%s\n", node->str_value);
         break;
+
     case AST_NODE_CONST_UNIT:
+        fprintf(context->file, "PUSHS nil@nil\n");
         break;
+
     default:
         fprintf(stderr, "Unknown AST node\n");
         return false;
@@ -158,7 +248,7 @@ bool codegen(ast_node_t *ast_root, const char *output_file) {
     if (context == NULL) {
         return false;
     }
-
+    // handle AST nodes
     bool result = handle_node(ast_root, context);
 
     destroy_codegen_context(context);
