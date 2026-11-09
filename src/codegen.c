@@ -147,6 +147,17 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
         // then handle operator on the top of the stack
         switch (node->expres_operator.op) {
         case AST_EXPRES_OPERATOR_ADD:
+            if (node->expres_operator.left_side->result_type == SYM_TYPE_STRING &&
+                node->expres_operator.right_side->result_type == SYM_TYPE_STRING) {
+                // because concat does not have stack version, pop the values
+                // concat adn put it back to stack
+                fprintf(context->file, "POPS GF@tmp0\n");
+                fprintf(context->file, "POPS GF@tmp1\n");
+                fprintf(context->file, "CONCAT GF@tmp0 GF@tmp1 GF@tmp0\n");
+                fprintf(context->file, "PUSHS GF@tmp0\n");
+            } else {
+                fprintf(context->file, "ADDS\n");
+            }
             fprintf(context->file, "ADDS\n");
             break;
 
