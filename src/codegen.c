@@ -114,7 +114,9 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
     case AST_NODE_STATEMENT_RETURN:
         break;
     case AST_NODE_STATEMENT_IMPORT:
+        // dont need do anything here, header is already in startup code
         break;
+
     case AST_NODE_EXPRES_OPERATOR:
         // first handle left and right side
         handle_node(node->expres_operator.left_side, context);
@@ -248,6 +250,13 @@ bool codegen(ast_node_t *ast_root, const char *output_file) {
     if (context == NULL) {
         return false;
     }
+
+    // startup code
+    printfs(context->file, ".IFJcode26\n");
+    printfs(context->file, "DEFVAR GF@tmp0\n");
+    printfs(context->file, "DEFVAR GF@tmp1\n");
+    printfs(context->file, "JUMP main\n");
+
     // handle AST nodes
     bool result = handle_node(ast_root, context);
 
