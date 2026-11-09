@@ -55,6 +55,7 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
     if (node == NULL) {
         return true;
     }
+    int label_id = context->label_counter;
 
     switch (node->type) {
     case AST_NODE_PROGRAM:
@@ -88,14 +89,35 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
         break;
 
     case AST_NODE_STATEMENT_IF:
+        context->label_counter++;
+
+        // handle condition
+        handle_node(node->if_statement.condition, context);
+        // push true to stack to compare with the condition
+        fprintf(context->file, "PUSHS bool@true\n");
+        fprintf(context->file, "JUMPIFEQS $IF_TRUE$%d\n", label_id);
+        fprintf(context->file, "JUMP $IF_FALSE$%d\n", label_id);
+
+        // write if block
+        fprintf(context->file, "LABEL $IF_TRUE$%d\n", label_id);
+        handle_node(node->if_statement.if_block, context);
+        fprintf(context->file, "JUMP $IF_END$%d\n", label_id);
+
+        // write else block
+        fprintf(context->file, "LABEL $IF_FALSE$%d\n", label_id);
+        handle_node(node->if_statement.else_block, context);
+        // dont need to jump to end here because the label is here anyway
+
+        // end label
+        fprintf(context->file, "LABEL $IF_END$%d\n", label_id);
         break;
+
     case AST_NODE_STATEMENT_WHILE:
         // set in loop to alter var declaration behavior
         context->is_in_loop = true;
         // extract variable declarations first in case this block is a loop block
         extract_var_declarations(node->next->block.first_statement, context);
 
-        int label_id = context->label_counter;
         context->label_counter++;
         fprintf(context->file, "LABEL $WHILE$%d\n", label_id);
 
