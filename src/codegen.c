@@ -13,6 +13,10 @@ Description: Generates IFJcode26 from the Abstract Syntax Tree
 #include "codegen.h"
 #define INT32_MAX 2147483647
 #define INT32_MIN -2147483648
+#define BUILTIN_FUN_LIST                                                                           \
+    {"print", "readLine",  "readInt", "readDouble", "toStr",                                       \
+     "toInt", "strLength", "substr",  "ord",        "chr"}
+#define BUILTIN_FUN_COUNT 10
 
 typedef struct {
     FILE *file;
@@ -111,6 +115,53 @@ void extract_var_declarations(ast_node_t *node, codegen_context_t *context) {
     }
 
     extract_var_declarations(node->next, context);
+}
+
+// check if a function is builtin and needs custom codegen
+bool check_function_is_builtin(char *fun_name) {
+    const char *builtin_functions[BUILTIN_FUN_COUNT] = BUILTIN_FUN_LIST;
+
+    for (int i = 0; i < BUILTIN_FUN_COUNT; i++) {
+        if (strcmp(fun_name, builtin_functions[i]) == 0) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// generate code for builtin functions in place
+void generate_builtin_function_in_place(char *fun_name, ast_node_t *node,
+                                        codegen_context_t *context) {
+    if (strcmp(fun_name, "print") == 0) {
+        // evaluate the param (only one in this case), result is on top of the stack
+        handle_node(node->expres_fun_call.params, context);
+        // move the value from stack to var, so it can be used with write
+        fprintf(context->file, "POPS GF@tmp0\n");
+        if (node->expres_fun_call.params->result_type == SYM_TYPE_UNIT) {
+            // special case, unit should be printed as "()"
+            fprintf(context->file, "MOVE GF@tmp0 string@()\n");
+        }
+        // write the value
+        fprintf(context->file, "WRITE GF@tmp0\n");
+        // push unit to stack as return of the print function
+        fprintf(context->file, "PUSHS nil@nil\n");
+
+    } else if (strcmp(fun_name, "readLine") == 0) {
+        fprintf(context->file, "READ GF@tmp0 string\n");
+        // push the value to stack because the rest of codegen expects it
+        fprintf(context->file, "PUSHS GF@tmp0\n");
+
+    } else if (strcmp(fun_name, "readInt") == 0) {
+        fprintf(context->file, "READ GF@tmp0 int\n");
+        // push to stack, same as readLine
+        fprintf(context->file, "PUSHS GF@tmp0\n");
+
+    } else if (strcmp(fun_name, "readDouble") == 0) {
+        fprintf(context->file, "READ GF@tmp0 float\n");
+        // push to stack, same as readLine
+        fprintf(context->file, "PUSHS GF@tmp0\n");
+    }
 }
 
 bool handle_node(ast_node_t *node, codegen_context_t *context) {
@@ -319,7 +370,7 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
         break;
 
     case AST_NODE_CONST_DOUBLE:
-        fprintf(context->file, "PUSHS float@%f\n", node->double_value);
+        fprintf(context->file, "PUSHS float@%a\n", node->double_value);
         break;
 
     case AST_NODE_CONST_STRING:
