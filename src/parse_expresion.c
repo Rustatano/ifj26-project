@@ -51,8 +51,8 @@ static const char parser_prec_table[PARSER_PREC_COUNT][PARSER_PREC_COUNT] = {
     /* unary       */ {'<', '>', '>', '>', '>', '<', '>', '<', '>'},
     /* mul div    */ {'<', '>', '>', '>', '>', '<', '>', '<', '>'},
     /* add sub   */ {'<', '<', '>', '>', '>', '<', '>', '<', '>'},
-    /* relation    */ {'<', '<', '<', '>', '>', '<', '>', '<', '>'},
-    /* eq neq     */ {'<', '<', '<', '<', '>', '<', '>', '<', '>'},
+    /* relation    */ {'<', '<', '<', ' ', '>', '<', '>', '<', '>'},
+    /* eq neq      */ {'<', '<', '<', '<', ' ', '<', '>', '<', '>'},
     /* l paren     */ {'<', '<', '<', '<', '<', '<', '=', '<', ' '},
     /* r paren     */ {' ', '>', '>', '>', '>', ' ', '>', ' ', '>'},
     /* operand   */ {' ', '>', '>', '>', '>', ' ', '>', ' ', '>'},
@@ -367,8 +367,41 @@ bool prec_table_reduce(parser_context_t *context, parser_prec_stack_t *stack) {
             return true;
         }
     }
-    // E -> unary E
+    // E -> ( )
     else if (handle_length == 2) {
+        parser_prec_stack_item_t *right_item = stack->top;
+        parser_prec_stack_item_t *left_item = stack->top->next;
+
+        if (left_item->type == PARSER_PREC_STACK_ITEM_TERMINAL &&
+            left_item->index == PARSER_PREC_LPAREN &&
+            right_item->type == PARSER_PREC_STACK_ITEM_TERMINAL &&
+            right_item->index == PARSER_PREC_RPAREN) {
+            int line = left_item->source_code_line;
+            prec_stack_pop(stack); // Pop ')'
+            prec_stack_pop(stack); // Pop '('
+            prec_stack_pop(stack); // Pop handle mark
+
+            ast_node_t *unit_node = ast_const_unit_create(line);
+            if (unit_node == NULL) {
+                context->error_line = line;
+                context->error_message = "Memory allocation failed for unit AST node";
+                context->error_code = PARSE_ERR_INTERNAL;
+                return false;
+            }
+            if (!prec_stack_push(stack, PARSER_PREC_STACK_ITEM_NONTERMINAL, PARSER_PREC_COUNT, 0,
+                                 line, unit_node)) {
+                ast_dispose(&unit_node);
+                context->error_line = line;
+                context->error_message = "Memory allocation failed for precedence stack item";
+                context->error_code = PARSE_ERR_INTERNAL;
+                return false;
+            }
+            return true;
+        }
+    }
+
+    // E -> unary E
+    if (handle_length == 2) {
         parser_prec_stack_item_t *right_item = stack->top;
         parser_prec_stack_item_t *unary_operand = stack->top->next;
 
@@ -384,19 +417,20 @@ bool prec_table_reduce(parser_context_t *context, parser_prec_stack_t *stack) {
             prec_stack_pop(stack); // Pop operand
             prec_stack_pop(stack); // Pop <
 
-            ast_node_t *result_node = operand;
-            if (op_type == TOKEN_MINUS) {
-                ast_node_t *zero = ast_const_int_create(0, line);
-                result_node =
-                    ast_expres_operation_create(AST_EXPRES_OPERATOR_SUB, zero, operand, line);
-                if (result_node == NULL) {
-                    ast_dispose(&zero);
-                    ast_dispose(&operand);
-                    context->error_line = line;
-                    context->error_message = "Memory allocation failed for unary AST node";
-                    context->error_code = PARSE_ERR_INTERNAL;
-                    return false;
-                }
+            ast_expres_operator_t unary_operator;
+            if (op_type == TOKEN_PLUS) {
+                unary_operator = AST_EXPRES_OPERATOR_UNARY_PLUS;
+            } else {
+                unary_operator = AST_EXPRES_OPERATOR_UNARY_MINUS;
+            }
+            ast_node_t *result_node =
+                ast_expres_operation_create(unary_operator, NULL, operand, line);
+            if (result_node == NULL) {
+                ast_dispose(&operand);
+                context->error_line = line;
+                context->error_message = "Memory allocation failed for unary AST node";
+                context->error_code = PARSE_ERR_INTERNAL;
+                return false;
             }
             if (!prec_stack_push(stack, PARSER_PREC_STACK_ITEM_NONTERMINAL, PARSER_PREC_COUNT, 0,
                                  line, result_node)) {
