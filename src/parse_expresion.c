@@ -234,15 +234,33 @@ ast_node_t *parse_operand(parser_context_t *context) {
     switch (token.type) {
     case TOKEN_INT:
         load_token(context);
-        return ast_const_int_create(token.attr.int_val, token.line);
+        ast_node_t *int_node = ast_const_int_create(token.attr.int_val, token.line);
+        if (int_node == NULL) {
+            context->error_line = token.line;
+            context->error_message = "Memory allocation failed for integer AST node";
+            context->error_code = PARSE_ERR_INTERNAL;
+        }
+        return int_node;
 
     case TOKEN_DOUBLE:
         load_token(context);
-        return ast_const_double_create(token.attr.double_val, token.line);
+        ast_node_t *double_node = ast_const_double_create(token.attr.double_val, token.line);
+        if (double_node == NULL) {
+            context->error_line = token.line;
+            context->error_message = "Memory allocation failed for double AST node";
+            context->error_code = PARSE_ERR_INTERNAL;
+        }
+        return double_node;
 
     case TOKEN_STRING:
         load_token(context);
-        return ast_const_string_create(token.attr.str_val, token.line);
+        ast_node_t *string_node = ast_const_string_create(token.attr.str_val, token.line);
+        if (string_node == NULL) {
+            context->error_line = token.line;
+            context->error_message = "Memory allocation failed for string AST node";
+            context->error_code = PARSE_ERR_INTERNAL;
+        }
+        return string_node;
 
     case TOKEN_ID: {
         char *name = token.attr.str_val;
@@ -283,9 +301,22 @@ ast_node_t *parse_operand(parser_context_t *context) {
                 }
             }
             load_token(context);
-            return ast_expres_fun_call_create(name, params, params_count, line);
+            ast_node_t *fun_call = ast_expres_fun_call_create(name, params, params_count, line);
+            if (fun_call == NULL) {
+                context->error_line = line;
+                context->error_message = "Memory allocation failed for function call AST node";
+                context->error_code = PARSE_ERR_INTERNAL;
+                ast_dispose(&params);
+            }
+            return fun_call;
         }
-        return ast_expres_var_create(name, 0, SYM_DATATYPE_ID, line);
+        ast_node_t *variable_node = ast_expres_var_create(name, 0, SYM_DATATYPE_ID, line);
+        if (variable_node == NULL) {
+            context->error_line = line;
+            context->error_message = "Memory allocation failed for variable AST node";
+            context->error_code = PARSE_ERR_INTERNAL;
+        }
+        return variable_node;
     }
 
     default:
@@ -318,8 +349,15 @@ bool prec_table_reduce(parser_context_t *context, parser_prec_stack_t *stack) {
 
             prec_stack_pop(stack);
             prec_stack_pop(stack);
-            return prec_stack_push(stack, PARSER_PREC_STACK_ITEM_NONTERMINAL, PARSER_PREC_COUNT, 0,
-                                   line, node);
+            if (!prec_stack_push(stack, PARSER_PREC_STACK_ITEM_NONTERMINAL, PARSER_PREC_COUNT, 0,
+                                 line, node)) {
+                ast_dispose(&node);
+                context->error_line = line;
+                context->error_message = "Memory allocation failed for precedence stack item";
+                context->error_code = PARSE_ERR_INTERNAL;
+                return false;
+            }
+            return true;
         }
     }
     // E -> unary E
@@ -347,11 +385,21 @@ bool prec_table_reduce(parser_context_t *context, parser_prec_stack_t *stack) {
                 if (result_node == NULL) {
                     ast_dispose(&zero);
                     ast_dispose(&operand);
+                    context->error_line = line;
+                    context->error_message = "Memory allocation failed for unary AST node";
+                    context->error_code = PARSE_ERR_INTERNAL;
                     return false;
                 }
             }
-            return prec_stack_push(stack, PARSER_PREC_STACK_ITEM_NONTERMINAL, PARSER_PREC_COUNT, 0,
-                                   line, result_node);
+            if (!prec_stack_push(stack, PARSER_PREC_STACK_ITEM_NONTERMINAL, PARSER_PREC_COUNT, 0,
+                                 line, result_node)) {
+                ast_dispose(&result_node);
+                context->error_line = line;
+                context->error_message = "Memory allocation failed for precedence stack item";
+                context->error_code = PARSE_ERR_INTERNAL;
+                return false;
+            }
+            return true;
         }
     }
     // E => E binary E or E => ( E )
@@ -374,8 +422,15 @@ bool prec_table_reduce(parser_context_t *context, parser_prec_stack_t *stack) {
             prec_stack_pop(stack); // Pop E
             prec_stack_pop(stack); // Pop (
             prec_stack_pop(stack); // Pop <
-            return prec_stack_push(stack, PARSER_PREC_STACK_ITEM_NONTERMINAL, PARSER_PREC_COUNT, 0,
-                                   line, inner_node);
+            if (!prec_stack_push(stack, PARSER_PREC_STACK_ITEM_NONTERMINAL, PARSER_PREC_COUNT, 0,
+                                 line, inner_node)) {
+                ast_dispose(&inner_node);
+                context->error_line = line;
+                context->error_message = "Memory allocation failed for precedence stack item";
+                context->error_code = PARSE_ERR_INTERNAL;
+                return false;
+            }
+            return true;
         }
 
         //  E => E binary E
@@ -399,10 +454,20 @@ bool prec_table_reduce(parser_context_t *context, parser_prec_stack_t *stack) {
             if (!op_node) {
                 ast_dispose(&left);
                 ast_dispose(&right);
+                context->error_line = line;
+                context->error_message = "Memory allocation failed for binary AST node";
+                context->error_code = PARSE_ERR_INTERNAL;
                 return false;
             }
-            return prec_stack_push(stack, PARSER_PREC_STACK_ITEM_NONTERMINAL, PARSER_PREC_COUNT, 0,
-                                   line, op_node);
+            if (!prec_stack_push(stack, PARSER_PREC_STACK_ITEM_NONTERMINAL, PARSER_PREC_COUNT, 0,
+                                 line, op_node)) {
+                ast_dispose(&op_node);
+                context->error_line = line;
+                context->error_message = "Memory allocation failed for precedence stack item";
+                context->error_code = PARSE_ERR_INTERNAL;
+                return false;
+            }
+            return true;
         }
     }
 
@@ -419,6 +484,7 @@ ast_node_t *parse_expresion(parser_context_t *context) {
                          context->current_token.line, NULL)) {
         context->error_line = context->current_token.line;
         context->error_message = "Memory allocation failed for precedence stack";
+        context->error_code = PARSE_ERR_INTERNAL;
         return NULL;
     }
 
@@ -439,12 +505,18 @@ ast_node_t *parse_expresion(parser_context_t *context) {
         if (relation == '=') {
             if (!prec_stack_push(&stack, PARSER_PREC_STACK_ITEM_TERMINAL, current_prec_index,
                                  context->current_token.type, context->current_token.line, NULL)) {
+                context->error_line = context->current_token.line;
+                context->error_message = "Memory allocation failed for precedence stack item";
+                context->error_code = PARSE_ERR_INTERNAL;
                 prec_stack_dispose(&stack);
                 return NULL;
             }
             load_token(context);
         } else if (relation == '<') {
             if (!prec_stack_insert_handle_mark(&stack)) {
+                context->error_line = context->current_token.line;
+                context->error_message = "Memory allocation failed for expression handle mark";
+                context->error_code = PARSE_ERR_INTERNAL;
                 prec_stack_dispose(&stack);
                 return NULL;
             }
@@ -460,6 +532,9 @@ ast_node_t *parse_expresion(parser_context_t *context) {
                 if (!prec_stack_push(&stack, PARSER_PREC_STACK_ITEM_TERMINAL, PARSER_PREC_ID,
                                      tok_type, line, operand_node)) {
                     ast_dispose(&operand_node);
+                    context->error_line = line;
+                    context->error_message = "Memory allocation failed for precedence stack item";
+                    context->error_code = PARSE_ERR_INTERNAL;
                     prec_stack_dispose(&stack);
                     return NULL;
                 }
@@ -467,6 +542,9 @@ ast_node_t *parse_expresion(parser_context_t *context) {
                 if (!prec_stack_push(&stack, PARSER_PREC_STACK_ITEM_TERMINAL, current_prec_index,
                                      context->current_token.type, context->current_token.line,
                                      NULL)) {
+                    context->error_line = context->current_token.line;
+                    context->error_message = "Memory allocation failed for precedence stack item";
+                    context->error_code = PARSE_ERR_INTERNAL;
                     prec_stack_dispose(&stack);
                     return NULL;
                 }

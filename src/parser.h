@@ -36,6 +36,7 @@ typedef struct parser_context {
     token_t current_token;
     int error_line;
     const char *error_message;
+    parse_error_code error_code;
     scanner_conf_t *scanner_conf;
 } parser_context_t;
 

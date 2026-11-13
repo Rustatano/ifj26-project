@@ -32,8 +32,10 @@ parse_result_t parse(ast_node_t **ast_root, scanner_conf_t *scanner_conf) {
         return result;
     }
 
-    parser_context_t context = {
-        .scanner_conf = scanner_conf, .error_line = 0, .error_message = NULL};
+    parser_context_t context = {.scanner_conf = scanner_conf,
+                                .error_line = 0,
+                                .error_message = NULL,
+                                .error_code = PARSE_ERR_SYNTAX};
 
     load_token(&context);
 
@@ -58,7 +60,7 @@ parse_result_t parse(ast_node_t **ast_root, scanner_conf_t *scanner_conf) {
             *ast_root = NULL;
 
             result.success = false;
-            result.error_code = PARSE_ERR_SYNTAX;
+            result.error_code = context.error_code;
             result.error_line = context.error_line;
             result.error_msg = context.error_message;
             return result;
@@ -114,6 +116,7 @@ ast_node_t *parse_import(parser_context_t *context) {
     if (!new_node) {
         context->error_line = context->current_token.line;
         context->error_message = "Memory allocation failed for import AST node";
+        context->error_code = PARSE_ERR_INTERNAL;
         return NULL;
     }
     new_node->import_statement.module_name = module_name;
@@ -134,6 +137,7 @@ ast_node_t *parse_block(parser_context_t *context) {
     if (!block) {
         context->error_line = line;
         context->error_message = "Memory allocation failed for block AST node";
+        context->error_code = PARSE_ERR_INTERNAL;
         return NULL;
     }
     load_token(context);
@@ -195,6 +199,7 @@ ast_node_t *parse_var_declaration(parser_context_t *context) {
     if (!var_node) {
         context->error_line = line;
         context->error_message = "Memory allocation failed for variable declaration AST node";
+        context->error_code = PARSE_ERR_INTERNAL;
         return NULL;
     }
     return var_node;
@@ -222,6 +227,7 @@ ast_node_t *parse_assignment(parser_context_t *context) {
     if (!assign_node) {
         context->error_line = line;
         context->error_message = "Memory allocation failed for assignment AST node";
+        context->error_code = PARSE_ERR_INTERNAL;
         return NULL;
     }
     return assign_node;
@@ -275,6 +281,7 @@ ast_node_t *parse_fun_call(parser_context_t *context) {
     if (!fun_call) {
         context->error_line = line;
         context->error_message = "Memory allocation failed for function call AST node";
+        context->error_code = PARSE_ERR_INTERNAL;
         return NULL;
     }
     return fun_call;
@@ -297,6 +304,7 @@ ast_node_t *parse_return(parser_context_t *context) {
     if (new_node == NULL) {
         context->error_line = line;
         context->error_message = "Memory allocation failed for return statement AST node";
+        context->error_code = PARSE_ERR_INTERNAL;
         return NULL;
     }
     new_node->return_statement.expres = expression;
@@ -328,6 +336,7 @@ symtable_fun_param_t *parse_parameter(parser_context_t *context) {
     if (!param) {
         context->error_line = context->current_token.line;
         context->error_message = "Memory allocation failed for function parameter";
+        context->error_code = PARSE_ERR_INTERNAL;
         return NULL;
     }
 
@@ -414,6 +423,7 @@ ast_node_t *parse_fun_definition(parser_context_t *context) {
     if (!new_node) {
         context->error_line = line;
         context->error_message = "Memory allocation failed for function definition AST node";
+        context->error_code = PARSE_ERR_INTERNAL;
         return NULL;
     }
 
@@ -457,7 +467,17 @@ ast_node_t *parse_if(parser_context_t *context) {
             return NULL;
         }
     };
-    return ast_if_create(condition, if_block, else_block, line);
+    ast_node_t *if_node = ast_if_create(condition, if_block, else_block, line);
+    if (if_node == NULL) {
+        context->error_line = line;
+        context->error_message = "Memory allocation failed for if AST node";
+        context->error_code = PARSE_ERR_INTERNAL;
+        ast_dispose(&condition);
+        ast_dispose(&if_block);
+        ast_dispose(&else_block);
+        return NULL;
+    }
+    return if_node;
 }
 
 ast_node_t *parse_while(parser_context_t *context) {
@@ -480,7 +500,16 @@ ast_node_t *parse_while(parser_context_t *context) {
         ast_dispose(&condition);
         return NULL;
     }
-    return ast_while_create(condition, while_block, line);
+    ast_node_t *while_node = ast_while_create(condition, while_block, line);
+    if (while_node == NULL) {
+        context->error_line = line;
+        context->error_message = "Memory allocation failed for while AST node";
+        context->error_code = PARSE_ERR_INTERNAL;
+        ast_dispose(&condition);
+        ast_dispose(&while_block);
+        return NULL;
+    }
+    return while_node;
 }
 
 ast_node_t *parse_statement(parser_context_t *context) {
@@ -514,7 +543,15 @@ ast_node_t *parse_statement(parser_context_t *context) {
             if (expr == NULL) {
                 return NULL;
             }
-            return ast_assignment_create(id_name, 0, expr, id_line);
+            ast_node_t *assignment = ast_assignment_create(id_name, 0, expr, id_line);
+            if (assignment == NULL) {
+                context->error_line = id_line;
+                context->error_message = "Memory allocation failed for assignment AST node";
+                context->error_code = PARSE_ERR_INTERNAL;
+                ast_dispose(&expr);
+                return NULL;
+            }
+            return assignment;
         }
 
         if (check_token(context, TOKEN_LPAREN)) {
@@ -548,7 +585,16 @@ ast_node_t *parse_statement(parser_context_t *context) {
                 }
             }
             load_token(context);
-            return ast_expres_fun_call_create(id_name, params, params_count, id_line);
+            ast_node_t *fun_call =
+                ast_expres_fun_call_create(id_name, params, params_count, id_line);
+            if (fun_call == NULL) {
+                context->error_line = id_line;
+                context->error_message = "Memory allocation failed for function call AST node";
+                context->error_code = PARSE_ERR_INTERNAL;
+                ast_dispose(&params);
+                return NULL;
+            }
+            return fun_call;
         }
 
         context->error_line = context->current_token.line;
