@@ -31,6 +31,14 @@ static bool is_statement_terminator(token_type_t type) {
            type == TOKEN_EOF;
 }
 
+static void dispose_parameters(symtable_fun_param_t **parameters) {
+    while (parameters != NULL && *parameters != NULL) {
+        symtable_fun_param_t *next = (*parameters)->next;
+        free(*parameters);
+        *parameters = next;
+    }
+}
+
 parse_result_t parse(ast_node_t **ast_root, scanner_conf_t *scanner_conf) {
     parse_result_t result = {
         .success = false, .error_code = PARSE_SUCCESS, .error_line = 0, .error_msg = NULL};
@@ -300,6 +308,7 @@ ast_node_t *parse_var_declaration(parser_context_t *context) {
         context->error_line = line;
         context->error_message = "Memory allocation failed for variable declaration AST node";
         context->error_code = PARSE_ERR_INTERNAL;
+        ast_dispose(&init_expres);
         return NULL;
     }
     return var_node;
@@ -328,6 +337,7 @@ ast_node_t *parse_assignment(parser_context_t *context) {
         context->error_line = line;
         context->error_message = "Memory allocation failed for assignment AST node";
         context->error_code = PARSE_ERR_INTERNAL;
+        ast_dispose(&expression);
         return NULL;
     }
     return assign_node;
@@ -354,6 +364,7 @@ ast_node_t *parse_fun_call(parser_context_t *context) {
         while (true) {
             ast_node_t *arg = parse_expresion(context);
             if (!arg) {
+                ast_dispose(&params);
                 return NULL;
             }
 
@@ -370,6 +381,7 @@ ast_node_t *parse_fun_call(parser_context_t *context) {
 
             if (!expect_token(context, TOKEN_COMMA,
                               "Expected ',' or ')' in function call arguments")) {
+                ast_dispose(&params);
                 return NULL;
             }
             load_token(context);
@@ -382,6 +394,7 @@ ast_node_t *parse_fun_call(parser_context_t *context) {
         context->error_line = line;
         context->error_message = "Memory allocation failed for function call AST node";
         context->error_code = PARSE_ERR_INTERNAL;
+        ast_dispose(&params);
         return NULL;
     }
     return fun_call;
@@ -422,6 +435,7 @@ ast_node_t *parse_return(parser_context_t *context) {
         context->error_line = line;
         context->error_message = "Memory allocation failed for return statement AST node";
         context->error_code = PARSE_ERR_INTERNAL;
+        ast_dispose(&expression);
         return NULL;
     }
     new_node->return_statement.expres = expression;
@@ -500,6 +514,7 @@ ast_node_t *parse_fun_definition(parser_context_t *context, bool is_main) {
         while (true) {
             symtable_fun_param_t *param = parse_parameter(context);
             if (!param) {
+                dispose_parameters(&head);
                 return NULL;
             }
 
@@ -514,6 +529,7 @@ ast_node_t *parse_fun_definition(parser_context_t *context, bool is_main) {
 
             if (!expect_token(context, TOKEN_COMMA,
                               "Expected ',' between function parameters or ')'")) {
+                dispose_parameters(&head);
                 return NULL;
             }
             load_token(context);
@@ -532,12 +548,14 @@ ast_node_t *parse_fun_definition(parser_context_t *context, bool is_main) {
         load_token(context);
         return_type = parse_data_type(context);
         if (return_type == SYM_DATATYPE_UNKNOWN) {
+            dispose_parameters(&head);
             return NULL;
         }
         load_token(context);
     }
 
     if (!expect_token(context, TOKEN_ASSIGN, "Expected '=' after function header")) {
+        dispose_parameters(&head);
         return NULL;
     }
     load_token(context);
@@ -553,6 +571,7 @@ ast_node_t *parse_fun_definition(parser_context_t *context, bool is_main) {
         if (expression != NULL) {
             if (!is_statement_terminator(context->current_token.type)) {
                 ast_dispose(&expression);
+                dispose_parameters(&head);
                 context->error_line = context->current_token.line;
                 context->error_message = "Expected end of one-line function";
                 return NULL;
@@ -560,6 +579,7 @@ ast_node_t *parse_fun_definition(parser_context_t *context, bool is_main) {
             body_block = ast_block_create(AST_NODE_BLOCK, line);
             if (body_block == NULL) {
                 ast_dispose(&expression);
+                dispose_parameters(&head);
                 context->error_line = line;
                 context->error_message = "Memory allocation failed for function body block";
                 context->error_code = PARSE_ERR_INTERNAL;
@@ -570,6 +590,7 @@ ast_node_t *parse_fun_definition(parser_context_t *context, bool is_main) {
     }
     if (!body_block) {
         context->current_return_type = previous_return_type;
+        dispose_parameters(&head);
         return NULL;
     }
     context->current_return_type = previous_return_type;
@@ -579,6 +600,8 @@ ast_node_t *parse_fun_definition(parser_context_t *context, bool is_main) {
         context->error_line = line;
         context->error_message = "Memory allocation failed for function definition AST node";
         context->error_code = PARSE_ERR_INTERNAL;
+        ast_dispose(&body_block);
+        dispose_parameters(&head);
         return NULL;
     }
 
@@ -601,6 +624,7 @@ ast_node_t *parse_if(parser_context_t *context) {
         return NULL;
     }
     if (!expect_token(context, TOKEN_KW_THEN, "Expected 'then' after if condition")) {
+        ast_dispose(&condition);
         return NULL;
     }
     load_token(context);
