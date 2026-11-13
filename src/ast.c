@@ -148,6 +148,10 @@ ast_node_t *ast_const_string_create(const char *value, int source_code_line) {
     return new_node;
 }
 
+ast_node_t *ast_const_unit_create(int source_code_line) {
+    return ast_node_create(AST_NODE_CONST_UNIT, source_code_line);
+}
+
 ast_node_t *ast_expres_fun_call_create(char *fun_name, ast_node_t *params, int params_count,
                                        int source_code_line) {
     ast_node_t *new_node = ast_node_create(AST_NODE_EXPRES_FUN_CALL, source_code_line);

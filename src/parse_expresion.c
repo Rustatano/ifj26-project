@@ -299,6 +299,12 @@ ast_node_t *parse_operand(parser_context_t *context) {
                         return NULL;
                     }
                     load_token(context);
+                    while (check_token(context, TOKEN_EOL)) {
+                        load_token(context);
+                    }
+                    if (check_token(context, TOKEN_RPAREN)) {
+                        break;
+                    }
                 }
             }
             load_token(context);
@@ -478,6 +484,25 @@ bool prec_table_reduce(parser_context_t *context, parser_prec_stack_t *stack) {
 }
 
 ast_node_t *parse_expresion(parser_context_t *context) {
+    if (check_token(context, TOKEN_LPAREN)) {
+        token_t opening = context->current_token;
+        load_token(context);
+        if (check_token(context, TOKEN_RPAREN)) {
+            ast_node_t *unit_node = ast_const_unit_create(opening.line);
+            if (unit_node == NULL) {
+                context->error_line = opening.line;
+                context->error_message = "Memory allocation failed for unit AST node";
+                context->error_code = PARSE_ERR_INTERNAL;
+                return NULL;
+            }
+            load_token(context);
+            return unit_node;
+        }
+        context->buffered_token = context->current_token;
+        context->has_buffered_token = true;
+        context->current_token = opening;
+    }
+
     parser_prec_stack_t stack;
     prec_stack_init(&stack);
 

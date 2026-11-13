@@ -38,6 +38,9 @@ typedef struct parser_context {
     const char *error_message;
     parse_error_code error_code;
     scanner_conf_t *scanner_conf;
+    token_t buffered_token;
+    bool has_buffered_token;
+    symtable_datatype_t current_return_type;
 } parser_context_t;
 
 void load_token(parser_context_t *context);

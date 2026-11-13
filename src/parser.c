@@ -22,8 +22,14 @@ Description: Parser implementation.
 ast_node_t *parse_statement(parser_context_t *context);
 ast_node_t *parse_import(parser_context_t *context);
 ast_node_t *parse_fun_definition(parser_context_t *context, bool is_main);
+symtable_datatype_t parse_data_type(parser_context_t *context);
 void load_token(parser_context_t *context);
 bool check_token(parser_context_t *context, token_type_t token_type);
+
+static bool is_statement_terminator(token_type_t type) {
+    return type == TOKEN_EOL || type == TOKEN_SEMICOLON || type == TOKEN_DEDENT ||
+           type == TOKEN_EOF;
+}
 
 parse_result_t parse(ast_node_t **ast_root, scanner_conf_t *scanner_conf) {
     parse_result_t result = {
@@ -38,7 +44,8 @@ parse_result_t parse(ast_node_t **ast_root, scanner_conf_t *scanner_conf) {
     parser_context_t context = {.scanner_conf = scanner_conf,
                                 .error_line = 0,
                                 .error_message = NULL,
-                                .error_code = PARSE_ERR_SYNTAX};
+                                .error_code = PARSE_ERR_SYNTAX,
+                                .current_return_type = SYM_DATATYPE_UNKNOWN};
 
     load_token(&context);
 
@@ -111,10 +118,6 @@ parse_result_t parse(ast_node_t **ast_root, scanner_conf_t *scanner_conf) {
         }
 
         ast_block_append(root, stmt);
-
-        if (check_token(&context, TOKEN_EOL)) {
-            load_token(&context);
-        }
     }
 
     if (!main_seen) {
@@ -133,7 +136,13 @@ parse_result_t parse(ast_node_t **ast_root, scanner_conf_t *scanner_conf) {
 }
 
 void load_token(parser_context_t *context) {
-    token_t loaded_token = get_token(context->scanner_conf);
+    token_t loaded_token;
+    if (context->has_buffered_token) {
+        loaded_token = context->buffered_token;
+        context->has_buffered_token = false;
+    } else {
+        loaded_token = get_token(context->scanner_conf);
+    }
     context->current_token = loaded_token;
 }
 
@@ -225,7 +234,21 @@ ast_node_t *parse_block(parser_context_t *context) {
 
         if (check_token(context, TOKEN_EOL)) {
             load_token(context);
+        } else if (check_token(context, TOKEN_SEMICOLON)) {
+            load_token(context);
+        } else if (!is_statement_terminator(context->current_token.type)) {
+            context->error_line = context->current_token.line;
+            context->error_message = "Expected end of statement";
+            ast_dispose(&block);
+            return NULL;
         }
+    }
+
+    if (block->block.first_statement == NULL) {
+        context->error_line = line;
+        context->error_message = "Empty blocks are not allowed";
+        ast_dispose(&block);
+        return NULL;
     }
 
     if (!expect_token(context, TOKEN_DEDENT, "Expected dedent at the end of block")) {
@@ -251,6 +274,16 @@ ast_node_t *parse_var_declaration(parser_context_t *context) {
     const char *var_id = context->current_token.attr.str_val;
     load_token(context);
 
+    symtable_datatype_t var_type = SYM_DATATYPE_UNKNOWN;
+    if (check_token(context, TOKEN_COLON)) {
+        load_token(context);
+        var_type = parse_data_type(context);
+        if (var_type == SYM_DATATYPE_UNKNOWN) {
+            return NULL;
+        }
+        load_token(context);
+    }
+
     if (!expect_token(context, TOKEN_ASSIGN, "Expected '=' in variable declaration")) {
         return NULL;
     }
@@ -262,7 +295,7 @@ ast_node_t *parse_var_declaration(parser_context_t *context) {
     }
 
     ast_node_t *var_node =
-        ast_var_declaration_create(var_id, 0, SYM_DATATYPE_UNKNOWN, is_mutable, init_expres, line);
+        ast_var_declaration_create(var_id, 0, var_type, is_mutable, init_expres, line);
     if (!var_node) {
         context->error_line = line;
         context->error_message = "Memory allocation failed for variable declaration AST node";
@@ -362,9 +395,26 @@ ast_node_t *parse_return(parser_context_t *context) {
     int line = context->current_token.line;
     load_token(context);
 
-    ast_node_t *expression = parse_expresion(context);
-    if (expression == NULL) {
-        return NULL;
+    ast_node_t *expression = NULL;
+    if (is_statement_terminator(context->current_token.type)) {
+        if (context->current_return_type != SYM_DATATYPE_UNIT) {
+            context->error_line = line;
+            context->error_message =
+                "A return without expression requires an explicit ': Unit' return type";
+            return NULL;
+        }
+        expression = ast_const_unit_create(line);
+        if (expression == NULL) {
+            context->error_line = line;
+            context->error_message = "Memory allocation failed for unit AST node";
+            context->error_code = PARSE_ERR_INTERNAL;
+            return NULL;
+        }
+    } else {
+        expression = parse_expresion(context);
+        if (expression == NULL) {
+            return NULL;
+        }
     }
 
     ast_node_t *new_node = ast_node_create(AST_NODE_STATEMENT_RETURN, line);
@@ -467,11 +517,17 @@ ast_node_t *parse_fun_definition(parser_context_t *context, bool is_main) {
                 return NULL;
             }
             load_token(context);
+            while (check_token(context, TOKEN_EOL)) {
+                load_token(context);
+            }
+            if (check_token(context, TOKEN_RPAREN)) {
+                break;
+            }
         }
     }
     load_token(context);
 
-    symtable_datatype_t return_type = SYM_DATATYPE_UNIT;
+    symtable_datatype_t return_type = SYM_DATATYPE_UNKNOWN;
     if (check_token(context, TOKEN_COLON)) {
         load_token(context);
         return_type = parse_data_type(context);
@@ -481,10 +537,42 @@ ast_node_t *parse_fun_definition(parser_context_t *context, bool is_main) {
         load_token(context);
     }
 
-    ast_node_t *body_block = parse_block(context);
-    if (!body_block) {
+    if (!expect_token(context, TOKEN_ASSIGN, "Expected '=' after function header")) {
         return NULL;
     }
+    load_token(context);
+
+    symtable_datatype_t previous_return_type = context->current_return_type;
+    context->current_return_type = return_type;
+
+    ast_node_t *body_block = NULL;
+    if (check_token(context, TOKEN_EOL)) {
+        body_block = parse_block(context);
+    } else {
+        ast_node_t *expression = parse_expresion(context);
+        if (expression != NULL) {
+            if (!is_statement_terminator(context->current_token.type)) {
+                ast_dispose(&expression);
+                context->error_line = context->current_token.line;
+                context->error_message = "Expected end of one-line function";
+                return NULL;
+            }
+            body_block = ast_block_create(AST_NODE_BLOCK, line);
+            if (body_block == NULL) {
+                ast_dispose(&expression);
+                context->error_line = line;
+                context->error_message = "Memory allocation failed for function body block";
+                context->error_code = PARSE_ERR_INTERNAL;
+                return NULL;
+            }
+            ast_block_append(body_block, expression);
+        }
+    }
+    if (!body_block) {
+        context->current_return_type = previous_return_type;
+        return NULL;
+    }
+    context->current_return_type = previous_return_type;
 
     ast_node_t *new_node = ast_node_create(is_main ? AST_NODE_MAIN : AST_NODE_FUN_DEFINITION, line);
     if (!new_node) {
@@ -525,14 +613,17 @@ ast_node_t *parse_if(parser_context_t *context) {
     while (check_token(context, TOKEN_EOL)) {
         load_token(context);
     }
-    if (check_token(context, TOKEN_KW_ELSE)) {
-        load_token(context);
-        else_block = parse_block(context);
-        if (else_block == NULL) {
-            ast_dispose(&condition);
-            ast_dispose(&if_block);
-            return NULL;
-        }
+    if (!expect_token(context, TOKEN_KW_ELSE, "Expected 'else' after if block")) {
+        ast_dispose(&condition);
+        ast_dispose(&if_block);
+        return NULL;
+    }
+    load_token(context);
+    else_block = parse_block(context);
+    if (else_block == NULL) {
+        ast_dispose(&condition);
+        ast_dispose(&if_block);
+        return NULL;
     };
     ast_node_t *if_node = ast_if_create(condition, if_block, else_block, line);
     if (if_node == NULL) {
@@ -593,6 +684,7 @@ ast_node_t *parse_statement(parser_context_t *context) {
         return parse_return(context);
     }
     if (check_token(context, TOKEN_ID)) {
+        token_t identifier_token = context->current_token;
         char *id_name = context->current_token.attr.str_val;
         int id_line = context->current_token.line;
         load_token(context);
@@ -642,6 +734,12 @@ ast_node_t *parse_statement(parser_context_t *context) {
                         return NULL;
                     }
                     load_token(context);
+                    while (check_token(context, TOKEN_EOL)) {
+                        load_token(context);
+                    }
+                    if (check_token(context, TOKEN_RPAREN)) {
+                        break;
+                    }
                 }
             }
             load_token(context);
@@ -657,9 +755,20 @@ ast_node_t *parse_statement(parser_context_t *context) {
             return fun_call;
         }
 
-        context->error_line = context->current_token.line;
-        context->error_message = "Expected '=' or '(' after identifier";
-        return NULL;
+        context->buffered_token = context->current_token;
+        context->has_buffered_token = true;
+        context->current_token = identifier_token;
+        return parse_expresion(context);
+    }
+
+    if (check_token(context, TOKEN_INT) || check_token(context, TOKEN_DOUBLE) ||
+        check_token(context, TOKEN_STRING) || check_token(context, TOKEN_MINUS) ||
+        check_token(context, TOKEN_PLUS)) {
+        return parse_expresion(context);
+    }
+
+    if (check_token(context, TOKEN_LPAREN)) {
+        return parse_expresion(context);
     }
 
     context->error_line = context->current_token.line;

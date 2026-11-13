@@ -185,6 +185,7 @@ ast_node_t *ast_expres_var_create(const char *name, int unique_id, symtable_data
 ast_node_t *ast_const_int_create(int value, int source_code_line);
 ast_node_t *ast_const_double_create(double value, int source_code_line);
 ast_node_t *ast_const_string_create(const char *value, int source_code_line);
+ast_node_t *ast_const_unit_create(int source_code_line);
 
 // Create function call expression node
 ast_node_t *ast_expres_fun_call_create(char *fun_name, ast_node_t *params, int params_count,
