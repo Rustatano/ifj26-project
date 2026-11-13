@@ -16,9 +16,12 @@ Description: Parser implementation.
 #include "symbol_table.h"
 #include <stdbool.h>
 #include <stdlib.h>
+#include <string.h>
 
 // Forward declarations
 ast_node_t *parse_statement(parser_context_t *context);
+ast_node_t *parse_import(parser_context_t *context);
+ast_node_t *parse_fun_definition(parser_context_t *context, bool is_main);
 void load_token(parser_context_t *context);
 bool check_token(parser_context_t *context, token_type_t token_type);
 
@@ -39,13 +42,28 @@ parse_result_t parse(ast_node_t **ast_root, scanner_conf_t *scanner_conf) {
 
     load_token(&context);
 
-    ast_node_t *root = ast_block_create(AST_NODE_MAIN, context.current_token.line);
+    while (check_token(&context, TOKEN_EOL)) {
+        load_token(&context);
+    }
+
+    ast_node_t *root = ast_block_create(AST_NODE_BLOCK, context.current_token.line);
     if (root == NULL) {
         result.error_code = PARSE_ERR_INTERNAL;
         result.error_msg = "Failed to allocate root AST node";
         return result;
     }
 
+    ast_node_t *prolog = parse_import(&context);
+    if (prolog == NULL) {
+        ast_dispose(&root);
+        result.error_line = context.error_line;
+        result.error_msg = context.error_message;
+        result.error_code = context.error_code;
+        return result;
+    }
+    ast_block_append(root, prolog);
+
+    bool main_seen = false;
     while (!check_token(&context, TOKEN_EOF)) {
         while (check_token(&context, TOKEN_EOL)) {
             load_token(&context);
@@ -54,7 +72,33 @@ parse_result_t parse(ast_node_t **ast_root, scanner_conf_t *scanner_conf) {
             break;
         }
 
-        ast_node_t *stmt = parse_statement(&context);
+        bool is_main = false;
+        if (check_token(&context, TOKEN_ANNOTATION)) {
+            is_main = true;
+            if (main_seen) {
+                context.error_line = context.current_token.line;
+                context.error_message = "Duplicate @main annotation";
+                ast_dispose(&root);
+                result.error_line = context.error_line;
+                result.error_msg = context.error_message;
+                result.error_code = PARSE_ERR_SYNTAX;
+                return result;
+            }
+            main_seen = true;
+            load_token(&context);
+            while (check_token(&context, TOKEN_EOL)) {
+                load_token(&context);
+            }
+        }
+
+        ast_node_t *stmt = NULL;
+        if (check_token(&context, TOKEN_KW_DEF)) {
+            stmt = parse_fun_definition(&context, is_main);
+        } else {
+            context.error_line = context.current_token.line;
+            context.error_message = is_main ? "Expected function definition after @main"
+                                            : "Only function definitions are allowed at top level";
+        }
         if (stmt == NULL) {
             ast_dispose(&root);
             *ast_root = NULL;
@@ -71,6 +115,15 @@ parse_result_t parse(ast_node_t **ast_root, scanner_conf_t *scanner_conf) {
         if (check_token(&context, TOKEN_EOL)) {
             load_token(&context);
         }
+    }
+
+    if (!main_seen) {
+        ast_dispose(&root);
+        *ast_root = NULL;
+        result.error_line = context.current_token.line;
+        result.error_msg = "Program must contain a function annotated with @main";
+        result.error_code = PARSE_ERR_SYNTAX;
+        return result;
     }
 
     *ast_root = root;
@@ -106,10 +159,24 @@ ast_node_t *parse_import(parser_context_t *context) {
     if (!expect_token(context, TOKEN_ID, "Expected module name identifier after import")) {
         return NULL;
     }
-    char *module_name = context->current_token.attr.str_val;
+    if (strcmp(context->current_token.attr.str_val, "ifj26") != 0) {
+        context->error_line = context->current_token.line;
+        context->error_message = "Expected 'ifj26' in import prolog";
+        return NULL;
+    }
 
     load_token(context);
-    if (!expect_token(context, TOKEN_EOL, "Expected end of line after import statement")) {
+    if (!expect_token(context, TOKEN_DOT, "Expected '.' after 'ifj26'")) {
+        return NULL;
+    }
+    load_token(context);
+    if (!expect_token(context, TOKEN_MUL, "Expected '*' after 'ifj26.'")) {
+        return NULL;
+    }
+    load_token(context);
+    if (!check_token(context, TOKEN_EOL) && !check_token(context, TOKEN_EOF)) {
+        context->error_line = context->current_token.line;
+        context->error_message = "Expected end of line after import prolog";
         return NULL;
     }
     ast_node_t *new_node = ast_node_create(AST_NODE_STATEMENT_IMPORT, context->current_token.line);
@@ -119,7 +186,7 @@ ast_node_t *parse_import(parser_context_t *context) {
         context->error_code = PARSE_ERR_INTERNAL;
         return NULL;
     }
-    new_node->import_statement.module_name = module_name;
+    new_node->import_statement.module_name = "ifj26.*";
 
     return new_node;
 }
@@ -358,7 +425,7 @@ symtable_fun_param_t *parse_parameter(parser_context_t *context) {
     return param;
 }
 
-ast_node_t *parse_fun_definition(parser_context_t *context) {
+ast_node_t *parse_fun_definition(parser_context_t *context, bool is_main) {
     if (!expect_token(context, TOKEN_KW_DEF, "Expected 'def' keyword")) {
         return NULL;
     }
@@ -419,7 +486,7 @@ ast_node_t *parse_fun_definition(parser_context_t *context) {
         return NULL;
     }
 
-    ast_node_t *new_node = ast_node_create(AST_NODE_FUN_DEFINITION, line);
+    ast_node_t *new_node = ast_node_create(is_main ? AST_NODE_MAIN : AST_NODE_FUN_DEFINITION, line);
     if (!new_node) {
         context->error_line = line;
         context->error_message = "Memory allocation failed for function definition AST node";
@@ -525,13 +592,6 @@ ast_node_t *parse_statement(parser_context_t *context) {
     if (check_token(context, TOKEN_KW_RETURN)) {
         return parse_return(context);
     }
-    if (check_token(context, TOKEN_KW_DEF)) {
-        return parse_fun_definition(context);
-    }
-    if (check_token(context, TOKEN_KW_IMPORT)) {
-        return parse_import(context);
-    }
-
     if (check_token(context, TOKEN_ID)) {
         char *id_name = context->current_token.attr.str_val;
         int id_line = context->current_token.line;

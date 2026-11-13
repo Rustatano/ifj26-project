@@ -40,6 +40,10 @@ typedef struct parser_context {
     scanner_conf_t *scanner_conf;
 } parser_context_t;
 
+void load_token(parser_context_t *context);
+bool check_token(parser_context_t *context, token_type_t token_type);
+bool expect_token(parser_context_t *context, token_type_t token_type, const char *error_message);
+
 // Start the parsing process. Will call the scanner get_token function and create a AST
 parse_result_t parse(ast_node_t **ast_root, scanner_conf_t *scanner_conf);
 

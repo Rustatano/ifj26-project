@@ -1,7 +1,8 @@
 
 
+#include "parse_expresion.h"
 #include "ast.h"
-#include "parser.c"
+#include "parser.h"
 #include "scanner.h"
 #include "symbol_table.h"
 #include <stdbool.h>

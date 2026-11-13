@@ -25,7 +25,7 @@ ast_node_t *ast_node_create(ast_node_type_t type, int source_code_line) {
 }
 
 ast_node_t *ast_block_create(ast_node_type_t type, int source_code_line) {
-    if (type != AST_NODE_BLOCK && type != AST_NODE_MAIN) {
+    if (type != AST_NODE_BLOCK) {
         return NULL;
     }
     return ast_node_create(type, source_code_line);
@@ -172,7 +172,6 @@ void ast_dispose(ast_node_t **root) {
     }
 
     switch (node->type) {
-    case AST_NODE_MAIN:
     case AST_NODE_BLOCK:
         if (node->block.first_statement != NULL) {
             ast_dispose(&(node->block.first_statement));
@@ -182,6 +181,7 @@ void ast_dispose(ast_node_t **root) {
     case AST_NODE_STATEMENT_IMPORT:
         break;
 
+    case AST_NODE_MAIN:
     case AST_NODE_FUN_DEFINITION:
         if (node->fun_definition.body_block != NULL) {
             ast_dispose(&(node->fun_definition.body_block));

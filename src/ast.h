@@ -69,7 +69,7 @@ struct ast_node {
     // Type-specific values
     union {
 
-        // AST_NODE_PROGRAM and AST_NODE_BLOCK
+        // AST_NODE_BLOCK
         struct {
             ast_node_t *first_statement;
         } block;
