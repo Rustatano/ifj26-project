@@ -33,9 +33,9 @@ typedef enum {
     AST_NODE_STATEMENT_IMPORT,
 
     // Expressions in source code
-    AST_NODE_EXPRES_OPERATOR,
-    AST_NODE_EXPRES_FUN_CALL,
-    AST_NODE_EXPRES_VAR,
+    AST_NODE_EXPRESSION_OPERATOR,
+    AST_NODE_EXPRESSION_FUN_CALL,
+    AST_NODE_EXPRESSION_VAR,
 
     // Constants in source code
     AST_NODE_CONST_INT,
@@ -46,21 +46,21 @@ typedef enum {
 
 typedef enum {
     // Arithmetic
-    AST_EXPRES_OPERATOR_ADD,
-    AST_EXPRES_OPERATOR_SUB,
-    AST_EXPRES_OPERATOR_MUL,
-    AST_EXPRES_OPERATOR_DIV,
-    AST_EXPRES_OPERATOR_UNARY_PLUS,
-    AST_EXPRES_OPERATOR_UNARY_MINUS,
+    AST_EXPRESSION_OPERATOR_ADD,
+    AST_EXPRESSION_OPERATOR_SUB,
+    AST_EXPRESSION_OPERATOR_MUL,
+    AST_EXPRESSION_OPERATOR_DIV,
+    AST_EXPRESSION_OPERATOR_UNARY_PLUS,
+    AST_EXPRESSION_OPERATOR_UNARY_MINUS,
 
     // Logic
-    AST_EXPRES_OPERATOR_EQUAL,         // ==
-    AST_EXPRES_OPERATOR_NOT_EQUAL,     // !=
-    AST_EXPRES_OPERATOR_SMALLER,       // <
-    AST_EXPRES_OPERATOR_SMALLER_EQUAL, // <=
-    AST_EXPRES_OPERATOR_BIGGER,        // >
-    AST_EXPRES_OPERATOR_BIGGER_EQUAL   // >=
-} ast_expres_operator_t;
+    AST_EXPRESSION_OPERATOR_EQUAL,         // ==
+    AST_EXPRESSION_OPERATOR_NOT_EQUAL,     // !=
+    AST_EXPRESSION_OPERATOR_SMALLER,       // <
+    AST_EXPRESSION_OPERATOR_SMALLER_EQUAL, // <=
+    AST_EXPRESSION_OPERATOR_BIGGER,        // >
+    AST_EXPRESSION_OPERATOR_BIGGER_EQUAL   // >=
+} ast_expression_operator_t;
 
 struct ast_node {
     ast_node_type_t type;
@@ -78,12 +78,12 @@ struct ast_node {
 
         // AST_NODE_STATEMENT_IMPORT
         struct {
-            const char *module_name;
+            char *module_name;
         } import_statement;
 
         // AST_NODE_FUN_DEFINITION
         struct {
-            const char *name;
+            char *name;
             symtable_fun_param_t *params;
             symtable_datatype_t return_type;
             ast_node_t *body_block;
@@ -91,18 +91,18 @@ struct ast_node {
 
         // AST_NODE_VAR_DECLARATION
         struct {
-            const char *name;
+            char *name;
             int unique_id;
             symtable_datatype_t var_type;
             bool is_mutable;
-            ast_node_t *init_expres; // Pointer to initialization expression or NULL
+            ast_node_t *init_expression; // Pointer to initialization  expression or NULL
         } var_declaration;
 
         // AST_NODE_VALUE_ASSIGNMENT
         struct {
-            const char *target_var_name;
+            char *target_var_name;
             int unique_id;
-            ast_node_t *expres; // Expression that gives the value
+            ast_node_t *expression; // Expression that gives the value
         } assign_statement;
 
         // AST_NODE_STATEMENT_IF
@@ -120,56 +120,53 @@ struct ast_node {
 
         // AST_NODE_STATEMENT_RETURN
         struct {
-            ast_node_t *expres;
+            ast_node_t *expression;
         } return_statement;
 
-        // AST_NODE_EXPRES_OPERATOR
+        // AST_NODE_EXPRESSION_OPERATOR
         struct {
-            ast_expres_operator_t op; // operator
+            ast_expression_operator_t op; // operator
             ast_node_t *left_side;
             ast_node_t *right_side;
-        } expres_operator;
+        } expression_operator;
 
-        // AST_NODE_EXPRES_FUN_CALL
+        // AST_NODE_EXPRESSION_FUN_CALL
         struct {
             char *fun_name;
             ast_node_t *params; // Linked list
             int params_count;
-        } expres_fun_call;
+        } expression_fun_call;
 
-        // AST_NODE_EXPRES_VAR
+        // AST_NODE_EXPRESSION_VAR
         struct {
-            const char *name;
+            char *name;
             int unique_id;
-        } expressions_var;
+        } expression_var;
 
         // Constants
         int int_value;
         double double_value;
-        const char *str_value;
+        char *str_value;
     };
 };
 
-// Allocate memory for AST node and set type and line
-ast_node_t *ast_node_create(ast_node_type_t type, int source_code_line);
-
-// Create block or program node
-ast_node_t *ast_block_create(ast_node_type_t type, int source_code_line);
+// Create block node
+ast_node_t *ast_block_create(int source_code_line);
 
 // Append statement to block statement list
 void ast_block_append(ast_node_t *block_node, ast_node_t *statement);
 
-// Create operation expression node
-ast_node_t *ast_expres_operation_create(ast_expres_operator_t op, ast_node_t *left_side,
-                                        ast_node_t *right_side, int source_code_line);
+// Create operation  expression node
+ast_node_t *ast_expression_operation_create(ast_expression_operator_t op, ast_node_t *left_side,
+                                            ast_node_t *right_side, int source_code_line);
 
 // Create variable declaration node
-ast_node_t *ast_var_declaration_create(const char *name, int unique_id,
-                                       symtable_datatype_t var_type, bool is_mutable,
-                                       ast_node_t *init_expres, int source_code_line);
+ast_node_t *ast_var_declaration_create(char *name, int unique_id, symtable_datatype_t var_type,
+                                       bool is_mutable, ast_node_t *init_expression,
+                                       int source_code_line);
 
 // Create variable assignment node
-ast_node_t *ast_assignment_create(const char *target_var_name, int unique_id, ast_node_t *expres,
+ast_node_t *ast_assignment_create(char *target_var_name, int unique_id, ast_node_t *expression,
                                   int source_code_line);
 
 // Create if-else statement node
@@ -179,19 +176,31 @@ ast_node_t *ast_if_create(ast_node_t *condition, ast_node_t *if_block, ast_node_
 // Create while loop statement node
 ast_node_t *ast_while_create(ast_node_t *condition, ast_node_t *body_block, int source_code_line);
 
-// Create variable expression node
-ast_node_t *ast_expres_var_create(const char *name, int unique_id, symtable_datatype_t result_type,
-                                  int source_code_line);
+// Create variable  expression node
+ast_node_t *ast_expression_var_create(char *name, int unique_id, symtable_datatype_t result_type,
+                                      int source_code_line);
 
 // Create constants
 ast_node_t *ast_const_int_create(int value, int source_code_line);
 ast_node_t *ast_const_double_create(double value, int source_code_line);
-ast_node_t *ast_const_string_create(const char *value, int source_code_line);
+ast_node_t *ast_const_string_create(char *value, int source_code_line);
 ast_node_t *ast_const_unit_create(int source_code_line);
 
-// Create function call expression node
-ast_node_t *ast_expres_fun_call_create(char *fun_name, ast_node_t *params, int params_count,
-                                       int source_code_line);
+// Create function call  expression node
+ast_node_t *ast_expression_fun_call_create(char *fun_name, ast_node_t *params, int params_count,
+                                           int source_code_line);
+
+// Create statement nodes
+ast_node_t *ast_import_create(const char *module_name, int source_code_line);
+ast_node_t *ast_return_create(ast_node_t *expression, int source_code_line);
+
+// Create function definition nodes
+ast_node_t *ast_fun_definition_create(char *name, symtable_fun_param_t *params,
+                                      symtable_datatype_t return_type, ast_node_t *body_block,
+                                      int source_code_line);
+ast_node_t *ast_main_create(char *name, symtable_fun_param_t *params,
+                            symtable_datatype_t return_type, ast_node_t *body_block,
+                            int source_code_line);
 
 // Delete whole AST and free all memory
 void ast_dispose(ast_node_t **root);
