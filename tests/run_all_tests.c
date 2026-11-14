@@ -42,6 +42,11 @@ extern void symtable_stack_delete_test(void **state);
 // Scanner test functions
 extern void scanner_init_test(void **state);
 
+// Code generator test functions
+extern void codegen_program_and_constants_test(void **state);
+extern void codegen_variable_declaration_and_assignment_test(void **state);
+extern void codegen_integer_arithmetic_test(void **state);
+
 int main(void) {
     // Define test groups
     const struct CMUnitTest symtable_tests[] = {
@@ -70,6 +75,12 @@ int main(void) {
     // Run test groups
     int res1 = cmocka_run_group_tests(symtable_tests, NULL, NULL);
 
-    // Evaluate return value
-    return res1;
+    const struct CMUnitTest codegen_tests[] = {
+        cmocka_unit_test(codegen_program_and_constants_test),
+        cmocka_unit_test(codegen_variable_declaration_and_assignment_test),
+        cmocka_unit_test(codegen_integer_arithmetic_test),
+    };
+    int res2 = cmocka_run_group_tests(codegen_tests, NULL, NULL);
+
+    return res1 || res2;
 }
