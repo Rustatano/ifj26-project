@@ -11,7 +11,7 @@ Description: Parser implementation.
 */
 #include "parser.h"
 #include "ast.h"
-#include "parse_expresion.h"
+#include "parse_expression.h"
 #include "scanner.h"
 #include "symbol_table.h"
 #include <stdbool.h>
