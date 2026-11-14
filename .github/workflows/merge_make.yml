@@ -42,10 +42,10 @@ jobs:
       - name: Compile LaTeX document
         uses: xu-cheng/latex-action@v3
         with:
-          root_file: main.tex
+          root_file: dokumentace.tex
           working_directory: doc
           compiler: latexmk
-          args: -pdf -outdir=build
+          args: -pdf -outdir=build -pdflatex="pdflatex -interaction=nonstopmode"
 
   tests:
     runs-on: ubuntu-latest
