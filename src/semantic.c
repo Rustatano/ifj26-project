@@ -173,23 +173,24 @@ symtable_datatype_t implicit_conversion_int_to_double(semantic_context_t *ctx,
 symtable_datatype_t check_expres_operator(semantic_context_t *ctx, symtable_stack_t *symtable_stack,
                                           ast_node_t *node) {
     // Get types of left and right operands
-    symtable_datatype_t left = check_expr(symtable_stack, node->expression_operator.left_side);
+    symtable_datatype_t left = check_expr(ctx, symtable_stack, node->expression_operator.left_side);
     if (left == SYM_DATATYPE_ERROR)
         return SYM_DATATYPE_ERROR;
-    symtable_datatype_t right = check_expr(symtable_stack, node->expression_operator.right_side);
+    symtable_datatype_t right =
+        check_expr(ctx, symtable_stack, node->expression_operator.right_side);
     if (right == SYM_DATATYPE_ERROR)
         return SYM_DATATYPE_ERROR;
 
     // Check operands types correctness
     if (left == SYM_DATATYPE_INT && right == SYM_DATATYPE_DOUBLE) {
-        if (implicit_conversion_int_to_double(&(node->expression_operator.left_side)) ==
+        if (implicit_conversion_int_to_double(ctx, &(node->expression_operator.left_side)) ==
             SYM_DATATYPE_ERROR) {
             report_semantic_error(ctx, 6, "Type mismatch in expression", node->source_code_line);
             return SYM_DATATYPE_ERROR;
         }
         return SYM_DATATYPE_DOUBLE;
     } else if (left == SYM_DATATYPE_DOUBLE && right == SYM_DATATYPE_INT) {
-        if (implicit_conversion_int_to_double(&(node->expression_operator.right_side)) ==
+        if (implicit_conversion_int_to_double(ctx, &(node->expression_operator.right_side)) ==
             SYM_DATATYPE_ERROR) {
             report_semantic_error(ctx, 6, "Type mismatch in expression", node->source_code_line);
             return SYM_DATATYPE_ERROR;
@@ -211,13 +212,13 @@ symtable_datatype_t check_expr(semantic_context_t *ctx, symtable_stack_t *symtab
         return SYM_DATATYPE_ERROR;
     switch (node->type) {
     case AST_NODE_EXPRESSION_OPERATOR:
-        return node->result_type = check_expres_operator(symtable_stack, node);
+        return node->result_type = check_expres_operator(ctx, symtable_stack, node);
 
     case AST_NODE_EXPRESSION_FUN_CALL:
-        return node->result_type = check_expres_fun_call(symtable_stack, node);
+        return node->result_type = check_expres_fun_call(ctx, symtable_stack, node);
 
     case AST_NODE_EXPRESSION_VAR:
-        return node->result_type = check_expres_var(symtable_stack, node);
+        return node->result_type = check_expres_var(ctx, symtable_stack, node);
 
     case AST_NODE_CONST_INT:
     case AST_NODE_CONST_DOUBLE:
@@ -261,14 +262,14 @@ symtable_datatype_t check_var_declaration(semantic_context_t *ctx, symtable_stac
 
     // Declaration of variable si invalid, must be initialized
     if (node->var_declaration.init_expression == NULL) {
-        report_semantic_error(6, "Variable must be initialized at declaration",
+        report_semantic_error(ctx, 6, "Variable must be initialized at declaration",
                               node->source_code_line);
         return SYM_DATATYPE_ERROR;
     }
 
     // Get initialization expression type
     symtable_datatype_t init_expr_type =
-        check_expr(symtable_stack, node->var_declaration.init_expression);
+        check_expr(ctx, symtable_stack, node->var_declaration.init_expression);
     if (init_expr_type == SYM_DATATYPE_ERROR) {
         return SYM_DATATYPE_ERROR;
     }
@@ -282,7 +283,7 @@ symtable_datatype_t check_var_declaration(semantic_context_t *ctx, symtable_stac
     if (node->var_declaration.var_type != init_expr_type) {
         if (node->var_declaration.var_type == SYM_DATATYPE_DOUBLE &&
             init_expr_type == SYM_DATATYPE_INT) {
-            if (implicit_conversion_int_to_double(&node->var_declaration.init_expression) ==
+            if (implicit_conversion_int_to_double(ctx, &node->var_declaration.init_expression) ==
                 SYM_DATATYPE_ERROR) {
                 report_semantic_error(ctx, 6, "Type mismatch in variable initialization",
                                       node->source_code_line);
@@ -316,7 +317,8 @@ symtable_datatype_t check_value_assignment(semantic_context_t *ctx,
         return SYM_DATATYPE_ERROR;
     }
 
-    symtable_datatype_t expr_type = check_expr(symtable_stack, node->assign_statement.expression);
+    symtable_datatype_t expr_type =
+        check_expr(ctx, symtable_stack, node->assign_statement.expression);
     if (expr_type == SYM_DATATYPE_ERROR) {
         return SYM_DATATYPE_ERROR;
     }
@@ -324,7 +326,7 @@ symtable_datatype_t check_value_assignment(semantic_context_t *ctx,
     if (var_declaration->data.var.type != expr_type) {
         if (var_declaration->data.var.type == SYM_DATATYPE_DOUBLE &&
             expr_type == SYM_DATATYPE_INT) {
-            if (implicit_conversion_int_to_double(&node->assign_statement.expression) ==
+            if (implicit_conversion_int_to_double(ctx, &node->assign_statement.expression) ==
                 SYM_DATATYPE_ERROR) {
                 report_semantic_error(ctx, 6, "Type mismatch in assignment",
                                       node->source_code_line);
@@ -376,7 +378,8 @@ symtable_datatype_t check_statement_while(semantic_context_t *ctx, symtable_stac
 symtable_datatype_t check_statement_return(semantic_context_t *ctx,
                                            symtable_stack_t *symtable_stack, ast_node_t *node,
                                            symtable_node_t *fun_context) {
-    symtable_datatype_t return_type = check_expr(symtable_stack, node->return_statement.expression);
+    symtable_datatype_t return_type =
+        check_expr(ctx, symtable_stack, node->return_statement.expression);
     if (return_type == SYM_DATATYPE_ERROR) {
         return SYM_DATATYPE_ERROR;
     }
@@ -384,7 +387,7 @@ symtable_datatype_t check_statement_return(semantic_context_t *ctx,
     if (fun_context->data.fun.return_type != return_type) {
         if (fun_context->data.fun.return_type == SYM_DATATYPE_DOUBLE &&
             return_type == SYM_DATATYPE_INT) {
-            if (implicit_conversion_int_to_double(&node->return_statement.expression) ==
+            if (implicit_conversion_int_to_double(ctx, &node->return_statement.expression) ==
                 SYM_DATATYPE_ERROR) {
                 report_semantic_error(ctx, 6, "Return type mismatch", node->source_code_line);
                 return SYM_DATATYPE_ERROR;
@@ -450,8 +453,8 @@ symtable_datatype_t check_block(semantic_context_t *ctx, symtable_stack_t *symta
             }
             break;
         case AST_NODE_EXPRESSION_FUN_CALL:
-            if ((current_node->result_type = check_expres_fun_call(symtable_stack, current_node)) ==
-                SYM_DATATYPE_ERROR) {
+            if ((current_node->result_type = check_expres_fun_call(
+                     ctx, symtable_stack, current_node)) == SYM_DATATYPE_ERROR) {
                 symtable_pop_avl(symtable_stack);
                 return SYM_DATATYPE_ERROR;
             }
