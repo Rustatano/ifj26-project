@@ -27,7 +27,7 @@ build:
 
 # build documentation
 doc:
-	latexmk -pdf -outdir=$(DOC_BUILD_DIR) -cd $(DOC_DIR)/$(DOC_MAIN).tex
+	latexmk -pdf -pdflatex="pdflatex -interaction=nonstopmode" -outdir=$(DOC_BUILD_DIR) -cd $(DOC_DIR)/$(DOC_MAIN).tex
 	cp $(DOC_DIR)/$(DOC_BUILD_DIR)/$(DOC_MAIN).pdf .
 
 # build archive
