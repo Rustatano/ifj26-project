@@ -12,7 +12,8 @@ Description: Generates IFJcode26 from the Abstract Syntax Tree
 
 #include "codegen.h"
 #define INT32_MAX 2147483647
-#define INT32_MIN -2147483648
+#define INT32_MIN (-2147483647 - 1) // to avoid it being interpreted as long int
+// when -2147483648 was used it got interpreted as long int and caused warnings with %d
 #define BUILTIN_FUN_LIST                                                                           \
     {"print", "readLine",  "readInt", "readDouble", "toStr",                                       \
      "toInt", "strLength", "substr",  "ord",        "chr"}
@@ -24,6 +25,9 @@ typedef struct {
     bool is_in_loop;               // used for handling var declaration vs assignment
     bool is_overflow_check_needed; // whether to generate the code for it
 } codegen_context_t;
+
+// forward declaration so it can be used in other functions
+bool handle_node(ast_node_t *node, codegen_context_t *context);
 
 // create file
 FILE *create_file(const char *output_file) {
@@ -112,7 +116,7 @@ void check_and_correct_inf_overflow(ast_node_t *node, codegen_context_t *context
 // so there is no multiple var declarations in case of a loop block
 void extract_var_declarations(ast_node_t *node, codegen_context_t *context) {
     if (node == NULL) {
-        return true;
+        return;
     }
 
     if (node->type == AST_NODE_VAR_DECLARATION) {
@@ -506,6 +510,7 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
             fprintf(stderr, "Unknown AST operator\n");
             return false;
         }
+        break;
 
     case AST_NODE_EXPRES_FUN_CALL:
         // first check if a function is builtin or user defined
