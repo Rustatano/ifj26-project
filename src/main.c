@@ -10,8 +10,6 @@ Description: Main entry point for the IFJ26 language translator
 -------------------------------------------------------
 */
 
-#include <stdio.h>
-
 #include "def.h"
 #include "scanner.h"
 
