@@ -88,7 +88,9 @@ void generate_oveflow_check(codegen_context_t *context) {
 
     // negative overflow
     fprintf(context->file, "LABEL $OVERFLOW_NEGATIVE\n");
-    fprintf(context->file, "PUSHS int@%d\n", INT32_MAX + 1);
+    fprintf(context->file, "PUSHS int@%d\n", INT32_MAX);
+    fprintf(context->file, "PUSHS int@1\n");
+    fprintf(context->file, "ADDS\n");
     fprintf(context->file, "PUSHS int@2\n");
     fprintf(context->file, "MULS\n");
     fprintf(context->file, "PUSHS GF@tmp0\n");
