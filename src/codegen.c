@@ -95,8 +95,8 @@ void generate_oveflow_check(codegen_context_t *context) {
 }
 
 void check_and_correct_inf_overflow(ast_node_t *node, codegen_context_t *context) {
-    if (node->expres_operator.left_side->result_type != SYM_TYPE_INT ||
-        node->expres_operator.right_side->result_type != SYM_TYPE_INT) {
+    if (node->expres_operator.left_side->result_type != SYM_DATATYPE_INT ||
+        node->expres_operator.right_side->result_type != SYM_DATATYPE_INT) {
         return;
     }
     fprintf(context->file, "CALL $OVERFLOW_CHECK\n");
@@ -138,7 +138,7 @@ void generate_builtin_function_in_place(char *fun_name, ast_node_t *node,
         handle_node(node->expres_fun_call.params, context);
         // move the value from stack to var, so it can be used with write
         fprintf(context->file, "POPS GF@tmp0\n");
-        if (node->expres_fun_call.params->result_type == SYM_TYPE_UNIT) {
+        if (node->expres_fun_call.params->result_type == SYM_DATATYPE_UNIT) {
             // special case, unit should be printed as "()"
             fprintf(context->file, "MOVE GF@tmp0 string@()\n");
         }
@@ -266,8 +266,8 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
         // then handle operator on the top of the stack
         switch (node->expres_operator.op) {
         case AST_EXPRES_OPERATOR_ADD:
-            if (node->expres_operator.left_side->result_type == SYM_TYPE_STRING &&
-                node->expres_operator.right_side->result_type == SYM_TYPE_STRING) {
+            if (node->expres_operator.left_side->result_type == SYM_DATATYPE_STRING &&
+                node->expres_operator.right_side->result_type == SYM_DATATYPE_STRING) {
                 // because concat does not have stack version, pop the values
                 // concat adn put it back to stack
                 fprintf(context->file, "POPS GF@tmp0\n");
@@ -292,8 +292,8 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
             break;
 
         case AST_EXPRES_OPERATOR_DIV:
-            if (node->expres_operator.left_side->result_type == SYM_TYPE_INT &&
-                node->expres_operator.right_side->result_type == SYM_TYPE_INT) {
+            if (node->expres_operator.left_side->result_type == SYM_DATATYPE_INT &&
+                node->expres_operator.right_side->result_type == SYM_DATATYPE_INT) {
                 fprintf(context->file, "IDIVS\n");
                 check_and_correct_inf_overflow(node, context);
             } else {
