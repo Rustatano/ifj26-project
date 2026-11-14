@@ -296,8 +296,8 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
     int label_id = context->label_counter;
 
     switch (node->type) {
-    case AST_NODE_PROGRAM:
-        handle_node(node->block.first_statement, context);
+    case AST_NODE_MAIN:
+        fprintf(context->file, "LABEL main\n");
         break;
 
     case AST_NODE_BLOCK:
