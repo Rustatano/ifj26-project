@@ -95,8 +95,8 @@ void generate_oveflow_check(codegen_context_t *context) {
 }
 
 void check_and_correct_inf_overflow(ast_node_t *node, codegen_context_t *context) {
-    if (node->expres_operator.left_side->result_type != SYM_TYPE_INT ||
-        node->expres_operator.right_side->result_type != SYM_TYPE_INT) {
+    if (node->expression_operator.left_side->result_type != SYM_DATATYPE_INT ||
+        node->expression_operator.right_side->result_type != SYM_DATATYPE_INT) {
         return;
     }
     fprintf(context->file, "CALL $OVERFLOW_CHECK\n");
@@ -135,10 +135,10 @@ void generate_builtin_function_in_place(char *fun_name, ast_node_t *node,
                                         codegen_context_t *context) {
     if (strcmp(fun_name, "print") == 0) {
         // evaluate the param (only one in this case), result is on top of the stack
-        handle_node(node->expres_fun_call.params, context);
+        handle_node(node->expression_fun_call.params, context);
         // move the value from stack to var, so it can be used with write
         fprintf(context->file, "POPS GF@tmp0\n");
-        if (node->expres_fun_call.params->result_type == SYM_TYPE_UNIT) {
+        if (node->expression_fun_call.params->result_type == SYM_DATATYPE_UNIT) {
             // special case, unit should be printed as "()"
             fprintf(context->file, "MOVE GF@tmp0 string@()\n");
         }
@@ -161,7 +161,126 @@ void generate_builtin_function_in_place(char *fun_name, ast_node_t *node,
         fprintf(context->file, "READ GF@tmp0 float\n");
         // push to stack, same as readLine
         fprintf(context->file, "PUSHS GF@tmp0\n");
+
+    } else if (strcmp(fun_name, "toStr") == 0) {
+        handle_node(node->expression_fun_call.params, context);
+
+        if (node->expression_fun_call.params->result_type == SYM_DATATYPE_UNIT) {
+            // // special case, unit should be converted to "()"
+            fprintf(context->file, "POPS GF@tmp0\n");
+            fprintf(context->file, "MOVE GF@tmp0 string@()\n");
+            fprintf(context->file, "PUSHS GF@tmp0\n");
+
+        } else if (node->expression_fun_call.params->result_type == SYM_DATATYPE_DOUBLE) {
+            fprintf(context->file, "FLOAT2STRS\n");
+
+        } else if (node->expression_fun_call.params->result_type == SYM_DATATYPE_INT) {
+            fprintf(context->file, "INT2STRS\n");
+        } else {
+            // for string, we can leave it be
+        }
+
+    } else if (strcmp(fun_name, "toInt") == 0) {
+        handle_node(node->expression_fun_call.params, context);
+        fprintf(context->file, "FLOAT2INTS\n");
+
+    } else if (strcmp(fun_name, "strLength") == 0) {
+        handle_node(node->expression_fun_call.params, context);
+        fprintf(context->file, "POPS GF@tmp0\n"); // string
+        fprintf(context->file, "STRLEN GF@tmp1 GF@tmp0\n");
+        // push result to stack
+        fprintf(context->file, "PUSHS GF@tmp1\n");
+
+    } else if (strcmp(fun_name, "substr") == 0) {
+        handle_node(node->expression_fun_call.params, context);
+        fprintf(context->file, "POPS GF@tmp2\n"); // end index
+        fprintf(context->file, "POPS GF@tmp1\n"); // start index
+        fprintf(context->file, "POPS GF@tmp0\n"); // string
+        fprintf(context->file, "SUBSTR GF@tmp0 GF@tmp0 GF@tmp1 GF@tmp2\n");
+
+        // check if params are valid
+        // start < 0
+        fprintf(context->file, "PUSHS GF@tmp1\n");
+        fprintf(context->file, "PUSHS int@0\n");
+        fprintf(context->file, "LTS\n");
+        fprintf(context->file, "JUMPIFEQS $EXIT40\n");
+
+        // end < 0
+        fprintf(context->file, "PUSHS GF@tmp2\n");
+        fprintf(context->file, "PUSHS int@0\n");
+        fprintf(context->file, "LTS\n");
+        fprintf(context->file, "JUMPIFEQS $EXIT40\n");
+
+        // start > end
+        fprintf(context->file, "PUSHS GF@tmp1\n");
+        fprintf(context->file, "PUSHS GF@tmp2\n");
+        fprintf(context->file, "GTS\n");
+        fprintf(context->file, "JUMPIFEQS $EXIT40\n");
+
+        // store strLength to gf@tmp3 for further checks
+        fprintf(context->file, "STRLEN GF@tmp3 GF@tmp0\n");
+
+        // start >= strLength
+        fprintf(context->file, "PUSHS GF@tmp1\n");
+        fprintf(context->file, "PUSHS GF@tmp3\n");
+        fprintf(context->file, "GTS\n");
+        fprintf(context->file, "PUSHS GF@tmp1\n");
+        fprintf(context->file, "PUSHS GF@tmp3\n");
+        fprintf(context->file, "EQS\n");
+        fprintf(context->file, "ORS\n");
+        fprintf(context->file, "JUMPIFEQS $EXIT40\n");
+
+        // end > strLength
+        fprintf(context->file, "PUSHS GF@tmp2\n");
+        fprintf(context->file, "PUSHS GF@tmp3\n");
+        fprintf(context->file, "GTS\n");
+        fprintf(context->file, "JUMPIFEQS $EXIT40\n");
+        // end of checks
+
+        // actual code of substr
+        // sub result is gonna be in GF@tmp3 (strLength is no longer needed)
+        // GF@tmp4 is gonna be used for getchar results
+        // first char
+        fprintf(context->file, "GETCHAR GF@tmp3 GF@tmp0 GF@tmp1\n");
+        fprintf(context->file, "ADD GF@tmp1 GF@tmp1 int@1\n");
+        // loop for other chars
+        fprintf(context->file, "LABEL $SUBSTR_LOOP\n");
+        // check if start index has gone over end index
+        fprintf(context->file, "PUSHS GF@tmp1\n");
+        fprintf(context->file, "PUSHS GF@tmp2\n");
+        fprintf(context->file, "GTS\n");
+        fprintf(context->file, "JUMPIFEQS $SUBSTR_LOOP_END\n");
+        // get current char and concat it
+        fprintf(context->file, "GETCHAR GF@tmp4 GF@tmp0 GF@tmp1\n");
+        fprintf(context->file, "CONCAT GF@tmp3 GF@tmp3 GF@tmp4\n");
+        // increment and jump
+        fprintf(context->file, "ADD GF@tmp1 GF@tmp1 int@1\n");
+        fprintf(context->file, "JUMP $SUBSTR_LOOP\n");
+
+        // end of loop
+        fprintf(context->file, "LABEL $SUBSTR_LOOP_END\n");
+        // push result to stack
+        fprintf(context->file, "PUSHS GF@tmp3\n");
+
+    } else if (strcmp(fun_name, "ord") == 0) {
+        handle_node(node->expression_fun_call.params, context);
+        fprintf(context->file, "STR2INTS\n");
+
+    } else if (strcmp(fun_name, "chr") == 0) {
+        handle_node(node->expression_fun_call.params, context);
+        fprintf(context->file, "INT2CHARS\n");
     }
+}
+
+void load_params_from_stack_reverse(symtable_fun_param_t *params, codegen_context_t *context) {
+    // end of the linked list
+    if (params == NULL) {
+        return;
+    }
+    // first handle the next param
+    load_params_from_stack_reverse(params->next, context);
+    // then handle the current one
+    fprintf(context->file, "POPS LF@%s$%d\n", params->name, params->unique_id);
 }
 
 bool handle_node(ast_node_t *node, codegen_context_t *context) {
@@ -179,6 +298,12 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
         handle_node(node->block.first_statement, context);
         break;
 
+    case AST_NODE_CONVERT:
+        // usef for implicit conversion of int to float in expression
+        handle_node(node->block.first_statement, context);
+        fprintf(context->file, "INT2FLOATS\n");
+        break;
+
     case AST_NODE_FUN_DEFINITION:
         break;
     case AST_NODE_VAR_DECLARATION:
@@ -187,9 +312,9 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
             fprintf(context->file, "DEFVAR LF@%s$%s\n", node->var_declaration.name,
                     node->var_declaration.unique_id);
         }
-        if (node->var_declaration.init_expres != NULL) {
+        if (node->var_declaration.init_expression != NULL) {
             // handle the expression, result is on top of the stack
-            handle_node(node->var_declaration.init_expres, context);
+            handle_node(node->var_declaration.init_expression, context);
             // save the result from the stack to the variable
             fprintf(context->file, "POPS LF@%s$%s\n", node->var_declaration.name,
                     node->var_declaration.unique_id);
@@ -198,8 +323,8 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
 
     case AST_NODE_VALUE_ASSIGNMENT:
         // same as variable declaration but just the assignment part
-        handle_node(node->assign_statement.expres, context);
-        fprintf(context->file, "POPS LF@%s$%s\n", node->assign_statement.target_var_name,
+        handle_node(node->assign_statement.expression, context);
+        fprintf(context->file, "POPS LF@%s$%d\n", node->assign_statement.target_var_name,
                 node->assign_statement.unique_id);
         break;
 
@@ -249,7 +374,7 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
         break;
 
     case AST_NODE_STATEMENT_RETURN:
-        handle_node(node->return_statement.expres, context);
+        handle_node(node->return_statement.expression, context);
         fprintf(context->file, "POPFRAME\n");
         fprintf(context->file, "RETURN\n");
         break;
@@ -258,16 +383,16 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
         // dont need do anything here, header is already in startup code
         break;
 
-    case AST_NODE_EXPRES_OPERATOR:
+    case AST_NODE_EXPRESSION_OPERATOR:
         // first handle left and right side
-        handle_node(node->expres_operator.left_side, context);
-        handle_node(node->expres_operator.right_side, context);
+        handle_node(node->expression_operator.left_side, context);
+        handle_node(node->expression_operator.right_side, context);
 
         // then handle operator on the top of the stack
-        switch (node->expres_operator.op) {
-        case AST_EXPRES_OPERATOR_ADD:
-            if (node->expres_operator.left_side->result_type == SYM_TYPE_STRING &&
-                node->expres_operator.right_side->result_type == SYM_TYPE_STRING) {
+        switch (node->expression_operator.op) {
+        case AST_EXPRESSION_OPERATOR_ADD:
+            if (node->expression_operator.left_side->result_type == SYM_DATATYPE_STRING &&
+                node->expression_operator.right_side->result_type == SYM_DATATYPE_STRING) {
                 // because concat does not have stack version, pop the values
                 // concat adn put it back to stack
                 fprintf(context->file, "POPS GF@tmp0\n");
@@ -281,19 +406,19 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
             check_and_correct_inf_overflow(node, context);
             break;
 
-        case AST_EXPRES_OPERATOR_SUB:
+        case AST_EXPRESSION_OPERATOR_SUB:
             fprintf(context->file, "SUBS\n");
             check_and_correct_inf_overflow(node, context);
             break;
 
-        case AST_EXPRES_OPERATOR_MUL:
+        case AST_EXPRESSION_OPERATOR_MUL:
             fprintf(context->file, "MULS\n");
             check_and_correct_inf_overflow(node, context);
             break;
 
-        case AST_EXPRES_OPERATOR_DIV:
-            if (node->expres_operator.left_side->result_type == SYM_TYPE_INT &&
-                node->expres_operator.right_side->result_type == SYM_TYPE_INT) {
+        case AST_EXPRESSION_OPERATOR_DIV:
+            if (node->expression_operator.left_side->result_type == SYM_DATATYPE_INT &&
+                node->expression_operator.right_side->result_type == SYM_DATATYPE_INT) {
                 fprintf(context->file, "IDIVS\n");
                 check_and_correct_inf_overflow(node, context);
             } else {
@@ -301,20 +426,20 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
             }
             break;
 
-        case AST_EXPRES_OPERATOR_EQUAL:
+        case AST_EXPRESSION_OPERATOR_EQUAL:
             fprintf(context->file, "EQS\n");
             break;
 
-        case AST_EXPRES_OPERATOR_NOT_EQUAL:
+        case AST_EXPRESSION_OPERATOR_NOT_EQUAL:
             fprintf(context->file, "EQS\n");
             fprintf(context->file, "NOTS\n");
             break;
 
-        case AST_EXPRES_OPERATOR_SMALLER:
+        case AST_EXPRESSION_OPERATOR_SMALLER:
             fprintf(context->file, "LTS\n");
             break;
 
-        case AST_EXPRES_OPERATOR_SMALLER_EQUAL:
+        case AST_EXPRESSION_OPERATOR_SMALLER_EQUAL:
             // < or =
             // save vars to temp
             fprintf(context->file, "POPS GF@tmp0\n");
@@ -331,11 +456,11 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
             fprintf(context->file, "ORS\n");
             break;
 
-        case AST_EXPRES_OPERATOR_BIGGER:
+        case AST_EXPRESSION_OPERATOR_BIGGER:
             fprintf(context->file, "GTS\n");
             break;
 
-        case AST_EXPRES_OPERATOR_BIGGER_EQUAL:
+        case AST_EXPRESSION_OPERATOR_BIGGER_EQUAL:
             // > or =
             // save vars to temp
             fprintf(context->file, "POPS GF@tmp0\n");
@@ -357,12 +482,21 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
             return false;
         }
 
-    case AST_NODE_EXPRES_FUN_CALL:
+    case AST_NODE_EXPRESSION_FUN_CALL:
+        // first check if a function is builtin or user defined
+        if (check_function_is_builtin(node->expression_fun_call.fun_name)) {
+            generate_builtin_function_in_place(node->expression_fun_call.fun_name, node, context);
+        } else {
+            // params, results will be on stack (in reverse order)
+            handle_node(node->expression_fun_call.params, context);
+            // call the function
+            fprintf(context->file, "CALL %s\n", node->expression_fun_call.fun_name);
+        }
         break;
 
-    case AST_NODE_EXPRES_VAR:
-        fprintf(context->file, "PUSHS LF@%s$%s\n", node->expressions_var.name,
-                node->expressions_var.unique_id);
+    case AST_NODE_EXPRESSION_VAR:
+        fprintf(context->file, "PUSHS LF@%s$%d\n", node->expression_var.name,
+                node->expression_var.unique_id);
         break;
 
     case AST_NODE_CONST_INT:
