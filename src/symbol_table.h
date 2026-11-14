@@ -1,7 +1,7 @@
 /*
 -------------------------------------------------------
 Name of project: Translator IFJ26
-Authors: Zobal, Tajovský, Ondruška, Svoboda
+Authors: xondrus00 (Sebastian Ondruska), xsvoboj01 (Jakub Svoboda)
 Creation date: 14.10.2026
 File: symbol_table.h
 
@@ -28,6 +28,7 @@ typedef enum {
 
 typedef enum {
     SYM_DATATYPE_UNKNOWN,
+    SYM_DATATYPE_ERROR,
     SYM_DATATYPE_ID,
     SYM_DATATYPE_INT,
     SYM_DATATYPE_DOUBLE,
@@ -51,7 +52,6 @@ typedef struct {
         struct {
             symtable_datatype_t type;
             bool is_mutable;
-            bool is_initialized;
             int unique_id; // ID is used by code generator
         } var;
 
@@ -101,8 +101,8 @@ bool symtable_insert_item(symtable_stack_t *stack, char *id, symtable_data_t dat
 symtable_node_t *symtable_search(symtable_stack_t *stack, symtable_type_t type, char *id);
 
 // Search item in the current top AVL only
-symtable_node_t *symtable_stack_search_current(symtable_stack_item_t *stack_top,
-                                               symtable_type_t type, char *id);
+symtable_node_t *symtable_stack_search_current(symtable_stack_t *stack, symtable_type_t type,
+                                               char *id);
 
 // Delete whole symbol table and free all the memory
 void symtable_stack_delete(symtable_stack_t *stack);

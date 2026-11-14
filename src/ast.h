@@ -22,6 +22,8 @@ typedef enum {
     // Program and structural nodes
     AST_NODE_MAIN,  // Used only in for main function
     AST_NODE_BLOCK, // Block of statements
+    AST_NODE_BLOCK,   // Block of statements
+    AST_NODE_CONVERT, // Used in Int to Double conversion of variable
 
     // Statements and declarations
     AST_NODE_FUN_DEFINITION,
@@ -71,7 +73,7 @@ struct ast_node {
     // Type-specific values
     union {
 
-        // AST_NODE_BLOCK
+        // AST_NODE_PROGRAM, AST_NODE_BLOCK and AST_NODE_CONVERT
         struct {
             ast_node_t *first_statement;
         } block;
