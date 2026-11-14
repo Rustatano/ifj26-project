@@ -210,19 +210,19 @@ void generate_builtin_function_in_place(char *fun_name, ast_node_t *node,
         fprintf(context->file, "PUSHS GF@tmp1\n");
         fprintf(context->file, "PUSHS int@0\n");
         fprintf(context->file, "LTS\n");
-        fprintf(context->file, "JUMPIFEQS $RETURN40\n");
+        fprintf(context->file, "JUMPIFEQS $EXIT40\n");
 
         // end < 0
         fprintf(context->file, "PUSHS GF@tmp2\n");
         fprintf(context->file, "PUSHS int@0\n");
         fprintf(context->file, "LTS\n");
-        fprintf(context->file, "JUMPIFEQS $RETURN40\n");
+        fprintf(context->file, "JUMPIFEQS $EXIT40\n");
 
         // start > end
         fprintf(context->file, "PUSHS GF@tmp1\n");
         fprintf(context->file, "PUSHS GF@tmp2\n");
         fprintf(context->file, "GTS\n");
-        fprintf(context->file, "JUMPIFEQS $RETURN40\n");
+        fprintf(context->file, "JUMPIFEQS $EXIT40\n");
 
         // store strLength to gf@tmp3 for further checks
         fprintf(context->file, "STRLEN GF@tmp3 GF@tmp0\n");
@@ -235,13 +235,13 @@ void generate_builtin_function_in_place(char *fun_name, ast_node_t *node,
         fprintf(context->file, "PUSHS GF@tmp3\n");
         fprintf(context->file, "EQS\n");
         fprintf(context->file, "ORS\n");
-        fprintf(context->file, "JUMPIFEQS $RETURN40\n");
+        fprintf(context->file, "JUMPIFEQS $EXIT40\n");
 
         // end > strLength
         fprintf(context->file, "PUSHS GF@tmp2\n");
         fprintf(context->file, "PUSHS GF@tmp3\n");
         fprintf(context->file, "GTS\n");
-        fprintf(context->file, "JUMPIFEQS $RETURN40\n");
+        fprintf(context->file, "JUMPIFEQS $EXIT40\n");
         // end of checks
 
         // actual code of substr
@@ -576,8 +576,8 @@ bool codegen(ast_node_t *ast_root, const char *output_file) {
     if (context->is_overflow_check_needed) {
         generate_oveflow_check(context);
     }
-    fprintf(context->file, "LABEL $RETURN40\n");
-    fprintf(context->file, "RETURN int@40\n");
+    fprintf(context->file, "LABEL $EXIT40\n");
+    fprintf(context->file, "EXIT int@40\n");
 
     // cleanup
     destroy_codegen_context(context);
