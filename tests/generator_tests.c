@@ -34,6 +34,12 @@ static ast_node_t *create_test_node(ast_node_type_t type) {
 
 static ast_node_t *create_test_main(void) { return create_test_node(AST_NODE_MAIN); }
 
+static ast_node_t *create_test_block(ast_node_t *first_statement) {
+    ast_node_t *block = create_test_node(AST_NODE_BLOCK);
+    block->block.first_statement = first_statement;
+    return block;
+}
+
 static ast_node_t *create_test_int(int value) {
     ast_node_t *node = create_test_node(AST_NODE_CONST_INT);
     node->int_value = value;
@@ -48,6 +54,10 @@ static void free_test_ast(ast_node_t *node) {
 
     free_test_ast(node->next);
     switch (node->type) {
+    case AST_NODE_MAIN:
+    case AST_NODE_BLOCK:
+        free_test_ast(node->block.first_statement);
+        break;
     case AST_NODE_VAR_DECLARATION:
         free_test_ast(node->var_declaration.init_expres);
         break;
@@ -89,7 +99,7 @@ void codegen_program_and_constants_test(void **state) {
     ast_node_t *string_node = create_test_node(AST_NODE_CONST_STRING);
     string_node->str_value = "hello";
     string_node->result_type = SYM_DATATYPE_STRING;
-    main_node->next = int_node;
+    main_node->block.first_statement = create_test_block(int_node);
     int_node->next = double_node;
     double_node->next = string_node;
 
@@ -102,7 +112,7 @@ void codegen_program_and_constants_test(void **state) {
     assert_non_null(strstr(output, "PUSHS int@42\n"));
     assert_non_null(strstr(output, "PUSHS float@0x1.8p+0\n"));
     assert_non_null(strstr(output, "PUSHS string@hello\n"));
-    assert_non_null(strstr(output, "LABEL $RETURN40\n"));
+    assert_non_null(strstr(output, "LABEL $EXIT40\n"));
 
     free(output);
     free_test_ast(main_node);
@@ -121,7 +131,7 @@ void codegen_variable_declaration_and_assignment_test(void **state) {
     assignment->assign_statement.target_var_name = "value";
     assignment->assign_statement.unique_id = 7;
     assignment->assign_statement.expres = create_test_int(20);
-    main_node->next = declaration;
+    main_node->block.first_statement = create_test_block(declaration);
     declaration->next = assignment;
 
     bool result = codegen(main_node, CODEGEN_TEST_OUTPUT);
@@ -145,7 +155,7 @@ void codegen_integer_arithmetic_test(void **state) {
     operation->expres_operator.left_side = create_test_int(1);
     operation->expres_operator.right_side = create_test_int(2);
     operation->result_type = SYM_DATATYPE_INT;
-    main_node->next = operation;
+    main_node->block.first_statement = create_test_block(operation);
 
     bool result = codegen(main_node, CODEGEN_TEST_OUTPUT);
     char *output = read_test_output();
@@ -158,5 +168,5 @@ void codegen_integer_arithmetic_test(void **state) {
 
     free(output);
     free_test_ast(main_node);
-    remove(CODEGEN_TEST_OUTPUT);
+    // remove(CODEGEN_TEST_OUTPUT);
 }
