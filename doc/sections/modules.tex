@@ -1,0 +1,26 @@
+\section{Moduly překladače}
+
+\subsection*{scanner.c + scanner.h}
+Implementace scanneru v podobě stavového automatu. Čte se postupně znak po znaku a mění se stav.
+Pokud se narazí na neočekávaný znak, tak to způsobí lexikální chybu. Pokud se za určitých podmínek skončí v koncovém stavu,
+vrátí se série načtených znaků jako jeden token. Hlavní funkcí modulu je \texttt{get\_token},
+která vrací právě jeden token při zavolání, pokud nenastala chyba.
+
+\subsection*{parser.c + parser.h}
+Implementace parseru, konkrétně syntaktické analýzy pomocí LL gramatiky a přísluš\-ných přechodů.
+
+\subsection*{ast.c + ast.h}
+Implementace abstraktního syntaktického stromu, který se využívá jako hierarchická reprezentace načteného kódu.
+Jde o jediný strom skládající se z uzlů s určitými vlastnostmi podle typu.
+
+\subsection*{symtable.c + symtable.h}
+Tabulka symbolů je implementována jako zásobník, respektive linked list výškově vyvá\-žených binárních stromů.
+Konkrétní typ binárních stromů je AVL strom. Každý strom v linked listu reprezentuje jeden scope deklarací identifikátorů.
+Nejníže položený strom obsahuje identifikátory funkcí, ostatní neobsahují identifikátory funkcí, pouze proměnných.
+
+\subsection*{semantic.c + semantic.h}
+Sémantická analýza propojuje abstraktní syntaktický strom (ASS) s tabulkou symbolů.
+Postupně se zanořuje hlouběji do ASS a sekvenčně kontroluje sémantiku. V případech, kdy narazí na výraz, probíhá kontrola rekurzivně.
+
+\subsection*{codegen.c + codegen.h}
+Generování kódu převádí abstraktní syntaktický strom na cílový kód.
