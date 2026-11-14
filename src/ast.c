@@ -242,6 +242,7 @@ void ast_dispose(ast_node_t **root) {
     }
 
     switch (node->type) {
+    case AST_NODE_CONVERT:
     case AST_NODE_BLOCK:
         if (node->block.first_statement != NULL) {
             ast_dispose(&(node->block.first_statement));
