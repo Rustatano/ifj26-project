@@ -1,6 +1,6 @@
 # documentation variables
 DOC_DIR = doc
-DOC_MAIN = main
+DOC_MAIN = dokumentace
 DOC_BUILD_DIR = build
 
 # archivation variables
