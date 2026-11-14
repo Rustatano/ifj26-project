@@ -67,11 +67,13 @@ void generate_oveflow_check(codegen_context_t *context) {
     fprintf(context->file, "PUSHS GF@tmp0\n");
     fprintf(context->file, "PUSHS int@%d\n", INT32_MAX);
     fprintf(context->file, "GTS\n");
+    fprintf(context->file, "PUSHS bool@true\n");
     fprintf(context->file, "JUMPIFEQS $OVERFLOW_POSITIVE\n");
 
     fprintf(context->file, "PUSHS GF@tmp0\n");
     fprintf(context->file, "PUSHS int@%d\n", INT32_MIN);
     fprintf(context->file, "LTS\n");
+    fprintf(context->file, "PUSHS bool@true\n");
     fprintf(context->file, "JUMPIFEQS $OVERFLOW_NEGATIVE\n");
 
     // if no overflow, push back the original value and return
@@ -210,18 +212,21 @@ void generate_builtin_function_in_place(char *fun_name, ast_node_t *node,
         fprintf(context->file, "PUSHS GF@tmp1\n");
         fprintf(context->file, "PUSHS int@0\n");
         fprintf(context->file, "LTS\n");
+        fprintf(context->file, "PUSHS bool@true\n");
         fprintf(context->file, "JUMPIFEQS $EXIT40\n");
 
         // end < 0
         fprintf(context->file, "PUSHS GF@tmp2\n");
         fprintf(context->file, "PUSHS int@0\n");
         fprintf(context->file, "LTS\n");
+        fprintf(context->file, "PUSHS bool@true\n");
         fprintf(context->file, "JUMPIFEQS $EXIT40\n");
 
         // start > end
         fprintf(context->file, "PUSHS GF@tmp1\n");
         fprintf(context->file, "PUSHS GF@tmp2\n");
         fprintf(context->file, "GTS\n");
+        fprintf(context->file, "PUSHS bool@true\n");
         fprintf(context->file, "JUMPIFEQS $EXIT40\n");
 
         // store strLength to gf@tmp3 for further checks
@@ -235,12 +240,14 @@ void generate_builtin_function_in_place(char *fun_name, ast_node_t *node,
         fprintf(context->file, "PUSHS GF@tmp3\n");
         fprintf(context->file, "EQS\n");
         fprintf(context->file, "ORS\n");
+        fprintf(context->file, "PUSHS bool@true\n");
         fprintf(context->file, "JUMPIFEQS $EXIT40\n");
 
         // end > strLength
         fprintf(context->file, "PUSHS GF@tmp2\n");
         fprintf(context->file, "PUSHS GF@tmp3\n");
         fprintf(context->file, "GTS\n");
+        fprintf(context->file, "PUSHS bool@true\n");
         fprintf(context->file, "JUMPIFEQS $EXIT40\n");
         // end of checks
 
@@ -256,6 +263,7 @@ void generate_builtin_function_in_place(char *fun_name, ast_node_t *node,
         fprintf(context->file, "PUSHS GF@tmp1\n");
         fprintf(context->file, "PUSHS GF@tmp2\n");
         fprintf(context->file, "GTS\n");
+        fprintf(context->file, "PUSHS bool@true\n");
         fprintf(context->file, "JUMPIFEQS $SUBSTR_LOOP_END\n");
         // get current char and concat it
         fprintf(context->file, "GETCHAR GF@tmp4 GF@tmp0 GF@tmp1\n");
