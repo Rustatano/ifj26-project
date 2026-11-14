@@ -1,7 +1,7 @@
 /*
 -------------------------------------------------------
 Name of project: Translator IFJ26
-Authors: Zobal, Tajovský, Ondruška, Svoboda
+Authors: xsvoboj01 (Jakub Svoboda)
 Creation date: 19.10.2026
 File: symbol_table.c
 
@@ -218,13 +218,16 @@ bool symtable_insert_item(symtable_stack_t *stack, char *id, symtable_data_t dat
     return success;
 }
 
-symtable_node_t *symtable_stack_search_current(symtable_stack_item_t *stack_top,
-                                               symtable_type_t type, char *id) {
-    if (stack_top == NULL || id == NULL) {
+symtable_node_t *symtable_stack_search_current(symtable_stack_t *stack, symtable_type_t type,
+                                               char *id) {
+    if (stack == NULL || id == NULL) {
+        return NULL;
+    }
+    if (stack->top == NULL) {
         return NULL;
     }
 
-    symtable_node_t *root = stack_top->tree_root;
+    symtable_node_t *root = stack->top->tree_root;
     if (root == NULL) {
         return NULL;
     }
@@ -261,17 +264,28 @@ symtable_node_t *symtable_search(symtable_stack_t *stack, symtable_type_t type, 
     }
 
     symtable_stack_item_t *top = stack->top;
-    if (top == NULL) {
-        return NULL;
-    }
 
-    symtable_node_t *node = NULL;
     while (top != NULL) {
-        node = symtable_stack_search_current(top, type, id);
-        if (node != NULL) {
-            return node;
+        symtable_node_t *root = top->tree_root;
+
+        // Decide which side to follow
+        while (root != NULL) {
+            // Compare IDs
+            int cmp = strcmp(root->key, id);
+            if (cmp == 0) {
+                if (root->data.type == type) {
+                    return root;
+                }
+                // Symbol type didn't match, go to upper symtable
+                break;
+            } else if (cmp > 0) {
+                root = root->left;
+            } else {
+                root = root->right;
+            }
         }
 
+        // Search in upper symtable
         top = top->next;
     }
 
@@ -312,11 +326,15 @@ void symtable_pop_avl(symtable_stack_t *stack) {
         return;
     }
 
-    delete_node(stack->top->tree_root);
+    symtable_stack_item_t *prev_top = stack->top;
 
-    stack->top = stack->top->next;
+    // Assign new stack top
+    stack->top = prev_top->next;
 
-    // There is no tree left in stack
+    // Delete previous stack top
+    delete_node(prev_top->tree_root);
+    free(prev_top);
+
     if (stack->top == NULL) {
         stack->global = NULL;
     }
@@ -329,9 +347,13 @@ void symtable_stack_delete(symtable_stack_t *stack) {
 
     // Delete each AVL tree
     while (stack->top != NULL) {
-        symtable_pop_avl(stack);
-        free(stack->top);
+        symtable_stack_item_t *current_item = stack->top;
+        stack->top = current_item->next;
+
+        delete_node(current_item->tree_root);
+        free(current_item);
     }
 
     stack->top = NULL;
+    stack->global = NULL;
 }
