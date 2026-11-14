@@ -20,8 +20,8 @@ Description: Generates IFJcode26 from the Abstract Syntax Tree
 
 typedef struct {
     FILE *file;
-    int label_counter;
-    bool is_in_loop; // used for handling var declaration vs assignment
+    int label_counter; // used for while and if
+    bool is_in_loop;   // used for handling var declaration vs assignment
 } codegen_context_t;
 
 // create file
@@ -186,7 +186,18 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
         break;
 
     case AST_NODE_FUN_DEFINITION:
+        // create label and frame
+        fprintf(context->file, "LABEL %s\n", node->fun_definition.name);
+        fprintf(context->file, "CREATEFRAME\n");
+        fprintf(context->file, "PUSHFRAME\n");
+
+        // define params and load them from stack
+
+        // body of the function
+        handle_node(node->fun_definition.body_block, context);
+        // done, return is in the body
         break;
+
     case AST_NODE_VAR_DECLARATION:
         // define the variable if outside a loop
         if (!context->is_in_loop) {
@@ -364,6 +375,15 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
         }
 
     case AST_NODE_EXPRES_FUN_CALL:
+        // first check if a function is builtin or user defined
+        if (check_function_is_builtin(node->expres_fun_call.fun_name)) {
+            generate_builtin_function_in_place(node->expres_fun_call.fun_name, node, context);
+        } else {
+            // params, results will be on stack (in reverse order)
+            handle_node(node->expres_fun_call.params, context);
+            // call the function
+            fprintf(context->file, "CALL %s\n", node->expres_fun_call.fun_name);
+        }
         break;
 
     case AST_NODE_EXPRES_VAR:
