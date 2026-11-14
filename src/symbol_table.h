@@ -39,6 +39,7 @@ typedef enum {
 // Linked list representing parameters of functions
 typedef struct symtable_fun_param {
     char *name;
+    int unique_id; // ID is used by code generator
     symtable_datatype_t type;
     struct symtable_fun_param *next;
 } symtable_fun_param_t;

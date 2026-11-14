@@ -164,6 +164,17 @@ void generate_builtin_function_in_place(char *fun_name, ast_node_t *node,
     }
 }
 
+void load_params_from_stack_reverse(symtable_fun_param_t *params, codegen_context_t *context) {
+    // end of the linked list
+    if (params == NULL) {
+        return;
+    }
+    // first handle the next param
+    load_params_from_stack_reverse(params->next, context);
+    // then handle the current one
+    fprintf(context->file, "POPS LF@%s$%d\n", params->name, params->unique_id);
+}
+
 bool handle_node(ast_node_t *node, codegen_context_t *context) {
     if (node == NULL) {
         return true;
@@ -192,6 +203,12 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
         fprintf(context->file, "PUSHFRAME\n");
 
         // define params and load them from stack
+        while (node->fun_definition.params != NULL) {
+            fprintf(context->file, "DEFVAR LF@%s$%d\n", node->fun_definition.params->name,
+                    node->fun_definition.params->unique_id);
+            node->fun_definition.params = node->fun_definition.params->next;
+        }
+        load_params_from_stack_reverse(node->fun_definition.params, context);
 
         // body of the function
         handle_node(node->fun_definition.body_block, context);
