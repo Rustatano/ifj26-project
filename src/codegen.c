@@ -198,6 +198,75 @@ void generate_builtin_function_in_place(char *fun_name, ast_node_t *node,
         fprintf(context->file, "PUSHS GF@tmp1\n");
 
     } else if (strcmp(fun_name, "substr") == 0) {
+        handle_node(node->expres_fun_call.params, context);
+        fprintf(context->file, "POPS GF@tmp2\n"); // end index
+        fprintf(context->file, "POPS GF@tmp1\n"); // start index
+        fprintf(context->file, "POPS GF@tmp0\n"); // string
+        fprintf(context->file, "SUBSTR GF@tmp0 GF@tmp0 GF@tmp1 GF@tmp2\n");
+
+        // check if params are valid
+        // start < 0
+        fprintf(context->file, "PUSHS GF@tmp1\n");
+        fprintf(context->file, "PUSHS int@0\n");
+        fprintf(context->file, "LTS\n");
+        fprintf(context->file, "JUMPIFEQS $RETURN40\n");
+
+        // end < 0
+        fprintf(context->file, "PUSHS GF@tmp2\n");
+        fprintf(context->file, "PUSHS int@0\n");
+        fprintf(context->file, "LTS\n");
+        fprintf(context->file, "JUMPIFEQS $RETURN40\n");
+
+        // start > end
+        fprintf(context->file, "PUSHS GF@tmp1\n");
+        fprintf(context->file, "PUSHS GF@tmp2\n");
+        fprintf(context->file, "GTS\n");
+        fprintf(context->file, "JUMPIFEQS $RETURN40\n");
+
+        // store strLength to gf@tmp3 for further checks
+        fprintf(context->file, "STRLEN GF@tmp3 GF@tmp0\n");
+
+        // start >= strLength
+        fprintf(context->file, "PUSHS GF@tmp1\n");
+        fprintf(context->file, "PUSHS GF@tmp3\n");
+        fprintf(context->file, "GTS\n");
+        fprintf(context->file, "PUSHS GF@tmp1\n");
+        fprintf(context->file, "PUSHS GF@tmp3\n");
+        fprintf(context->file, "EQS\n");
+        fprintf(context->file, "ORS\n");
+        fprintf(context->file, "JUMPIFEQS $RETURN40\n");
+
+        // end > strLength
+        fprintf(context->file, "PUSHS GF@tmp2\n");
+        fprintf(context->file, "PUSHS GF@tmp3\n");
+        fprintf(context->file, "GTS\n");
+        fprintf(context->file, "JUMPIFEQS $RETURN40\n");
+        // end of checks
+
+        // actual code of substr
+        // sub result is gonna be in GF@tmp3 (strLength is no longer needed)
+        // GF@tmp4 is gonna be used for getchar results
+        // first char
+        fprintf(context->file, "GETCHAR GF@tmp3 GF@tmp0 GF@tmp1\n");
+        fprintf(context->file, "ADD GF@tmp1 GF@tmp1 int@1\n");
+        // loop for other chars
+        fprintf(context->file, "LABEL $SUBSTR_LOOP\n");
+        // check if start index has gone over end index
+        fprintf(context->file, "PUSHS GF@tmp1\n");
+        fprintf(context->file, "PUSHS GF@tmp2\n");
+        fprintf(context->file, "GTS\n");
+        fprintf(context->file, "JUMPIFEQS $SUBSTR_LOOP_END\n");
+        // get current char and concat it
+        fprintf(context->file, "GETCHAR GF@tmp4 GF@tmp0 GF@tmp1\n");
+        fprintf(context->file, "CONCAT GF@tmp3 GF@tmp3 GF@tmp4\n");
+        // increment and jump
+        fprintf(context->file, "ADD GF@tmp1 GF@tmp1 int@1\n");
+        fprintf(context->file, "JUMP $SUBSTR_LOOP\n");
+
+        // end of loop
+        fprintf(context->file, "LABEL $SUBSTR_LOOP_END\n");
+        // push result to stack
+        fprintf(context->file, "PUSHS GF@tmp3\n");
 
     } else if (strcmp(fun_name, "ord") == 0) {
         handle_node(node->expres_fun_call.params, context);
@@ -490,15 +559,22 @@ bool codegen(ast_node_t *ast_root, const char *output_file) {
     fprintf(context->file, ".IFJcode26\n");
     fprintf(context->file, "DEFVAR GF@tmp0\n");
     fprintf(context->file, "DEFVAR GF@tmp1\n");
+    fprintf(context->file, "DEFVAR GF@tmp2\n");
+    fprintf(context->file, "DEFVAR GF@tmp3\n");
+    fprintf(context->file, "DEFVAR GF@tmp4\n");
     fprintf(context->file, "JUMP main\n");
 
     // handle AST nodes
     bool result = handle_node(ast_root, context);
 
+    // end of file code
     if (context->is_overflow_check_needed) {
         generate_oveflow_check(context);
     }
+    fprintf(context->file, "LABEL $RETURN40\n");
+    fprintf(context->file, "RETURN int@40\n");
 
+    // cleanup
     destroy_codegen_context(context);
     return result;
 }
