@@ -299,6 +299,8 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
     switch (node->type) {
     case AST_NODE_MAIN:
         fprintf(context->file, "LABEL main\n");
+        handle_node(node->block.first_statement, context);
+        fprintf(context->file, "EXIT int@0\n");
         break;
 
     case AST_NODE_BLOCK:
@@ -427,9 +429,8 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
                 fprintf(context->file, "PUSHS GF@tmp0\n");
             } else {
                 fprintf(context->file, "ADDS\n");
+                check_and_correct_inf_overflow(node, context);
             }
-            fprintf(context->file, "ADDS\n");
-            check_and_correct_inf_overflow(node, context);
             break;
 
         case AST_EXPRES_OPERATOR_SUB:
