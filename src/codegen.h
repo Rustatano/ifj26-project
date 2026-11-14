@@ -16,6 +16,7 @@ Description: Header file for code generation
 #include "ast.h"
 #include "symbol_table.h"
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 
 bool codegen(ast_node_t *ast_root, const char *output_file);

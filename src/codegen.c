@@ -11,9 +11,6 @@ Description: Generates IFJcode26 from the Abstract Syntax Tree
 */
 
 #include "codegen.h"
-#define INT32_MAX 2147483647
-#define INT32_MIN (-2147483647 - 1) // to avoid it being interpreted as long int
-// when -2147483648 was used it got interpreted as long int and caused warnings with %d
 #define BUILTIN_FUN_LIST                                                                           \
     {"print", "readLine",  "readInt", "readDouble", "toStr",                                       \
      "toInt", "strLength", "substr",  "ord",        "chr"}
