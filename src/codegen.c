@@ -179,6 +179,12 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
         handle_node(node->block.first_statement, context);
         break;
 
+    case AST_NODE_CONVERT:
+        // usef for implicit conversion of int to float in expressions
+        handle_node(node->block.first_statement, context);
+        fprintf(context->file, "INT2FLOATS\n");
+        break;
+
     case AST_NODE_FUN_DEFINITION:
         break;
     case AST_NODE_VAR_DECLARATION:
