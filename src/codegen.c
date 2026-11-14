@@ -316,13 +316,15 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
         fprintf(context->file, "CREATEFRAME\n");
         fprintf(context->file, "PUSHFRAME\n");
 
+        // save pointer to the params linked list for value assignment from stack
+        symtable_fun_param_t *params_ptr = node->fun_definition.params;
         // define params and load them from stack
         while (node->fun_definition.params != NULL) {
             fprintf(context->file, "DEFVAR LF@%s$%d\n", node->fun_definition.params->name,
                     node->fun_definition.params->unique_id);
             node->fun_definition.params = node->fun_definition.params->next;
         }
-        load_params_from_stack_reverse(node->fun_definition.params, context);
+        load_params_from_stack_reverse(params_ptr, context);
 
         // body of the function
         handle_node(node->fun_definition.body_block, context);
