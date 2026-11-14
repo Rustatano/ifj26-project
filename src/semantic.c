@@ -176,7 +176,8 @@ symtable_datatype_t check_expres_operator(semantic_context_t *ctx, symtable_stac
     symtable_datatype_t left = check_expr(ctx, symtable_stack, node->expression_operator.left_side);
     if (left == SYM_DATATYPE_ERROR)
         return SYM_DATATYPE_ERROR;
-    symtable_datatype_t right = check_expr(symtable_stack, node->expression_operator.right_side);
+    symtable_datatype_t right =
+        check_expr(ctx, symtable_stack, node->expression_operator.right_side);
     if (right == SYM_DATATYPE_ERROR)
         return SYM_DATATYPE_ERROR;
 
@@ -533,66 +534,67 @@ bool first_ast_passage(semantic_context_t *ctx, ast_node_t *ast, symtable_stack_
             report_semantic_error(ctx, 3, "Missing main function", 0);
             return false;
         }
-
-        return true;
     }
 
-    // Second pasasge of AST checks every block and statement
-    bool second_ast_passage(semantic_context_t * ctx, ast_node_t * ast,
-                            symtable_stack_t * symtable_stack) {
-        if (ast == NULL || symtable_stack == NULL) {
-            return false;
+    return true;
+}
+
+// Second pasasge of AST checks every block and statement
+bool second_ast_passage(semantic_context_t *ctx, ast_node_t *ast,
+                        symtable_stack_t *symtable_stack) {
+    if (ast == NULL || symtable_stack == NULL) {
+        return false;
+    }
+
+    ast_node_t *current_node = ast;
+
+    symtable_node_t *fun_context;
+
+    while (current_node != NULL) {
+        if (current_node->type == AST_NODE_FUN_DEFINITION) {
+            fun_context = symtable_stack_search_current(symtable_stack, SYM_TYPE_FUNC,
+                                                        current_node->fun_definition.name);
+            if (check_block(ctx, symtable_stack, current_node->fun_definition.body_block,
+                            fun_context) == SYM_DATATYPE_ERROR) {
+                return false;
+            }
         }
 
-        ast_node_t *current_node = ast;
-
-        symtable_node_t *fun_context;
-
-        while (current_node != NULL) {
-            if (current_node->type == AST_NODE_FUN_DEFINITION) {
-                fun_context = symtable_stack_search_current(symtable_stack, SYM_TYPE_FUNC,
-                                                            current_node->fun_definition.name);
-                if (check_block(ctx, symtable_stack, current_node->fun_definition.body_block,
-                                fun_context) == SYM_DATATYPE_ERROR) {
-                    return false;
-                }
-            }
-
-            // New current node
+        // New current node
+        if (current_node->type == AST_NODE_MAIN) {
             if (current_node->type == AST_NODE_MAIN) {
-                if (current_node->type == AST_NODE_MAIN) {
-                    current_node = current_node->block.first_statement;
-                } else {
-                    current_node = current_node->next;
-                }
+                current_node = current_node->block.first_statement;
+            } else {
+                current_node = current_node->next;
             }
-
-            return true;
         }
+    }
 
-        // Wrapper function to call in main()
-        bool semantic_analysis(ast_node_t * ast, symtable_stack_t * symtable_stack) {
-            semantic_error_code = 0;
-            semantic_context_t ctx;
-            ctx.unique_var_id = 0;
+    return true;
+}
 
-            if (ast == NULL || symtable_stack == NULL) {
-                report_semantic_error(&ctx, 99, "Internal error: null AST or symbol table stack",
-                                      0);
-                return false;
-            }
-            if (!semantic_init(&ctx, symtable_stack)) {
-                symtable_stack_delete(symtable_stack);
-                return false;
-            }
-            if (!first_ast_passage(&ctx, ast, symtable_stack)) {
-                symtable_stack_delete(symtable_stack);
-                return false;
-            }
-            if (!second_ast_passage(&ctx, ast, symtable_stack)) {
-                symtable_stack_delete(symtable_stack);
-                return false;
-            }
+// Wrapper function to call in main()
+bool semantic_analysis(ast_node_t *ast, symtable_stack_t *symtable_stack) {
+    semantic_error_code = 0;
+    semantic_context_t ctx;
+    ctx.unique_var_id = 0;
 
-            return true;
-        }
+    if (ast == NULL || symtable_stack == NULL) {
+        report_semantic_error(&ctx, 99, "Internal error: null AST or symbol table stack", 0);
+        return false;
+    }
+    if (!semantic_init(&ctx, symtable_stack)) {
+        symtable_stack_delete(symtable_stack);
+        return false;
+    }
+    if (!first_ast_passage(&ctx, ast, symtable_stack)) {
+        symtable_stack_delete(symtable_stack);
+        return false;
+    }
+    if (!second_ast_passage(&ctx, ast, symtable_stack)) {
+        symtable_stack_delete(symtable_stack);
+        return false;
+    }
+
+    return true;
+}
