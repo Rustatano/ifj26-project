@@ -20,8 +20,9 @@ Description: Generates IFJcode26 from the Abstract Syntax Tree
 
 typedef struct {
     FILE *file;
-    int label_counter; // used for while and if
-    bool is_in_loop;   // used for handling var declaration vs assignment
+    int label_counter;             // used for while and if
+    bool is_in_loop;               // used for handling var declaration vs assignment
+    bool is_overflow_check_needed; // whether to generate the code for it
 } codegen_context_t;
 
 // create file
@@ -45,6 +46,7 @@ codegen_context_t *create_codegen_context(const char *output_file) {
     context->file = file;
     context->label_counter = 0;
     context->is_in_loop = false;
+    context->is_overflow_check_needed = false;
     return context;
 }
 
@@ -99,6 +101,8 @@ void check_and_correct_inf_overflow(ast_node_t *node, codegen_context_t *context
         node->expres_operator.right_side->result_type != SYM_DATATYPE_INT) {
         return;
     }
+    // only if both sides are int do the check
+    context->is_overflow_check_needed = true;
     fprintf(context->file, "CALL $OVERFLOW_CHECK\n");
 }
 
@@ -445,11 +449,14 @@ bool codegen(ast_node_t *ast_root, const char *output_file) {
     fprintf(context->file, ".IFJcode26\n");
     fprintf(context->file, "DEFVAR GF@tmp0\n");
     fprintf(context->file, "DEFVAR GF@tmp1\n");
-    generate_oveflow_check(context);
     fprintf(context->file, "JUMP main\n");
 
     // handle AST nodes
     bool result = handle_node(ast_root, context);
+
+    if (context->is_overflow_check_needed) {
+        generate_oveflow_check(context);
+    }
 
     destroy_codegen_context(context);
     return result;
