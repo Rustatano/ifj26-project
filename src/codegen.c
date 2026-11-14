@@ -167,27 +167,43 @@ void generate_builtin_function_in_place(char *fun_name, ast_node_t *node,
         fprintf(context->file, "PUSHS GF@tmp0\n");
 
     } else if (strcmp(fun_name, "toStr") == 0) {
+        handle_node(node->expres_fun_call.params, context);
+
+        if (node->expres_fun_call.params->result_type == SYM_DATATYPE_UNIT) {
+            // // special case, unit should be converted to "()"
+            fprintf(context->file, "POPS GF@tmp0\n");
+            fprintf(context->file, "MOVE GF@tmp0 string@()\n");
+            fprintf(context->file, "PUSHS GF@tmp0\n");
+
+        } else if (node->expres_fun_call.params->result_type == SYM_DATATYPE_DOUBLE) {
+            fprintf(context->file, "FLOAT2STRS\n");
+
+        } else if (node->expres_fun_call.params->result_type == SYM_DATATYPE_INT) {
+            fprintf(context->file, "INT2STRS\n");
+        } else {
+            // for string, we can leave it be
+        }
 
     } else if (strcmp(fun_name, "toInt") == 0) {
+        handle_node(node->expres_fun_call.params, context);
+        fprintf(context->file, "FLOAT2INTS\n");
 
     } else if (strcmp(fun_name, "strLength") == 0) {
+        handle_node(node->expres_fun_call.params, context);
+        fprintf(context->file, "POPS GF@tmp0\n"); // string
+        fprintf(context->file, "STRLEN GF@tmp1 GF@tmp0\n");
+        // push result to stack
+        fprintf(context->file, "PUSHS GF@tmp1\n");
 
     } else if (strcmp(fun_name, "substr") == 0) {
 
     } else if (strcmp(fun_name, "ord") == 0) {
         handle_node(node->expres_fun_call.params, context);
-        fprintf(context->file, "POPS GF@tmp1\n"); // index (2nd param)
-        fprintf(context->file, "POPS GF@tmp0\n"); // string (1st param)
-        fprintf(context->file, "STR2INT GF@tmp2 GF@tmp0 GF@tmp1\n");
-        // push result to stack
-        fprintf(context->file, "PUSHS GF@tmp2\n");
+        fprintf(context->file, "STR2INTS\n");
 
     } else if (strcmp(fun_name, "chr") == 0) {
         handle_node(node->expres_fun_call.params, context);
-        fprintf(context->file, "POPS GF@tmp0\n"); // index (1st param)
-        fprintf(context->file, "INT2CHAR GF@tmp1 GF@tmp0\n");
-        // push result to stack
-        fprintf(context->file, "PUSHS GF@tmp1\n");
+        fprintf(context->file, "INT2CHARS\n");
     }
 }
 
@@ -472,7 +488,6 @@ bool codegen(ast_node_t *ast_root, const char *output_file) {
     fprintf(context->file, ".IFJcode26\n");
     fprintf(context->file, "DEFVAR GF@tmp0\n");
     fprintf(context->file, "DEFVAR GF@tmp1\n");
-    fprintf(context->file, "DEFVAR GF@tmp2\n");
     fprintf(context->file, "JUMP main\n");
 
     // handle AST nodes
