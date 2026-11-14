@@ -110,7 +110,7 @@ void extract_var_declarations(ast_node_t *node, codegen_context_t *context) {
     }
 
     if (node->type == AST_NODE_VAR_DECLARATION) {
-        fprintf(context->file, "DEFVAR LF@%s$%s\n", node->var_declaration.name,
+        fprintf(context->file, "DEFVAR LF@%s$%d\n", node->var_declaration.name,
                 node->var_declaration.unique_id);
     }
 
@@ -201,14 +201,14 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
     case AST_NODE_VAR_DECLARATION:
         // define the variable if outside a loop
         if (!context->is_in_loop) {
-            fprintf(context->file, "DEFVAR LF@%s$%s\n", node->var_declaration.name,
+            fprintf(context->file, "DEFVAR LF@%s$%d\n", node->var_declaration.name,
                     node->var_declaration.unique_id);
         }
         if (node->var_declaration.init_expres != NULL) {
             // handle the expression, result is on top of the stack
             handle_node(node->var_declaration.init_expres, context);
             // save the result from the stack to the variable
-            fprintf(context->file, "POPS LF@%s$%s\n", node->var_declaration.name,
+            fprintf(context->file, "POPS LF@%s$%d\n", node->var_declaration.name,
                     node->var_declaration.unique_id);
         }
         break;
@@ -216,7 +216,7 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
     case AST_NODE_VALUE_ASSIGNMENT:
         // same as variable declaration but just the assignment part
         handle_node(node->assign_statement.expres, context);
-        fprintf(context->file, "POPS LF@%s$%s\n", node->assign_statement.target_var_name,
+        fprintf(context->file, "POPS LF@%s$%d\n", node->assign_statement.target_var_name,
                 node->assign_statement.unique_id);
         break;
 
@@ -387,7 +387,7 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
         break;
 
     case AST_NODE_EXPRES_VAR:
-        fprintf(context->file, "PUSHS LF@%s$%s\n", node->expressions_var.name,
+        fprintf(context->file, "PUSHS LF@%s$%d\n", node->expressions_var.name,
                 node->expressions_var.unique_id);
         break;
 
