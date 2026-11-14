@@ -59,14 +59,14 @@ static void free_test_ast(ast_node_t *node) {
         free_test_ast(node->block.first_statement);
         break;
     case AST_NODE_VAR_DECLARATION:
-        free_test_ast(node->var_declaration.init_expres);
+        free_test_ast(node->var_declaration.init_expression);
         break;
     case AST_NODE_VALUE_ASSIGNMENT:
-        free_test_ast(node->assign_statement.expres);
+        free_test_ast(node->assign_statement.expression);
         break;
-    case AST_NODE_EXPRES_OPERATOR:
-        free_test_ast(node->expres_operator.left_side);
-        free_test_ast(node->expres_operator.right_side);
+    case AST_NODE_EXPRESSION_OPERATOR:
+        free_test_ast(node->expression_operator.left_side);
+        free_test_ast(node->expression_operator.right_side);
         break;
     default:
         break;
@@ -126,11 +126,11 @@ void codegen_variable_declaration_and_assignment_test(void **state) {
     declaration->var_declaration.name = "value";
     declaration->var_declaration.unique_id = 7;
     declaration->var_declaration.var_type = SYM_DATATYPE_INT;
-    declaration->var_declaration.init_expres = create_test_int(10);
+    declaration->var_declaration.init_expression = create_test_int(10);
     ast_node_t *assignment = create_test_node(AST_NODE_VALUE_ASSIGNMENT);
     assignment->assign_statement.target_var_name = "value";
     assignment->assign_statement.unique_id = 7;
-    assignment->assign_statement.expres = create_test_int(20);
+    assignment->assign_statement.expression = create_test_int(20);
     main_node->block.first_statement = create_test_block(declaration);
     declaration->next = assignment;
 
@@ -150,10 +150,10 @@ void codegen_variable_declaration_and_assignment_test(void **state) {
 void codegen_integer_arithmetic_test(void **state) {
     (void)state;
     ast_node_t *main_node = create_test_main();
-    ast_node_t *operation = create_test_node(AST_NODE_EXPRES_OPERATOR);
-    operation->expres_operator.op = AST_EXPRES_OPERATOR_ADD;
-    operation->expres_operator.left_side = create_test_int(1);
-    operation->expres_operator.right_side = create_test_int(2);
+    ast_node_t *operation = create_test_node(AST_NODE_EXPRESSION_OPERATOR);
+    operation->expression_operator.op = AST_EXPRESSION_OPERATOR_ADD;
+    operation->expression_operator.left_side = create_test_int(1);
+    operation->expression_operator.right_side = create_test_int(2);
     operation->result_type = SYM_DATATYPE_INT;
     main_node->block.first_statement = create_test_block(operation);
 
