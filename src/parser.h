@@ -1,7 +1,7 @@
 /*
 -------------------------------------------------------
 Name of project: Translator IFJ26
-Authors: Zobal, Tajovský, Ondruška, Svoboda
+Authors: Ondruška
 Creation date: 10.10.2026
 File: parser.h
 
@@ -14,7 +14,6 @@ Description: Header file for the parser
 
 #include "ast.h"
 #include "scanner.h"
-#include "symbol_table.h"
 #include <stdbool.h>
 #include <stdio.h>
 
