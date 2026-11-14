@@ -1,7 +1,23 @@
+/*
+-------------------------------------------------------
+Name of project: Translator IFJ26
+Authors: Ondruška
+Creation date: 14.11.2026
+File: parse_block.c
+
+Description: Implementation of the block parsing function
+-------------------------------------------------------
+*/
 
 #include "parse_block.h"
 #include "parse_statement.h"
 
+// Function for parsing an indented block of statements separated by EOL or ';'
+// {EOLS}
+// {INDENT}
+//   {statement} [; {statement}] {EOL}
+//   {statement}
+// {DEDENT | EOF}
 ast_node_t *parse_block(parser_context_t *context) {
     int line = context->current_token.line;
     skip_eols(context);
@@ -10,8 +26,8 @@ ast_node_t *parse_block(parser_context_t *context) {
         return NULL;
     }
     ast_node_t *block_node = ast_block_create(line);
-    if (!block_node) {
-        return NULL;
+    if (block_node == NULL) {
+        return parser_fail_internal(context, line);
     }
 
     while (!check_token(context, TOKEN_DEDENT) && !check_token(context, TOKEN_EOF)) {
@@ -27,14 +43,17 @@ ast_node_t *parse_block(parser_context_t *context) {
         }
         ast_block_append(block_node, statement_node);
 
-        if (check_token(context, TOKEN_EOL)) {
-            load_token(context);
-        } else if (check_token(context, TOKEN_SEMICOLON)) {
-            load_token(context);
-        } else if (!is_statement_terminator(context->current_token.type)) {
-            parser_fail_syntax(context, context->current_token.line, "Expected end of statement");
-            ast_dispose(&block_node);
-            return NULL;
+        bool is_compound_statement = statement_node->type == AST_NODE_STATEMENT_IF ||
+                                     statement_node->type == AST_NODE_STATEMENT_WHILE;
+        if (!is_compound_statement) {
+            if (check_token(context, TOKEN_EOL) || check_token(context, TOKEN_SEMICOLON)) {
+                load_token(context);
+            } else if (!is_statement_terminator(context->current_token.type)) {
+                parser_fail_syntax(context, context->current_token.line,
+                                   "Expected end of statement");
+                ast_dispose(&block_node);
+                return NULL;
+            }
         }
     }
 

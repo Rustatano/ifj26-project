@@ -1,8 +1,19 @@
+/*
+-------------------------------------------------------
+Name of project: Translator IFJ26
+Authors: Ondruška
+Creation date: 14.11.2026
+File: parse_declaration.c
+
+Description: Parsing of variable declarations and assignments
+-------------------------------------------------------
+*/
 
 #include "parse_declaration.h"
 #include "parse_expression.h"
 #include <stdlib.h>
 
+// Function for converting token type to symbol table type
 symtable_datatype_t parse_data_type(parser_context_t *context) {
     if (check_token(context, TOKEN_KW_INT)) {
         return SYM_DATATYPE_INT;
@@ -18,6 +29,9 @@ symtable_datatype_t parse_data_type(parser_context_t *context) {
     return SYM_DATATYPE_UNKNOWN;
 }
 
+// Function for parsing a mutable (var) or immutable (val) variable declaration
+// val {id} [: {DataType}] = {expression}
+// var {id} [: {DataType}] = {expression}
 ast_node_t *parse_var_declaration(parser_context_t *context) {
     int line = context->current_token.line;
     if (!(check_token(context, TOKEN_KW_VAR) || check_token(context, TOKEN_KW_VAL))) {
@@ -64,6 +78,8 @@ ast_node_t *parse_var_declaration(parser_context_t *context) {
     return var_node;
 }
 
+// Function for parsing a variable assignment statement
+// {id} = {expression}
 ast_node_t *parse_assignment(parser_context_t *context) {
     int line = context->current_token.line;
     if (!expect_token(context, TOKEN_ID, "Expected target variable identifier in assignment")) {

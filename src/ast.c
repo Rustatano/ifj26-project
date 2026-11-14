@@ -1,7 +1,7 @@
 /*
 -------------------------------------------------------
 Name of project: Translator IFJ26
-Authors: Zobal, Tajovský, Ondruška, Svoboda
+Authors: Ondruška
 Creation date: 23.10.2026
 File: ast.c
 
@@ -13,22 +13,25 @@ Description: File with implementation of AST
 #include <stdlib.h>
 #include <string.h>
 
+// Helper function to create a new AST node with the specified type and source code line
 static ast_node_t *ast_node_create(ast_node_type_t type, int source_code_line) {
     ast_node_t *new_node =
         calloc(1, sizeof(ast_node_t)); // calloc will set all the values to 0/NULL
     if (new_node == NULL) {
         return NULL;
-    } // not my problem :(
+    }
 
     new_node->source_code_line = source_code_line;
     new_node->type = type;
     return new_node;
 }
 
+// Function for creating ast node of type Block
 ast_node_t *ast_block_create(int source_code_line) {
     return ast_node_create(AST_NODE_BLOCK, source_code_line);
 }
 
+// Function for adding statement to the end of block of code
 void ast_block_append(ast_node_t *block_node, ast_node_t *statement) {
     if (block_node == NULL || statement == NULL) {
         return;
@@ -45,6 +48,7 @@ void ast_block_append(ast_node_t *block_node, ast_node_t *statement) {
     statement->next = NULL;
 }
 
+// Function for creating ast node of type expression
 ast_node_t *ast_expression_operation_create(ast_expression_operator_t op, ast_node_t *left_side,
                                             ast_node_t *right_side, int source_code_line) {
 
@@ -58,6 +62,7 @@ ast_node_t *ast_expression_operation_create(ast_expression_operator_t op, ast_no
     return new_node;
 }
 
+// Function for creating ast node of type variable declaration
 ast_node_t *ast_var_declaration_create(char *name, int unique_id, symtable_datatype_t var_type,
                                        bool is_mutable, ast_node_t *init_expression,
                                        int source_code_line) {
@@ -74,6 +79,7 @@ ast_node_t *ast_var_declaration_create(char *name, int unique_id, symtable_datat
     return new_node;
 }
 
+// Function for creating ast node of type assignment
 ast_node_t *ast_assignment_create(char *target_var_name, int unique_id, ast_node_t *expression,
                                   int source_code_line) {
     ast_node_t *new_node = ast_node_create(AST_NODE_VALUE_ASSIGNMENT, source_code_line);
@@ -86,6 +92,7 @@ ast_node_t *ast_assignment_create(char *target_var_name, int unique_id, ast_node
     return new_node;
 }
 
+// Function for creating ast node of type if-else statement
 ast_node_t *ast_if_create(ast_node_t *condition, ast_node_t *if_block, ast_node_t *else_block,
                           int source_code_line) {
     ast_node_t *new_node = ast_node_create(AST_NODE_STATEMENT_IF, source_code_line);
@@ -98,6 +105,7 @@ ast_node_t *ast_if_create(ast_node_t *condition, ast_node_t *if_block, ast_node_
     return new_node;
 }
 
+// Function for creating ast node of type while statement
 ast_node_t *ast_while_create(ast_node_t *condition, ast_node_t *body_block, int source_code_line) {
     ast_node_t *new_node = ast_node_create(AST_NODE_STATEMENT_WHILE, source_code_line);
     if (new_node == NULL) {
@@ -108,6 +116,7 @@ ast_node_t *ast_while_create(ast_node_t *condition, ast_node_t *body_block, int 
     return new_node;
 }
 
+// Function for creating ast node of type expression variable
 ast_node_t *ast_expression_var_create(char *name, int unique_id, symtable_datatype_t result_type,
                                       int source_code_line) {
     ast_node_t *new_node = ast_node_create(AST_NODE_EXPRESSION_VAR, source_code_line);
@@ -120,6 +129,7 @@ ast_node_t *ast_expression_var_create(char *name, int unique_id, symtable_dataty
     return new_node;
 }
 
+// Functions for creating ast nodes of type int constant
 ast_node_t *ast_const_int_create(int value, int source_code_line) {
     ast_node_t *new_node = ast_node_create(AST_NODE_CONST_INT, source_code_line);
     if (new_node == NULL) {
@@ -128,6 +138,8 @@ ast_node_t *ast_const_int_create(int value, int source_code_line) {
     new_node->int_value = value;
     return new_node;
 }
+
+// Functions for creating ast nodes of type double constant
 ast_node_t *ast_const_double_create(double value, int source_code_line) {
     ast_node_t *new_node = ast_node_create(AST_NODE_CONST_DOUBLE, source_code_line);
     if (new_node == NULL) {
@@ -137,6 +149,7 @@ ast_node_t *ast_const_double_create(double value, int source_code_line) {
     return new_node;
 }
 
+// Functions for creating ast nodes of type string constant
 ast_node_t *ast_const_string_create(char *value, int source_code_line) {
     ast_node_t *new_node = ast_node_create(AST_NODE_CONST_STRING, source_code_line);
     if (new_node == NULL) {
@@ -146,10 +159,12 @@ ast_node_t *ast_const_string_create(char *value, int source_code_line) {
     return new_node;
 }
 
+// Functions for creating ast nodes of type unit constant
 ast_node_t *ast_const_unit_create(int source_code_line) {
     return ast_node_create(AST_NODE_CONST_UNIT, source_code_line);
 }
 
+// Function for creating ast node of type function call expression
 ast_node_t *ast_expression_fun_call_create(char *fun_name, ast_node_t *params, int params_count,
                                            int source_code_line) {
     ast_node_t *new_node = ast_node_create(AST_NODE_EXPRESSION_FUN_CALL, source_code_line);
@@ -162,21 +177,17 @@ ast_node_t *ast_expression_fun_call_create(char *fun_name, ast_node_t *params, i
     return new_node;
 }
 
+// Function for creating ast node of type import statement
 ast_node_t *ast_import_create(const char *module_name, int source_code_line) {
     ast_node_t *new_node = ast_node_create(AST_NODE_STATEMENT_IMPORT, source_code_line);
     if (new_node == NULL) {
         return NULL;
     }
-    size_t module_length = strlen(module_name);
-    new_node->import_statement.module_name = malloc(module_length + 1);
-    if (new_node->import_statement.module_name == NULL) {
-        free(new_node);
-        return NULL;
-    }
-    memcpy(new_node->import_statement.module_name, module_name, module_length + 1);
+    new_node->import_statement.module_name = module_name;
     return new_node;
 }
 
+// Function for creating ast node of type return statement
 ast_node_t *ast_return_create(ast_node_t *expression, int source_code_line) {
     ast_node_t *new_node = ast_node_create(AST_NODE_STATEMENT_RETURN, source_code_line);
     if (new_node == NULL) {
@@ -186,6 +197,7 @@ ast_node_t *ast_return_create(ast_node_t *expression, int source_code_line) {
     return new_node;
 }
 
+// Helper function for creating ast node for function
 static ast_node_t *ast_function_create(ast_node_type_t type, char *name,
                                        symtable_fun_param_t *params,
                                        symtable_datatype_t return_type, ast_node_t *body_block,
@@ -201,6 +213,7 @@ static ast_node_t *ast_function_create(ast_node_type_t type, char *name,
     return new_node;
 }
 
+// Function for creating ast node of type function definition
 ast_node_t *ast_fun_definition_create(char *name, symtable_fun_param_t *params,
                                       symtable_datatype_t return_type, ast_node_t *body_block,
                                       int source_code_line) {
@@ -208,6 +221,7 @@ ast_node_t *ast_fun_definition_create(char *name, symtable_fun_param_t *params,
                                source_code_line);
 }
 
+// Function for creating ast node of type main function
 ast_node_t *ast_main_create(char *name, symtable_fun_param_t *params,
                             symtable_datatype_t return_type, ast_node_t *body_block,
                             int source_code_line) {
@@ -215,6 +229,7 @@ ast_node_t *ast_main_create(char *name, symtable_fun_param_t *params,
                                source_code_line);
 }
 
+// Function for disposing the AST tree
 void ast_dispose(ast_node_t **root) {
     if (root == NULL || *root == NULL) {
         return;
@@ -234,7 +249,6 @@ void ast_dispose(ast_node_t **root) {
         break;
 
     case AST_NODE_STATEMENT_IMPORT:
-        free(node->import_statement.module_name);
         break;
 
     case AST_NODE_MAIN:

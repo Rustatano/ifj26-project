@@ -1,9 +1,24 @@
+/*
+-------------------------------------------------------
+Name of project: Translator IFJ26
+Authors: Ondruška
+Creation date: 14.11.2026
+File: parse_expression.c
+
+Description: Expression parsing implementation
+-------------------------------------------------------
+*/
+
 #include "parse_expression.h"
 #include "parse_expression_common.h"
 #include "parse_expression_reduce.h"
 #include "parse_expression_stack.h"
 #include <stdlib.h>
 
+// Function for parsing a single operand in an expression (literal, variable, or function call)
+// {Int | Double | String}
+// {id}
+// {id}([{expression}, ...])
 ast_node_t *parse_operand(parser_context_t *context) {
     token_t token = context->current_token;
 
@@ -61,21 +76,12 @@ ast_node_t *parse_operand(parser_context_t *context) {
     }
 }
 
+// Function for parsing expressions using precedence syntax analysis
+// ()
+// ({expression})
+// {+ | -}{expression}
+// {expression} {* | / | + | - | < | <= | > | >= | == | !=} {expression}
 ast_node_t *parse_expression(parser_context_t *context) {
-    if (check_token(context, TOKEN_LPAREN)) {
-        token_t opening = context->current_token;
-        load_token(context);
-        if (check_token(context, TOKEN_RPAREN)) {
-            ast_node_t *unit_node = ast_const_unit_create(opening.line);
-            if (unit_node == NULL) {
-                return parser_fail_internal(context, opening.line);
-            }
-            load_token(context);
-            return unit_node;
-        }
-        unread_token(context, opening);
-    }
-
     parser_prec_stack_t stack;
     stack.top = NULL;
 

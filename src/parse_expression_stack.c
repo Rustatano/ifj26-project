@@ -1,6 +1,18 @@
+/*
+-------------------------------------------------------
+Name of project: Translator IFJ26
+Authors: Ondruška
+Creation date: 14.11.2026
+File: parse_expression_stack.c
+
+Description: Expression precedence stack implementation
+-------------------------------------------------------
+*/
 
 #include "parse_expression_stack.h"
 
+// Function for pushing a new item (terminal, non-terminal, or '<') onto the precedence stack
+// Stack: {top}  ==>  {new_item} -> {top}
 bool parser_prec_stack_push(parser_prec_stack_t *stack, parser_prec_stack_item_type_t item_type,
                             parser_prec_table_index_t prec_idx, token_type_t token_type, int line,
                             ast_node_t *node) {
@@ -18,6 +30,8 @@ bool parser_prec_stack_push(parser_prec_stack_t *stack, parser_prec_stack_item_t
     return true;
 }
 
+// Function for finding the topmost terminal on the precedence stack (skips non-terminals and '<')
+// Stack: [E] -> ['<'] -> {top_terminal} -> ...
 parser_prec_stack_item_t *parser_prec_stack_top_terminal(parser_prec_stack_t *stack) {
     parser_prec_stack_item_t *current = stack->top;
     while (current != NULL) {
@@ -29,6 +43,8 @@ parser_prec_stack_item_t *parser_prec_stack_top_terminal(parser_prec_stack_t *st
     return NULL;
 }
 
+// Function for inserting the handle mark '<' immediately above the topmost terminal on the stack
+// Stack: [E] -> {top_terminal} -> ...  ==>  [E] -> '<' -> {top_terminal} -> ...
 bool parser_prec_stack_insert_handle_mark(parser_prec_stack_t *stack) {
     parser_prec_stack_item_t *mark = calloc(1, sizeof(parser_prec_stack_item_t));
     if (mark == NULL) {
@@ -51,6 +67,8 @@ bool parser_prec_stack_insert_handle_mark(parser_prec_stack_t *stack) {
     return true;
 }
 
+// Function for popping and freeing the top item from the precedence stack
+// Stack: {top} -> {next}  ==>  {next}
 void parser_prec_stack_pop(parser_prec_stack_t *stack) {
     if (!stack->top) {
         return;
@@ -60,6 +78,8 @@ void parser_prec_stack_pop(parser_prec_stack_t *stack) {
     free(tmp);
 }
 
+// Function for freeing all items on the precedence stack and disposing of their AST nodes
+// Stack: {top} -> ... -> $  ==>  NULL
 void parser_prec_stack_dispose(parser_prec_stack_t *stack) {
     while (stack->top != NULL) {
         parser_prec_stack_item_t *tmp = stack->top;
@@ -71,6 +91,8 @@ void parser_prec_stack_dispose(parser_prec_stack_t *stack) {
     }
 }
 
+// Function for checking if the stack is completely reduced to a single non-terminal above '$'
+// Stack: E -> $
 bool parser_prec_stack_is_reduced(parser_prec_stack_t *stack) {
     if (stack->top == NULL || stack->top->type != PARSER_PREC_STACK_ITEM_NONTERMINAL) {
         return false;
@@ -83,7 +105,10 @@ bool parser_prec_stack_is_reduced(parser_prec_stack_t *stack) {
     return below->next == NULL;
 }
 
-bool prec_stack_is_binary_after_top(parser_prec_stack_t *stack) {
+// Function for checking if '+' or '-' after the current stack top is a binary operator
+// Binary if stack top is: E, {id}, or ')' (x - 1, (x) + 1)
+// Unary otherwise ( -x, -(x + 1), a * -b)
+bool parser_prec_stack_is_binary_after_top(parser_prec_stack_t *stack) {
     if (stack->top == NULL) {
         return false;
     }

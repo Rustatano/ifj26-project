@@ -1,11 +1,11 @@
 /*
 -------------------------------------------------------
 Name of project: Translator IFJ26
-Authors: Zobal, Tajovský, Ondruška, Svoboda
-Creation date: 10.10.2026
-File: parser.h
+Authors: Ondruška
+Creation date: 14.11.2026
+File: parse_block.h
 
-Description: Header file for the parser
+Description: Header file for the block parsing function
 -------------------------------------------------------
 */
 
@@ -14,6 +14,7 @@ Description: Header file for the parser
 
 #include "parser_common.h"
 
+// Function for parsing a block of code, which consists of multiple statements
 ast_node_t *parse_block(parser_context_t *context);
 
 #endif

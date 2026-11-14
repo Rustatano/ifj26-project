@@ -1,3 +1,14 @@
+/*
+-------------------------------------------------------
+Name of project: Translator IFJ26
+Authors: Ondruška
+Creation date: 14.11.2026
+File: parse_expression_common.h
+
+Description: Common expression parser declarations
+-------------------------------------------------------
+*/
+
 #ifndef PARSE_EXPRESSION_COMMON_H
 #define PARSE_EXPRESSION_COMMON_H
 
@@ -44,8 +55,10 @@ typedef struct {
 // columns are the current input token
 extern const char parser_prec_table[PARSER_PREC_COUNT][PARSER_PREC_COUNT];
 
+// Function for remaping token to prec_table_index_t for precedence parsing
 parser_prec_table_index_t parser_prec_table_token_to_prec_index(parser_context_t *context,
                                                                 parser_prec_stack_t *stack);
-bool parser_prec_table_reduce(parser_context_t *context, parser_prec_stack_t *stack);
+
+// Function for remaping token to ast_expression_operator_t for AST node creation
 ast_expression_operator_t parser_remap_operator(token_type_t op);
 #endif

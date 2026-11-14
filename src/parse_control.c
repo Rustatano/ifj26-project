@@ -1,9 +1,26 @@
+/*
+-------------------------------------------------------
+Name of project: Translator IFJ26
+Authors: Ondruška
+Creation date: 14.11.2026
+File: parse_control.c
+
+Description: Parsing of control statements and imports
+-------------------------------------------------------
+*/
+
 #include "parse_control.h"
 #include "parse_block.h"
 #include "parse_expression.h"
 #include <stdlib.h>
 #include <string.h>
 
+// Function for parsing an if-else conditional statement
+// if {expression} then
+//   {block of code}
+// {EOLS}
+// else
+//   {block of code}
 ast_node_t *parse_if(parser_context_t *context) {
     int line = context->current_token.line;
     if (!consume_token(context, TOKEN_KW_IF, "Expected 'if' keyword")) {
@@ -51,6 +68,9 @@ ast_node_t *parse_if(parser_context_t *context) {
     return if_node;
 }
 
+// Function for parsing a while loop statement
+// while {expression} do
+//   {block of code}
 ast_node_t *parse_while(parser_context_t *context) {
     int line = context->current_token.line;
     if (!consume_token(context, TOKEN_KW_WHILE, "Expected 'while' keyword")) {
@@ -82,6 +102,8 @@ ast_node_t *parse_while(parser_context_t *context) {
     return while_node;
 }
 
+// Function for parsing the mandatory prolog statement at the start of the program
+// import ifj26.*
 ast_node_t *parse_import(parser_context_t *context) {
     int line = context->current_token.line;
     if (!consume_token(context, TOKEN_KW_IMPORT, "Expected 'import' keyword")) {

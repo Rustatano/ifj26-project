@@ -1,9 +1,23 @@
+/*
+-------------------------------------------------------
+Name of project: Translator IFJ26
+Authors: Ondruška
+Creation date: 14.11.2026
+File: parse_function.c
+
+Description: Parsing of function definitions and returns
+-------------------------------------------------------
+*/
+
 #include "parse_function.h"
 #include "parse_block.h"
 #include "parse_declaration.h"
 #include "parse_expression.h"
 #include <stdlib.h>
 
+// Helper function for parsing one parametr with type
+// Helper function for parsing one function parameter
+// {param_id}: {DataType}
 static symtable_fun_param_t *parse_parameter(parser_context_t *context) {
     int line = context->current_token.line;
     if (!expect_token(context, TOKEN_ID, "Expected parameter identifier")) {
@@ -34,6 +48,9 @@ static symtable_fun_param_t *parse_parameter(parser_context_t *context) {
     return param;
 }
 
+// Helper function for parsing a list of parameters in a function definition
+// Helper function for parsing a function parameter list
+// {param_id}: {DataType}, ...
 static bool parse_parameter_list(parser_context_t *context, symtable_fun_param_t **parameters) {
     symtable_fun_param_t *head = NULL;
     symtable_fun_param_t *tail = NULL;
@@ -80,6 +97,8 @@ static bool parse_parameter_list(parser_context_t *context, symtable_fun_param_t
     }
 }
 
+// Function for parsing a return statement with an optional expression
+// return [{expression}]
 ast_node_t *parse_return(parser_context_t *context) {
     int line = context->current_token.line;
     if (!consume_token(context, TOKEN_KW_RETURN, "Expected 'return' keyword")) {
@@ -88,16 +107,7 @@ ast_node_t *parse_return(parser_context_t *context) {
 
     ast_node_t *expression = NULL;
     if (is_statement_terminator(context->current_token.type)) {
-        if (context->current_return_type != SYM_DATATYPE_UNIT) {
-            parser_fail_syntax(context, line,
-                               "A return without expression requires an explicit ': Unit' "
-                               "return type");
-            return NULL;
-        }
-        expression = ast_const_unit_create(line);
-        if (expression == NULL) {
-            return parser_fail_internal(context, line);
-        }
+        expression = NULL;
     } else {
         expression = parse_expression(context);
         if (expression == NULL) {
@@ -113,6 +123,13 @@ ast_node_t *parse_return(parser_context_t *context) {
     return new_node;
 }
 
+// Function for parsing a single-line or multi-line function definition
+// [@main]
+// def {id}([{param_id}: {DataType}, ...]) [: {DataType}] = {expression}
+//
+// [@main]
+// def {id}([{param_id}: {DataType}, ...]) [: {DataType}] =
+//   {block of code}
 ast_node_t *parse_fun_definition(parser_context_t *context, bool is_main) {
     int line = context->current_token.line;
     if (!consume_token(context, TOKEN_KW_DEF, "Expected 'def' keyword")) {
@@ -152,9 +169,6 @@ ast_node_t *parse_fun_definition(parser_context_t *context, bool is_main) {
         return NULL;
     }
 
-    symtable_datatype_t previous_return_type = context->current_return_type;
-    context->current_return_type = return_type;
-
     ast_node_t *fun_body_node = NULL;
     if (check_token(context, TOKEN_EOL)) {
         fun_body_node = parse_block(context);
@@ -167,7 +181,6 @@ ast_node_t *parse_fun_definition(parser_context_t *context, bool is_main) {
                 free(fun_id);
                 parser_fail_syntax(context, context->current_token.line,
                                    "Expected end of one-line function");
-                context->current_return_type = previous_return_type;
                 return NULL;
             }
             fun_body_node = ast_block_create(line);
@@ -181,12 +194,10 @@ ast_node_t *parse_fun_definition(parser_context_t *context, bool is_main) {
         }
     }
     if (fun_body_node == NULL) {
-        context->current_return_type = previous_return_type;
         dispose_parameters(&param_list_head);
         free(fun_id);
         return NULL;
     }
-    context->current_return_type = previous_return_type;
 
     ast_node_t *new_node =
         is_main

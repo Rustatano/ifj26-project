@@ -1,6 +1,19 @@
+/*
+-------------------------------------------------------
+Name of project: Translator IFJ26
+Authors: Ondruška
+Creation date: 14.11.2026
+File: parse_expression_reduce.c
+
+Description: Expression precedence reduction implementation
+-------------------------------------------------------
+*/
 
 #include "parse_expression_reduce.h"
 
+// Helper function for reducing a single terminal operand to a non-terminal expression (E -> i)
+// Helper function for reducing an operand
+// Stack: ... < {id | Int | Double | String | id(...)}  ==>  ... E
 static bool reduce_operand(parser_context_t *context, parser_prec_stack_t *stack) {
     parser_prec_stack_item_t *item = stack->top;
     if (item->type != PARSER_PREC_STACK_ITEM_TERMINAL || item->index != PARSER_PREC_ID) {
@@ -22,6 +35,9 @@ static bool reduce_operand(parser_context_t *context, parser_prec_stack_t *stack
     return true;
 }
 
+// Helper function for reducing empty parentheses to a Unit literal expression (E -> ( ))
+// Helper function for reducing a unit literal
+// Stack: ... < ( )  ==>  ... E
 static bool reduce_unit_literal(parser_context_t *context, parser_prec_stack_t *stack) {
     parser_prec_stack_item_t *right_item = stack->top;
     parser_prec_stack_item_t *left_item = right_item->next;
@@ -51,6 +67,9 @@ static bool reduce_unit_literal(parser_context_t *context, parser_prec_stack_t *
     return true;
 }
 
+// Helper function for reducing a unary operator and an expression (E -> +E | -E)
+// Helper function for reducing a unary expression
+// Stack: ... < {+ | -} E  ==>  ... E
 static bool reduce_unary_expression(parser_context_t *context, parser_prec_stack_t *stack) {
     parser_prec_stack_item_t *right_item = stack->top;
     parser_prec_stack_item_t *operator_item = right_item->next;
@@ -85,6 +104,9 @@ static bool reduce_unary_expression(parser_context_t *context, parser_prec_stack
     return true;
 }
 
+// Helper function for reducing an expression enclosed in parentheses (E -> ( E ))
+// Helper function for reducing a parenthesized expression
+// Stack: ... < ( E )  ==>  ... E
 static bool reduce_parenthesized_expression(parser_context_t *context, parser_prec_stack_t *stack) {
     parser_prec_stack_item_t *right_item = stack->top;
     parser_prec_stack_item_t *expression_item = right_item->next;
@@ -114,6 +136,9 @@ static bool reduce_parenthesized_expression(parser_context_t *context, parser_pr
     return true;
 }
 
+// Helper function for reducing two expressions with a binary operator (E -> E op E)
+// Helper function for reducing a binary expression
+// Stack: ... < E {* | / | + | - | < | <= | > | >= | == | !=} E  ==>  ... E
 static bool reduce_binary_expression(parser_context_t *context, parser_prec_stack_t *stack) {
     parser_prec_stack_item_t *right_item = stack->top;
     parser_prec_stack_item_t *operator_item = right_item->next;
@@ -151,6 +176,10 @@ static bool reduce_binary_expression(parser_context_t *context, parser_prec_stac
     return true;
 }
 
+// Function for finding the handle above '<' on the stack and applying a reduction rule
+// Handle length 1: E -> i
+// Handle length 2: E -> ( ) | +E | -E
+// Handle length 3: E -> ( E ) | E op E
 bool parser_prec_table_reduce(parser_context_t *context, parser_prec_stack_t *stack) {
     int handle_length = 0;
     parser_prec_stack_item_t *current = stack->top;

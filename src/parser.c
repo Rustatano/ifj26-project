@@ -1,7 +1,7 @@
 /*
 -------------------------------------------------------
 Name of project: Translator IFJ26
-Authors: Zobal, Tajovský, Ondruška, Svoboda
+Authors: Ondruška
 Creation date: 10.10.2026
 File: parser.c
 
@@ -15,12 +15,20 @@ Description: Parser implementation.
 #include "parser_common.h"
 #include <stdbool.h>
 
+// Helper function for copying the error state (code, line, message) from parser context to parse
+// result
 static void set_parse_result_error(parse_result_t *result, const parser_context_t *context) {
     result->error_code = context->error_code;
     result->error_line = context->error_line;
     result->error_msg = context->error_message;
 }
 
+// Main entry point for parsing the entire IFJ26 source program into an AST
+// {EOLS}
+// import ifj26.*
+// {EOLS}
+// [@main]
+// def {id}([{param_id}: {DataType}, ...]) [: {DataType}] = ...
 parse_result_t parse(ast_node_t **ast_root, scanner_conf_t *scanner_conf) {
     parse_result_t result = {
         .success = false, .error_code = PARSE_SUCCESS, .error_line = 0, .error_msg = NULL};
@@ -35,8 +43,7 @@ parse_result_t parse(ast_node_t **ast_root, scanner_conf_t *scanner_conf) {
     parser_context_t context = {.scanner_conf = scanner_conf,
                                 .error_line = 0,
                                 .error_message = NULL,
-                                .error_code = PARSE_SUCCESS,
-                                .current_return_type = SYM_DATATYPE_UNKNOWN};
+                                .error_code = PARSE_SUCCESS};
 
     load_token(&context);
 

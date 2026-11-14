@@ -1,7 +1,7 @@
 /*
 -------------------------------------------------------
 Name of project: Translator IFJ26
-Authors: Zobal, Tajovský, Ondruška, Svoboda
+Authors: Ondruška
 Creation date: 14.10.2026
 File: ast.h
 
@@ -78,7 +78,7 @@ struct ast_node {
 
         // AST_NODE_STATEMENT_IMPORT
         struct {
-            char *module_name;
+            const char *module_name;
         } import_statement;
 
         // AST_NODE_FUN_DEFINITION

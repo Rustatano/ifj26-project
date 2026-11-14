@@ -1,7 +1,18 @@
+/*
+-------------------------------------------------------
+Name of project: Translator IFJ26
+Authors: Ondruška
+Creation date: 14.11.2026
+File: parse_expression_common.c
+
+Description: Common expression parser tables and helpers
+-------------------------------------------------------
+*/
 
 #include "parse_expression_common.h"
 #include "parse_expression_stack.h"
 
+// Table with expression rules
 const char parser_prec_table[PARSER_PREC_COUNT][PARSER_PREC_COUNT] = {
     /* unary       */ {'<', '>', '>', '>', '>', '<', '>', '<', '>'},
     /* mul div     */ {'<', '>', '>', '>', '>', '<', '>', '<', '>'},
@@ -13,6 +24,7 @@ const char parser_prec_table[PARSER_PREC_COUNT][PARSER_PREC_COUNT] = {
     /* operand     */ {' ', '>', '>', '>', '>', ' ', '>', ' ', '>'},
     /* dollar      */ {'<', '<', '<', '<', '<', '<', ' ', '<', ' '}};
 
+// Function for remaping token to prec_table_index_t for precedence parsing
 parser_prec_table_index_t parser_prec_table_token_to_prec_index(parser_context_t *context,
                                                                 parser_prec_stack_t *stack) {
     token_type_t t = context->current_token.type;
@@ -20,7 +32,8 @@ parser_prec_table_index_t parser_prec_table_token_to_prec_index(parser_context_t
     switch (t) {
     case TOKEN_PLUS:
     case TOKEN_MINUS:
-        return prec_stack_is_binary_after_top(stack) ? PARSER_PREC_ADD_SUB : PARSER_PREC_UNARY;
+        return parser_prec_stack_is_binary_after_top(stack) ? PARSER_PREC_ADD_SUB
+                                                            : PARSER_PREC_UNARY;
 
     case TOKEN_MUL:
     case TOKEN_DIV:
@@ -59,6 +72,7 @@ parser_prec_table_index_t parser_prec_table_token_to_prec_index(parser_context_t
     }
 }
 
+// Function for remaping token to ast_expression_operator_t for AST node creation
 ast_expression_operator_t parser_remap_operator(token_type_t op) {
     switch (op) {
     case TOKEN_PLUS:
