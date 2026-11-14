@@ -165,6 +165,29 @@ void generate_builtin_function_in_place(char *fun_name, ast_node_t *node,
         fprintf(context->file, "READ GF@tmp0 float\n");
         // push to stack, same as readLine
         fprintf(context->file, "PUSHS GF@tmp0\n");
+
+    } else if (strcmp(fun_name, "toStr") == 0) {
+
+    } else if (strcmp(fun_name, "toInt") == 0) {
+
+    } else if (strcmp(fun_name, "strLength") == 0) {
+
+    } else if (strcmp(fun_name, "substr") == 0) {
+
+    } else if (strcmp(fun_name, "ord") == 0) {
+        handle_node(node->expres_fun_call.params, context);
+        fprintf(context->file, "POPS GF@tmp1\n"); // index (2nd param)
+        fprintf(context->file, "POPS GF@tmp0\n"); // string (1st param)
+        fprintf(context->file, "STR2INT GF@tmp2 GF@tmp0 GF@tmp1\n");
+        // push result to stack
+        fprintf(context->file, "PUSHS GF@tmp2\n");
+
+    } else if (strcmp(fun_name, "chr") == 0) {
+        handle_node(node->expres_fun_call.params, context);
+        fprintf(context->file, "POPS GF@tmp0\n"); // index (1st param)
+        fprintf(context->file, "INT2CHAR GF@tmp1 GF@tmp0\n");
+        // push result to stack
+        fprintf(context->file, "PUSHS GF@tmp1\n");
     }
 }
 
@@ -449,6 +472,7 @@ bool codegen(ast_node_t *ast_root, const char *output_file) {
     fprintf(context->file, ".IFJcode26\n");
     fprintf(context->file, "DEFVAR GF@tmp0\n");
     fprintf(context->file, "DEFVAR GF@tmp1\n");
+    fprintf(context->file, "DEFVAR GF@tmp2\n");
     fprintf(context->file, "JUMP main\n");
 
     // handle AST nodes
