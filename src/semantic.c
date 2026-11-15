@@ -495,7 +495,6 @@ symtable_datatype_t check_block(semantic_context_t *ctx, symtable_stack_t *symta
             }
             break;
         default:
-            printf("%d\n", current_node->type);
             set_semantic_error(ctx, 10, "Invalid statement type", current_node->source_code_line);
             symtable_pop_avl(symtable_stack);
             return SYM_DATATYPE_ERROR;
