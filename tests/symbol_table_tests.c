@@ -18,7 +18,7 @@ Description: Unit tests for symbol table.
 
 #include <cmocka.h> // must be under std includes
 
-#include "symbol_table.h"
+#include "symtable.h"
 
 // SECTION: symtable_init
 void symtable_init_null_test(void **state) {

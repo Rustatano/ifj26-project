@@ -23,6 +23,7 @@ void load_token(parser_context_t *context) {
         loaded_token = get_token(context->scanner_conf);
     }
     context->current_token = loaded_token;
+    context->error_line = loaded_token.line;
 }
 
 // Function for pushing the current token into a single-token lookahead buffer

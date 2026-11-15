@@ -196,6 +196,7 @@ void scanner_init(scanner_conf_t *conf, FILE *file) {
 
     conf->indent_stack[0] = 0; // Set zero space indent as the base indent
     conf->space_counter = 0;
+    conf->line = 0;
 }
 
 // Reads next char, if there are chars on stack it will read them first before reading from input
@@ -232,6 +233,7 @@ token_t get_token(scanner_conf_t *conf) {
 
     token.attr.double_val = 0; // Set values for safety
     token.attr.int_val = 0;    // Set values for safety
+    token.line = conf->line;
 
     // State automaton
     // Key structure elements
@@ -250,6 +252,7 @@ token_t get_token(scanner_conf_t *conf) {
             }
             // New line
             else if (ch == '\n') {
+                conf->line++;
                 token.type = TOKEN_EOL;
                 break;
             }

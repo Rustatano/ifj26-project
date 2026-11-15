@@ -299,7 +299,7 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
     switch (node->type) {
     case AST_NODE_MAIN:
         fprintf(context->file, "LABEL main\n");
-        handle_node(node->block.first_statement, context);
+        handle_node(node->fun_definition.body_block, context);
         fprintf(context->file, "EXIT int@0\n");
         break;
 

@@ -107,7 +107,7 @@ typedef struct {
     int indent_top;    // First unoccupied space
     bool line_start;   // For indentation
     int space_counter; // For indentation
-
+    int line;
 } scanner_conf_t;
 
 // Functions
