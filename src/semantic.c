@@ -52,6 +52,34 @@ int count_fun_params(semantic_context_t *ctx, symtable_fun_param_t *param) {
     return count_fun_params(ctx, param->next) + 1;
 }
 
+// Inserts function parameters into symbol table as local immutable variables
+bool insert_function_params(semantic_context_t *ctx, symtable_stack_t *symtable_stack,
+                            symtable_fun_param_t *param, int source_code_line) {
+    if (param == NULL) {
+        return true;
+    }
+
+    // Initialize symtable node data
+    symtable_data_t var_data;
+    var_data.type = SYM_TYPE_VAR;
+    var_data.var.is_mutable = false;
+    var_data.var.type = param->type;
+    var_data.var.unique_id = ctx->unique_var_id;
+    // put the unique_id into the ast node as well
+    param->unique_id = ctx->unique_var_id;
+    ctx->unique_var_id++;
+
+    // Create new entry in symtable for new variable
+    if (!symtable_insert_item(symtable_stack, param->name, var_data)) {
+        report_semantic_error(
+            ctx, 99, "Internal error: symbol table item (function parameter) insertion failed",
+            source_code_line);
+        return false;
+    }
+
+    return insert_function_params(ctx, symtable_stack, param->next, source_code_line);
+}
+
 // Check if variable is defined
 symtable_datatype_t check_expres_var(semantic_context_t *ctx, symtable_stack_t *symtable_stack,
                                      ast_node_t *node) {
@@ -235,7 +263,7 @@ symtable_datatype_t check_expr(semantic_context_t *ctx, symtable_stack_t *symtab
 
 // Check if variable is not declared and initialize it
 symtable_datatype_t check_var_declaration(semantic_context_t *ctx, symtable_stack_t *symtable_stack,
-                                          ast_node_t *node, symtable_node_t *fun_ctx) {
+                                          ast_node_t *node) {
     // Search for variable declaration in current scope only because shadowing is allowed
     symtable_node_t *var_declaration =
         symtable_stack_search_current(symtable_stack, SYM_TYPE_VAR, node->var_declaration.name);
@@ -246,26 +274,12 @@ symtable_datatype_t check_var_declaration(semantic_context_t *ctx, symtable_stac
         return SYM_DATATYPE_ERROR;
     }
 
-    // Check if variable name conflicts with function parameters
-    if (fun_ctx != NULL) {
-        symtable_fun_param_t *param = fun_ctx->data.fun.params;
-        while (param != NULL) {
-            if (param->name != NULL && strcmp(param->name, node->var_declaration.name) == 0) {
-                report_semantic_error(ctx, 4, "Variable name conflicts with function parameter",
-                                      node->source_code_line);
-                return SYM_DATATYPE_ERROR;
-            }
-            param = param->next;
-        }
-    }
-
     // Initialize symtable node data
     symtable_data_t var_data;
     var_data.type = SYM_TYPE_VAR;
     var_data.var.is_mutable = node->var_declaration.is_mutable;
     var_data.var.type = node->var_declaration.var_type;
     var_data.var.unique_id = ctx->unique_var_id;
-
     // put the unique_id into the ast node as well
     node->var_declaration.unique_id = ctx->unique_var_id;
     ctx->unique_var_id++;
@@ -367,12 +381,12 @@ symtable_datatype_t check_statement_if(semantic_context_t *ctx, symtable_stack_t
     if (check_expr(ctx, symtable_stack, node->if_statement.condition) == SYM_DATATYPE_ERROR) {
         return SYM_DATATYPE_ERROR;
     }
-    if (check_block(ctx, symtable_stack, node->if_statement.if_block, fun_context) ==
+    if (check_block(ctx, symtable_stack, node->if_statement.if_block, fun_context, false) ==
         SYM_DATATYPE_ERROR) {
         return SYM_DATATYPE_ERROR;
     }
     if (node->if_statement.else_block != NULL) {
-        if (check_block(ctx, symtable_stack, node->if_statement.else_block, fun_context) ==
+        if (check_block(ctx, symtable_stack, node->if_statement.else_block, fun_context, false) ==
             SYM_DATATYPE_ERROR) {
             return SYM_DATATYPE_ERROR;
         }
@@ -387,7 +401,7 @@ symtable_datatype_t check_statement_while(semantic_context_t *ctx, symtable_stac
     if (check_expr(ctx, symtable_stack, node->while_statement.condition) == SYM_DATATYPE_ERROR) {
         return SYM_DATATYPE_ERROR;
     }
-    if (check_block(ctx, symtable_stack, node->while_statement.body_block, fun_context) ==
+    if (check_block(ctx, symtable_stack, node->while_statement.body_block, fun_context, false) ==
         SYM_DATATYPE_ERROR) {
         return SYM_DATATYPE_ERROR;
     }
@@ -423,13 +437,21 @@ symtable_datatype_t check_statement_return(semantic_context_t *ctx,
 
 // Check statements in code block sequentially
 symtable_datatype_t check_block(semantic_context_t *ctx, symtable_stack_t *symtable_stack,
-                                ast_node_t *node, symtable_node_t *fun_context) {
+                                ast_node_t *node, symtable_node_t *fun_context, bool is_function) {
     if (node == NULL)
         return SYM_DATATYPE_UNIT;
     if (!symtable_create_avl(symtable_stack)) {
         report_semantic_error(ctx, 99, "Internal error: symbol table AVL creation failed",
                               node->source_code_line);
         return SYM_DATATYPE_ERROR;
+    }
+
+    if (is_function && fun_context != NULL) {
+        if (!insert_function_params(ctx, symtable_stack, fun_context->data.fun.params,
+                                    node->source_code_line)) {
+            symtable_pop_avl(symtable_stack);
+            return SYM_DATATYPE_ERROR;
+        }
     }
 
     // Assign first statement of the block
@@ -439,7 +461,7 @@ symtable_datatype_t check_block(semantic_context_t *ctx, symtable_stack_t *symta
         switch (current_node->type) {
         case AST_NODE_VAR_DECLARATION:
             if ((current_node->result_type = check_var_declaration(
-                     ctx, symtable_stack, current_node, fun_context)) == SYM_DATATYPE_ERROR) {
+                     ctx, symtable_stack, current_node)) == SYM_DATATYPE_ERROR) {
                 symtable_pop_avl(symtable_stack);
                 return SYM_DATATYPE_ERROR;
             }
@@ -573,7 +595,7 @@ bool second_ast_passage(semantic_context_t *ctx, ast_node_t *ast,
             fun_context = symtable_stack_search_current(symtable_stack, SYM_TYPE_FUNC,
                                                         current_node->fun_definition.name);
             if (check_block(ctx, symtable_stack, current_node->fun_definition.body_block,
-                            fun_context) == SYM_DATATYPE_ERROR) {
+                            fun_context, true) == SYM_DATATYPE_ERROR) {
                 return false;
             }
         }

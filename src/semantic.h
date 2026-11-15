@@ -56,7 +56,7 @@ symtable_datatype_t check_expr(semantic_context_t *ctx, symtable_stack_t *symtab
 
 // Check if variable is not declared and initialize it
 symtable_datatype_t check_var_declaration(semantic_context_t *ctx, symtable_stack_t *symtable_stack,
-                                          ast_node_t *node, symtable_node_t *fun_ctx);
+                                          ast_node_t *node);
 
 // Check if variable is declared and assign to it
 symtable_datatype_t check_value_assignment(semantic_context_t *ctx,
@@ -77,7 +77,7 @@ symtable_datatype_t check_statement_return(semantic_context_t *ctx,
 
 // Check statements in code block sequentially
 symtable_datatype_t check_block(semantic_context_t *ctx, symtable_stack_t *symtable_stack,
-                                ast_node_t *node, symtable_node_t *fun_context);
+                                ast_node_t *node, symtable_node_t *fun_context, bool is_function);
 
 // First passage of AST saves global definitions of functions
 bool first_ast_passage(semantic_context_t *ctx, ast_node_t *ast, symtable_stack_t *symtable_stack);
