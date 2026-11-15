@@ -512,7 +512,7 @@ symtable_datatype_t check_block(semantic_context_t *ctx, symtable_stack_t *symta
 
 bool include_builtin_funs(semantic_context_t *ctx, symtable_stack_t *symtable_stack) {
     /*
-    Podporované vestavěné funkce:
+    Supported builtin functions:
     print(value: Any): Unit
     readLine(): String
     readInt(): Int
