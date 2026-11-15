@@ -1,0 +1,13 @@
+import ifj26.*
+
+@main def main(): Unit =
+  val m = 2147483647
+  val n = m + 1
+  val k = m * 2
+  show(n)
+  show(k)
+
+def show(n: Int): Unit =
+  val s = toStr(n)
+  print(s)
+  print("\n")

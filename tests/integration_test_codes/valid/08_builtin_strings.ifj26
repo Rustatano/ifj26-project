@@ -1,0 +1,22 @@
+import ifj26.*
+
+@main def main(): Unit =
+  val a = "Hello"
+  val b = a + ", " + "World"
+  print(b)
+  print("\n")
+  val len = strLength(b)
+  show(len)
+  val sub = subStr(b, 7, 12)
+  print(sub)
+  print("\n")
+  val code = ord(b, 0)
+  show(code)
+  val ch = chr(74)
+  print(ch)
+  print("\n")
+
+def show(n: Int): Unit =
+  val s = toStr(n)
+  print(s)
+  print("\n")

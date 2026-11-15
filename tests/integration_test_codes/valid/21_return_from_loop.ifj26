@@ -1,0 +1,20 @@
+import ifj26.*
+
+def firstSquareAbove(limit: Int): Int =
+  var i = 0
+  while i < 100 do
+    if i * i > limit then
+      return i
+    else
+      ()
+    i = i + 1
+  return -1
+
+@main def main(): Unit =
+  val r = firstSquareAbove(50)
+  show(r)
+
+def show(n: Int): Unit =
+  val s = toStr(n)
+  print(s)
+  print("\n")
