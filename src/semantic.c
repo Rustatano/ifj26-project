@@ -62,6 +62,8 @@ symtable_datatype_t check_expres_var(semantic_context_t *ctx, symtable_stack_t *
         return SYM_DATATYPE_ERROR;
     }
 
+    // copy the unique_id from symbol table into AST node
+    node->expression_var.unique_id = var_declaration->data.var.unique_id;
     return var_declaration->data.var.type;
 }
 
@@ -263,6 +265,9 @@ symtable_datatype_t check_var_declaration(semantic_context_t *ctx, symtable_stac
     var_data.var.is_mutable = node->var_declaration.is_mutable;
     var_data.var.type = node->var_declaration.var_type;
     var_data.var.unique_id = ctx->unique_var_id;
+
+    // put the unique_id into the ast node as well
+    node->var_declaration.unique_id = ctx->unique_var_id;
     ctx->unique_var_id++;
 
     // Create new entry in symtable for new variable
@@ -351,6 +356,8 @@ symtable_datatype_t check_value_assignment(semantic_context_t *ctx,
         }
     }
 
+    // copy the unique_id from symbol table into AST node
+    node->assign_statement.unique_id = var_declaration->data.var.unique_id;
     return SYM_DATATYPE_UNIT;
 }
 
