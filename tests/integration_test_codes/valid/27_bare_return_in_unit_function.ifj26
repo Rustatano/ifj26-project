@@ -1,0 +1,8 @@
+import ifj26.*
+
+def f(): Unit =
+  print("in f\n")
+  return
+
+@main def main(): Unit =
+  f()

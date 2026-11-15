@@ -40,10 +40,15 @@ check:
 	pre-commit run --all-files
 
 test-build:
-	$(CC) $(CFLAGS) -o $(TEST_OUT) $(TEST_DIR)/*.c $(SRC_FILES) -lcmocka -lm
+	$(CC) $(CFLAGS) -o $(TEST_OUT) $(TEST_DIR)/unit/*.c $(SRC_FILES) -lcmocka -lm
 
-test: test-build
+test-unit: test-build
 	./$(TEST_OUT)
+
+test-integration:
+	bash $(TEST_DIR)/run_integration_tests.sh
+
+test-all: test-unit test-integration
 
 # clean project from generated files
 clean:

@@ -1,0 +1,24 @@
+import ifj26.*
+
+def classify(n: Int): String =
+  if n < 0 then
+    return "negative"
+  else
+    if n == 0 then
+      return "zero"
+    else
+      return "positive"
+
+@main def main(): Unit =
+  val m = -5
+  val z = 0
+  val p = 7
+  val a = classify(m)
+  val b = classify(z)
+  val c = classify(p)
+  print(a)
+  print("\n")
+  print(b)
+  print("\n")
+  print(c)
+  print("\n")
