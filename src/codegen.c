@@ -367,7 +367,13 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
     switch (node->type) {
     case AST_NODE_MAIN:
         fprintf(context->file, "LABEL $main\n");
+        fprintf(context->file, "CREATEFRAME\n");
+        fprintf(context->file, "PUSHFRAME\n");
         handle_node(node->block.first_statement, context);
+        // implicitly exit with 0 if no return was used in main
+        fprintf(context->file, "PUSHS int@0\n");
+        fprintf(context->file, "POPFRAME\n");
+        fprintf(context->file, "RETURN\n");
         break;
 
     case AST_NODE_BLOCK:
@@ -675,7 +681,8 @@ bool codegen(ast_node_t *ast_root, const char *output_file) {
     fprintf(context->file, "DEFVAR GF@tmp3\n");
     fprintf(context->file, "DEFVAR GF@tmp4\n");
     fprintf(context->file, "CALL $main\n");
-    fprintf(context->file, "EXIT int@0\n");
+    fprintf(context->file, "POPS GF@tmp0\n");
+    fprintf(context->file, "EXIT GF@tmp0\n");
 
     // handle AST nodes
     bool result = handle_node(ast_root, context);
