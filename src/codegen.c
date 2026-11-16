@@ -571,8 +571,8 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
             fprintf(context->file, "POPS GF@tmp0\n");
             fprintf(context->file, "POPS GF@tmp1\n");
             // push them back for <
-            fprintf(context->file, "PUSHS GF@tmp0\n");
             fprintf(context->file, "PUSHS GF@tmp1\n");
+            fprintf(context->file, "PUSHS GF@tmp0\n");
             fprintf(context->file, "LTS\n");
             // push them back again for =
             fprintf(context->file, "PUSHS GF@tmp0\n");
@@ -592,8 +592,8 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
             fprintf(context->file, "POPS GF@tmp0\n");
             fprintf(context->file, "POPS GF@tmp1\n");
             // push them back for >
-            fprintf(context->file, "PUSHS GF@tmp0\n");
             fprintf(context->file, "PUSHS GF@tmp1\n");
+            fprintf(context->file, "PUSHS GF@tmp0\n");
             fprintf(context->file, "GTS\n");
             // push them back again for =
             fprintf(context->file, "PUSHS GF@tmp0\n");

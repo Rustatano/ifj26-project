@@ -429,7 +429,7 @@ void codegen_factorial_program_test(void **state) {
 
     free(output);
     free_test_ast(program);
-    remove(CODEGEN_TEST_OUTPUT);
+    // remove(CODEGEN_TEST_OUTPUT);
     remove(CODEGEN_RUNTIME_OUTPUT);
     remove(CODEGEN_RUNTIME_INPUT);
 }
