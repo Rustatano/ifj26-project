@@ -104,6 +104,6 @@ bool first_ast_passage(semantic_context_t *ctx, symtable_stack_t *symtable_stack
 bool second_ast_passage(semantic_context_t *ctx, symtable_stack_t *symtable_stack, ast_node_t *ast);
 
 // Wrapper function to call in main()
-semantic_result_t semantic_analysis(ast_node_t *ast, symtable_stack_t *symtable_stack);
+semantic_result_t semantic_analysis(ast_node_t *ast);
 
 #endif // SEMANTIC_H

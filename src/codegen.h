@@ -19,6 +19,6 @@ Description: Header file for code generation
 #include <stdint.h>
 #include <stdio.h>
 
-bool codegen(ast_node_t *ast_root, const char *output_file);
+bool codegen(ast_node_t *ast_root);
 
 #endif

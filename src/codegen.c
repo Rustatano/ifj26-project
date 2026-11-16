@@ -26,25 +26,13 @@ typedef struct {
 // forward declaration so it can be used in other functions
 bool handle_node(ast_node_t *node, codegen_context_t *context);
 
-// create file
-FILE *create_file(const char *output_file) {
-    FILE *file = fopen(output_file, "w");
-    return file;
-}
-
-codegen_context_t *create_codegen_context(const char *output_file) {
-    FILE *file = create_file(output_file);
-    if (file == NULL) {
-        fprintf(stderr, "Failed to create file\n");
-        return NULL;
-    }
-
+codegen_context_t *create_codegen_context() {
     codegen_context_t *context = malloc(sizeof(codegen_context_t));
     if (context == NULL) {
         fprintf(stderr, "Failed malloc\n");
         return NULL;
     }
-    context->file = file;
+    context->file = stdout;
     context->label_counter = 0;
     context->is_in_loop = false;
     context->is_overflow_check_needed = false;
@@ -560,9 +548,9 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
 }
 
 // main function for code generation
-bool codegen(ast_node_t *ast_root, const char *output_file) {
+bool codegen(ast_node_t *ast_root) {
     // create context including the output file
-    codegen_context_t *context = create_codegen_context(output_file);
+    codegen_context_t *context = create_codegen_context();
     if (context == NULL) {
         return false;
     }
