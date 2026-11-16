@@ -315,8 +315,29 @@ void generate_builtin_function_in_place(char *fun_name, ast_node_t *node,
         fprintf(context->file, "PUSHS GF@tmp3\n");
 
     } else if (strcmp(fun_name, "ord") == 0) {
+        int label_id = context->label_counter;
+        context->label_counter++;
+
         handle_node(node->expression_fun_call.params, context);
-        fprintf(context->file, "STR2INTS\n");
+        fprintf(context->file, "POPS GF@tmp1\n");           // index in the string
+        fprintf(context->file, "POPS GF@tmp0\n");           // the value of the string
+        fprintf(context->file, "STRLEN GF@tmp2 GF@tmp0\n"); // string length
+        // check if index is valid
+        fprintf(context->file, "JUMPIFEQ $ORD_ERROR%d GF@tmp2 int@0\n", label_id);
+        fprintf(context->file, "SUB GF@tmp2 GF@tmp2 int@1\n");
+        fprintf(context->file, "GT GF@tmp3 GF@tmp1 GF@tmp2\n");
+        fprintf(context->file, "JUMPIFEQS $ORD_ERROR%d GF@tmp3 bool@true\n", label_id);
+        fprintf(context->file, "LT GF@tmp3 GF@tmp1 int@0\n");
+        fprintf(context->file, "JUMPIFEQS $ORD_ERROR%d GF@tmp3 bool@true\n", label_id);
+        // index is valid
+        fprintf(context->file, "STR2INT GF@tmp4 GF@tmp0 GF@tmp1\n");
+        fprintf(context->file, "PUSHS GF@tmp4\n");
+        fprintf(context->file, "JUMP $ORD_END%d\n", label_id);
+        // index is invalid
+        fprintf(context->file, "LABEL $ORD_ERROR%d\n", label_id);
+        fprintf(context->file, "PUSHS int@-1\n");
+        // end
+        fprintf(context->file, "LABEL $ORD_END%d\n", label_id);
 
     } else if (strcmp(fun_name, "chr") == 0) {
         handle_node(node->expression_fun_call.params, context);
