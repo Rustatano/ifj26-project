@@ -35,7 +35,12 @@ FILE *create_file(const char *output_file) {
 }
 
 codegen_context_t *create_codegen_context(const char *output_file) {
-    FILE *file = create_file(output_file);
+    FILE *file;
+    if (output_file == NULL) {
+        file = stdout;
+    } else {
+        file = create_file(output_file);
+    }
     if (file == NULL) {
         fprintf(stderr, "Failed to create file\n");
         return NULL;
