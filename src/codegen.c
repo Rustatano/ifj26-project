@@ -21,6 +21,7 @@ typedef struct {
     int label_counter;             // used for while and if
     bool is_in_loop;               // used for handling var declaration vs assignment
     bool is_overflow_check_needed; // whether to generate the code for it
+    bool is_eof_check_needed;      // whether to generate the code for it
     ast_node_t *last_node;         // used for handling function returns
 } codegen_context_t;
 
@@ -49,6 +50,8 @@ codegen_context_t *create_codegen_context(const char *output_file) {
     context->label_counter = 0;
     context->is_in_loop = false;
     context->is_overflow_check_needed = false;
+    context->is_eof_check_needed = false;
+    context->last_node = NULL;
     return context;
 }
 
@@ -99,6 +102,20 @@ void generate_oveflow_check(codegen_context_t *context) {
     fprintf(context->file, "MULS\n");
     fprintf(context->file, "PUSHS GF@tmp0\n");
     fprintf(context->file, "ADDS\n");
+    fprintf(context->file, "RETURN\n");
+}
+
+// for readLine, readInt and readDouble, convert nil to empty string or 0
+void generate_eof_check(codegen_context_t *context) {
+    fprintf(context->file, "LABEL $EOF_CHECK\n");
+    fprintf(context->file, "POPS GF@tmp0\n");         // default value
+    fprintf(context->file, "POPS GF@tmp1\n");         // value from read
+    fprintf(context->file, "TYPE GF@tmp2 GF@tmp1\n"); // type of value from read
+    fprintf(context->file, "JUMPIFEQ $EOF_CHECK_DEFAULT GF@tmp2 string@nil\n");
+    fprintf(context->file, "PUSHS GF@tmp1\n");
+    fprintf(context->file, "RETURN\n");
+    fprintf(context->file, "LABEL $EOF_CHECK_DEFAULT\n");
+    fprintf(context->file, "PUSHS GF@tmp0\n");
     fprintf(context->file, "RETURN\n");
 }
 
@@ -158,19 +175,31 @@ void generate_builtin_function_in_place(char *fun_name, ast_node_t *node,
         fprintf(context->file, "PUSHS nil@nil\n");
 
     } else if (strcmp(fun_name, "readLine") == 0) {
+        context->is_eof_check_needed = true;
         fprintf(context->file, "READ GF@tmp0 string\n");
         // push the value to stack because the rest of codegen expects it
         fprintf(context->file, "PUSHS GF@tmp0\n");
+        // push default value to stack for the check_eof function
+        fprintf(context->file, "PUSHS string@\n");
+        fprintf(context->file, "CALL $EOF_CHECK\n");
 
     } else if (strcmp(fun_name, "readInt") == 0) {
+        context->is_eof_check_needed = true;
         fprintf(context->file, "READ GF@tmp0 int\n");
         // push to stack, same as readLine
         fprintf(context->file, "PUSHS GF@tmp0\n");
+        // push default value to stack for the check_eof function
+        fprintf(context->file, "PUSHS int@0\n");
+        fprintf(context->file, "CALL $EOF_CHECK\n");
 
     } else if (strcmp(fun_name, "readDouble") == 0) {
+        context->is_eof_check_needed = true;
         fprintf(context->file, "READ GF@tmp0 float\n");
         // push to stack, same as readLine
         fprintf(context->file, "PUSHS GF@tmp0\n");
+        // push default value to stack for the check_eof function
+        fprintf(context->file, "PUSHS float@0\n");
+        fprintf(context->file, "CALL $EOF_CHECK\n");
 
     } else if (strcmp(fun_name, "toStr") == 0) {
         handle_node(node->expression_fun_call.params, context);
@@ -622,6 +651,9 @@ bool codegen(ast_node_t *ast_root, const char *output_file) {
     // end of file code
     if (context->is_overflow_check_needed) {
         generate_oveflow_check(context);
+    }
+    if (context->is_eof_check_needed) {
+        generate_eof_check(context);
     }
     fprintf(context->file, "LABEL $EXIT40\n");
     fprintf(context->file, "EXIT int@40\n");
