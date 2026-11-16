@@ -56,7 +56,7 @@ symtable_datatype_t check_expr(semantic_context_t *ctx, symtable_stack_t *symtab
 
 // Check if variable is not declared and initialize it
 symtable_datatype_t check_var_declaration(semantic_context_t *ctx, symtable_stack_t *symtable_stack,
-                                          ast_node_t *node);
+                                          ast_node_t *node, symtable_node_t *fun_ctx);
 
 // Check if variable is declared and assign to it
 symtable_datatype_t check_value_assignment(semantic_context_t *ctx,

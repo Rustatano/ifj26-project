@@ -663,8 +663,7 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
         context->last_node = node;
     }
 
-    handle_node(node->next, context);
-    return true;
+    return handle_node(node->next, context);
 }
 
 // main function for code generation

@@ -233,7 +233,7 @@ symtable_datatype_t check_expr(semantic_context_t *ctx, symtable_stack_t *symtab
 
 // Check if variable is not declared and initialize it
 symtable_datatype_t check_var_declaration(semantic_context_t *ctx, symtable_stack_t *symtable_stack,
-                                          ast_node_t *node) {
+                                          ast_node_t *node, symtable_node_t *fun_ctx) {
     // Search for variable declaration in current scope only because shadowing is allowed
     symtable_node_t *var_declaration =
         symtable_stack_search_current(symtable_stack, SYM_TYPE_VAR, node->var_declaration.name);
@@ -242,6 +242,19 @@ symtable_datatype_t check_var_declaration(semantic_context_t *ctx, symtable_stac
         report_semantic_error(ctx, 4, "Redefinition of variable in the same scope",
                               node->source_code_line);
         return SYM_DATATYPE_ERROR;
+    }
+
+    // Check if variable name conflicts with function parameters
+    if (fun_ctx != NULL) {
+        symtable_fun_param_t *param = fun_ctx->data.fun.params;
+        while (param != NULL) {
+            if (param->name != NULL && strcmp(param->name, node->var_declaration.name) == 0) {
+                report_semantic_error(ctx, 4, "Variable name conflicts with function parameter",
+                                      node->source_code_line);
+                return SYM_DATATYPE_ERROR;
+            }
+            param = param->next;
+        }
     }
 
     // Initialize symtable node data
@@ -419,7 +432,7 @@ symtable_datatype_t check_block(semantic_context_t *ctx, symtable_stack_t *symta
         switch (current_node->type) {
         case AST_NODE_VAR_DECLARATION:
             if ((current_node->result_type = check_var_declaration(
-                     ctx, symtable_stack, current_node)) == SYM_DATATYPE_ERROR) {
+                     ctx, symtable_stack, current_node, fun_context)) == SYM_DATATYPE_ERROR) {
                 symtable_pop_avl(symtable_stack);
                 return SYM_DATATYPE_ERROR;
             }
