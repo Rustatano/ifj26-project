@@ -21,6 +21,7 @@ typedef struct {
     int label_counter;             // used for while and if
     bool is_in_loop;               // used for handling var declaration vs assignment
     bool is_overflow_check_needed; // whether to generate the code for it
+    ast_node_t *last_node;         // used for handling function returns
 } codegen_context_t;
 
 // forward declaration so it can be used in other functions
@@ -341,7 +342,26 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
 
         // body of the function
         handle_node(node->fun_definition.body_block, context);
-        // done, return is in the body
+
+        // done, check if return was used
+        if (context->last_node == NULL || context->last_node->type != AST_NODE_STATEMENT_RETURN) {
+            // check if the last node was a definition, assignment or while
+            // if so push unit to stack as return value
+            if (context->last_node != NULL &&
+                (context->last_node->type == AST_NODE_VAR_DECLARATION ||
+                 context->last_node->type == AST_NODE_VALUE_ASSIGNMENT ||
+                 context->last_node->type == AST_NODE_STATEMENT_WHILE)) {
+                fprintf(context->file, "PUSHS nil@nil\n");
+            }
+            fprintf(context->file, "RETURN\n");
+            fprintf(context->file, "POPFRAME\n");
+        }
+
+        // check if unit is function return type
+        // if so, push unit to stack as return value
+        if (node->fun_definition.return_type == SYM_DATATYPE_UNIT) {
+            fprintf(context->file, "PUSHS nil@nil\n");
+        }
         break;
 
     case AST_NODE_VAR_DECLARATION:
@@ -556,6 +576,11 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
     default:
         fprintf(stderr, "Unknown AST node\n");
         return false;
+    }
+
+    if (node->type != AST_NODE_BLOCK) {
+        // we are not interested in the block as all funcs have a block
+        context->last_node = node;
     }
 
     handle_node(node->next, context);
