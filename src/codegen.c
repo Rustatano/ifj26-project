@@ -22,6 +22,7 @@ typedef struct {
     bool is_in_loop;               // used for handling var declaration vs assignment
     bool is_overflow_check_needed; // whether to generate the code for it
     bool is_eof_check_needed;      // whether to generate the code for it
+    bool is_unit_function;         // whether the function must return unit
     ast_node_t *last_node;         // used for handling function returns
 } codegen_context_t;
 
@@ -56,6 +57,7 @@ codegen_context_t *create_codegen_context(const char *output_file) {
     context->is_in_loop = false;
     context->is_overflow_check_needed = false;
     context->is_eof_check_needed = false;
+    context->is_unit_function = false;
     context->last_node = NULL;
     return context;
 }
@@ -326,11 +328,11 @@ void generate_builtin_function_in_place(char *fun_name, ast_node_t *node,
         fprintf(context->file, "JUMPIFEQ $ORD_ERROR%d GF@tmp2 int@0\n", label_id);
         fprintf(context->file, "SUB GF@tmp2 GF@tmp2 int@1\n");
         fprintf(context->file, "GT GF@tmp3 GF@tmp1 GF@tmp2\n");
-        fprintf(context->file, "JUMPIFEQS $ORD_ERROR%d GF@tmp3 bool@true\n", label_id);
+        fprintf(context->file, "JUMPIFEQ $ORD_ERROR%d GF@tmp3 bool@true\n", label_id);
         fprintf(context->file, "LT GF@tmp3 GF@tmp1 int@0\n");
-        fprintf(context->file, "JUMPIFEQS $ORD_ERROR%d GF@tmp3 bool@true\n", label_id);
+        fprintf(context->file, "JUMPIFEQ $ORD_ERROR%d GF@tmp3 bool@true\n", label_id);
         // index is valid
-        fprintf(context->file, "STR2INT GF@tmp4 GF@tmp0 GF@tmp1\n");
+        fprintf(context->file, "STRI2INT GF@tmp4 GF@tmp0 GF@tmp1\n");
         fprintf(context->file, "PUSHS GF@tmp4\n");
         fprintf(context->file, "JUMP $ORD_END%d\n", label_id);
         // index is invalid
@@ -366,7 +368,6 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
     case AST_NODE_MAIN:
         fprintf(context->file, "LABEL $main\n");
         handle_node(node->block.first_statement, context);
-        fprintf(context->file, "EXIT int@0\n");
         break;
 
     case AST_NODE_BLOCK:
@@ -380,6 +381,11 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
         break;
 
     case AST_NODE_FUN_DEFINITION:
+        if (node->fun_definition.return_type == SYM_DATATYPE_UNIT) {
+            context->is_unit_function = true;
+        } else {
+            context->is_unit_function = false;
+        }
         // create label and frame
         fprintf(context->file, "LABEL %s\n", node->fun_definition.name);
         fprintf(context->file, "CREATEFRAME\n");
@@ -402,20 +408,15 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
         if (context->last_node == NULL || context->last_node->type != AST_NODE_STATEMENT_RETURN) {
             // check if the last node was a definition, assignment or while
             // if so push unit to stack as return value
-            if (context->last_node != NULL &&
-                (context->last_node->type == AST_NODE_VAR_DECLARATION ||
-                 context->last_node->type == AST_NODE_VALUE_ASSIGNMENT ||
-                 context->last_node->type == AST_NODE_STATEMENT_WHILE)) {
+            if ((context->last_node != NULL &&
+                 (context->last_node->type == AST_NODE_VAR_DECLARATION ||
+                  context->last_node->type == AST_NODE_VALUE_ASSIGNMENT ||
+                  context->last_node->type == AST_NODE_STATEMENT_WHILE)) ||
+                context->is_unit_function) {
                 fprintf(context->file, "PUSHS nil@nil\n");
             }
-            fprintf(context->file, "RETURN\n");
             fprintf(context->file, "POPFRAME\n");
-        }
-
-        // check if unit is function return type
-        // if so, push unit to stack as return value
-        if (node->fun_definition.return_type == SYM_DATATYPE_UNIT) {
-            fprintf(context->file, "PUSHS nil@nil\n");
+            fprintf(context->file, "RETURN\n");
         }
         break;
 
@@ -490,7 +491,11 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
         break;
 
     case AST_NODE_STATEMENT_RETURN:
-        handle_node(node->return_statement.expression, context);
+        if (context->is_unit_function) {
+            fprintf(context->file, "PUSHS nil@nil\n");
+        } else {
+            handle_node(node->return_statement.expression, context);
+        }
         fprintf(context->file, "POPFRAME\n");
         fprintf(context->file, "RETURN\n");
         break;
@@ -669,7 +674,8 @@ bool codegen(ast_node_t *ast_root, const char *output_file) {
     fprintf(context->file, "DEFVAR GF@tmp2\n");
     fprintf(context->file, "DEFVAR GF@tmp3\n");
     fprintf(context->file, "DEFVAR GF@tmp4\n");
-    fprintf(context->file, "JUMP $main\n");
+    fprintf(context->file, "CALL $main\n");
+    fprintf(context->file, "EXIT int@0\n");
 
     // handle AST nodes
     bool result = handle_node(ast_root, context);
