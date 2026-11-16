@@ -38,23 +38,34 @@ ast_node_t *parse_var_declaration(parser_context_t *context) {
         return parser_fail_syntax(context, line, "Expected 'var' or 'val' KW");
     }
     bool is_mutable = check_token(context, TOKEN_KW_VAR);
-    load_token(context);
+    if (!load_token(context)) {
+        return NULL;
+    }
 
     if (!expect_token(context, TOKEN_ID, "Expected variable name identifier")) {
         return NULL;
     }
     char *var_id = context->current_token.attr.str_val;
-    load_token(context);
+
+    if (!load_token(context)) {
+        return NULL;
+    }
 
     symtable_datatype_t var_type = SYM_DATATYPE_UNKNOWN;
     if (check_token(context, TOKEN_COLON)) {
-        load_token(context);
+        if (!load_token(context)) {
+            free(var_id);
+            return NULL;
+        }
         var_type = parse_data_type(context);
         if (var_type == SYM_DATATYPE_UNKNOWN) {
             free(var_id);
             return NULL;
         }
-        load_token(context);
+        if (!load_token(context)) {
+            free(var_id);
+            return NULL;
+        }
     }
 
     if (!consume_token(context, TOKEN_ASSIGN, "Expected '=' in variable declaration")) {

@@ -17,16 +17,14 @@ Description: Header file for the parser
 #include <stdbool.h>
 #include <stdio.h>
 
-typedef enum {
-    PARSE_SUCCESS,
-    PARSE_ERR_LEXICAL,
-    PARSE_ERR_SYNTAX,
-    PARSE_ERR_INTERNAL
-} parse_error_code;
+#define PARSE_SUCCESS 0
+#define PARSE_ERR_LEXICAL 1
+#define PARSE_ERR_SYNTAX 2
+#define PARSE_ERR_INTERNAL 99
 
 typedef struct {
     bool success;
-    parse_error_code error_code;
+    int error_code;
     int error_line;
     const char *error_msg;
 } parse_result_t;

@@ -100,6 +100,12 @@ typedef struct {
 } token_t;
 
 typedef struct {
+    bool success;
+    int error_code;
+    const char *error_msg;
+} scanner_result_t;
+
+typedef struct {
     FILE *source_file;
     int unread_chars_stack[UNREAD_CHARS_SIZE];
     int unread_top; // First unoccupied space
@@ -108,6 +114,7 @@ typedef struct {
     bool line_start;   // For indentation
     int space_counter; // For indentation
     int line;
+    scanner_result_t result; // Result of scanner call with error info
 } scanner_conf_t;
 
 // Functions

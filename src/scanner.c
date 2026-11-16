@@ -79,6 +79,13 @@ typedef struct {
 
 // Functions
 
+// Sets function call result parameters
+void set_scanner_error(scanner_conf_t *conf, int code, const char *msg) {
+    conf->result.success = false;
+    conf->result.error_code = code;
+    conf->result.error_msg = msg;
+}
+
 // Initializes string values
 bool str_init(dynamic_string_t *str) {
     str->capacity = STRING_START_SIZE;
@@ -113,25 +120,23 @@ bool str_add_char(dynamic_string_t *str, char ch) {
     return true;
 }
 
-void string_init_check(dynamic_string_t *str) {
+void string_init_check(scanner_conf_t *conf, dynamic_string_t *str) {
     if (!str_init(str)) {
-        fprintf(stderr, "Lexical analysis Error 99: String allocation error\n");
-        exit(99); // Internal compiler error
+        set_scanner_error(conf, 99, "String allocation error"); // Internal compiler error
     }
 }
 
-void string_EOF_check(int ch) {
+void string_EOF_check(scanner_conf_t *conf, int ch) {
     if (ch == EOF) {
-        fprintf(stderr, "Lexical analysis Error 1: Invalid string, cannot include EOF \n");
-        exit(1);
+        set_scanner_error(conf, 1, "Invalid string, cannot include EOF");
     }
 }
 
-void comment_EOF_check(int ch) {
+void comment_EOF_check(scanner_conf_t *conf, int ch) {
     if (ch == EOF) {
-        fprintf(stderr, "Lexical analysis Error 1: Invalid comment block, cannot end file without "
-                        "ending the comment first \n");
-        exit(1);
+        set_scanner_error(conf, 1,
+                          "Invalid comment block, cannot end file without "
+                          "ending the comment first");
     }
 }
 
@@ -196,7 +201,7 @@ void scanner_init(scanner_conf_t *conf, FILE *file) {
 
     conf->indent_stack[0] = 0; // Set zero space indent as the base indent
     conf->space_counter = 0;
-    conf->line = 0;
+    conf->line = 1;
 }
 
 // Reads next char, if there are chars on stack it will read them first before reading from input
@@ -234,6 +239,11 @@ token_t get_token(scanner_conf_t *conf) {
     token.attr.double_val = 0; // Set values for safety
     token.attr.int_val = 0;    // Set values for safety
     token.line = conf->line;
+
+    // Initialize result of this call
+    conf->result.success = true;
+    conf->result.error_code = 0;
+    conf->result.error_msg = NULL;
 
     // State automaton
     // Key structure elements
@@ -281,7 +291,7 @@ token_t get_token(scanner_conf_t *conf) {
 
             // Identifier
             else if (isalpha(ch)) {
-                string_init_check(&str);
+                string_init_check(conf, &str);
                 str_add_char(&str, ch);
                 state = STATE_ID;
                 continue;
@@ -350,7 +360,7 @@ token_t get_token(scanner_conf_t *conf) {
             // String
             else if (ch == '"') {
                 // Check malloc status
-                string_init_check(&str);
+                string_init_check(conf, &str);
                 // Move to another state
                 state = STATE_FIR_QUOTE;
                 continue;
@@ -372,9 +382,8 @@ token_t get_token(scanner_conf_t *conf) {
             }
             // Not a valid starting character for any token
             else {
-                fprintf(stderr,
-                        "Lexical analysis Error 1: Input doesn't match any valid token: %c\n", ch);
-                exit(1);
+                set_scanner_error(conf, 1, "Input doesn't match any valid token");
+                return token;
             }
             break;
 
@@ -393,7 +402,7 @@ token_t get_token(scanner_conf_t *conf) {
         case STATE_UNDERSCORE:
             // Identifier starting with underscore
             if (isalnum(ch) || ch == '_') {
-                string_init_check(&str);
+                string_init_check(conf, &str);
                 // Saving both underscore and the char after in the string
                 str_add_char(&str, char_buffer);
                 str_add_char(&str, ch);
@@ -418,9 +427,8 @@ token_t get_token(scanner_conf_t *conf) {
                 continue;
                 // Doesn't match the correct format
             } else {
-                store_char(conf, ch);
-                fprintf(stderr, "Lexical analysis Error 1: Annotation in incorrect format\n");
-                exit(1);
+                set_scanner_error(conf, 1, "Annotation in incorrect format");
+                return token;
             }
             break;
 
@@ -432,9 +440,8 @@ token_t get_token(scanner_conf_t *conf) {
             }
             // Doesn't match the correct format
             else {
-                store_char(conf, ch);
-                fprintf(stderr, "Lexical analysis Error 1: Annotation in incorrect format\n");
-                exit(1);
+                set_scanner_error(conf, 1, "Annotation in incorrect format");
+                return token;
             }
             break;
 
@@ -446,9 +453,8 @@ token_t get_token(scanner_conf_t *conf) {
             }
             // Doesn't match the correct format
             else {
-                store_char(conf, ch);
-                fprintf(stderr, "Lexical analysis Error 1: Annotation in incorrect format\n");
-                exit(1);
+                set_scanner_error(conf, 1, "Annotation in incorrect format");
+                return token;
             }
             break;
 
@@ -459,9 +465,8 @@ token_t get_token(scanner_conf_t *conf) {
             }
             // Doesn't match the correct format
             else {
-                store_char(conf, ch);
-                fprintf(stderr, "Lexical analysis Error 1: Annotation in incorrect format\n");
-                exit(1);
+                set_scanner_error(conf, 1, "Annotation in incorrect format");
+                return token;
             }
             break;
 
@@ -515,14 +520,13 @@ token_t get_token(scanner_conf_t *conf) {
             }
             // Otherwise an error
             else {
-                store_char(conf, ch);
-                fprintf(stderr, "Lexical analysis Error 1: Invalid token '!' is not supported\n");
-                exit(1);
+                set_scanner_error(conf, 1, "Invalid token '!' is not supported");
+                return token;
             }
             break;
 
         case STATE_FIR_QUOTE:
-            string_EOF_check(ch);
+            string_EOF_check(conf, ch);
             // The input is [""]
             if (ch == '"') {
                 state = STATE_SEC_QUOTE;
@@ -537,7 +541,7 @@ token_t get_token(scanner_conf_t *conf) {
             break;
 
         case STATE_ONE_L_STR_DATA:
-            string_EOF_check(ch);
+            string_EOF_check(conf, ch);
             // End of the string
             if (ch == '"') {
                 token.type = TOKEN_STRING;
@@ -546,11 +550,8 @@ token_t get_token(scanner_conf_t *conf) {
             }
             // Next char is an special character
             else if (ch == '\n' || ch == '\r') {
-                fprintf(stderr,
-                        "Lexical analysis Error 1: Invalid One line string token, cannot "
-                        "include: %c \n",
-                        ch);
-                exit(1);
+                set_scanner_error(conf, 1, "Invalid one line string token");
+                return token;
             }
             // Next char is an escape sequence
             if (ch == '\\') {
@@ -565,7 +566,7 @@ token_t get_token(scanner_conf_t *conf) {
             break;
 
         case STATE_ESC_SEQ_ONE_L:
-            string_EOF_check(ch);
+            string_EOF_check(conf, ch);
             // Next char is a valid escape sequence
             if (ch == '\\') {
                 str_add_char(&str, '\\');
@@ -580,9 +581,8 @@ token_t get_token(scanner_conf_t *conf) {
             }
             // Next char is not a valid sequence
             else {
-                fprintf(stderr, "Lexical analysis Error 1: Not a valid escape sequence: '\\%c' \n",
-                        ch);
-                exit(1);
+                set_scanner_error(conf, 1, "Not a valid escape sequence");
+                return token;
             }
             state = STATE_ONE_L_STR_DATA;
             continue;
@@ -607,7 +607,7 @@ token_t get_token(scanner_conf_t *conf) {
             break;
 
         case STATE_THIRD_QUOTE:
-            string_EOF_check(ch);
+            string_EOF_check(conf, ch);
             // The input is a first end double quote
             // [""" "]
             if (ch == '"') {
@@ -624,7 +624,7 @@ token_t get_token(scanner_conf_t *conf) {
             break;
 
         case STATE_MUL_L_STR_DATA:
-            string_EOF_check(ch);
+            string_EOF_check(conf, ch);
             // The input is a first ending double quote
             // [""" DATA "]
             if (ch == '"') {
@@ -640,7 +640,7 @@ token_t get_token(scanner_conf_t *conf) {
             break;
 
         case STATE_FIR_END_QUOTE:
-            string_EOF_check(ch);
+            string_EOF_check(conf, ch);
             // The input is a second ending double quote
             // [""" DATA ""]
             if (ch == '"') {
@@ -659,7 +659,7 @@ token_t get_token(scanner_conf_t *conf) {
             break;
 
         case STATE_SEC_END_QUOTE:
-            string_EOF_check(ch);
+            string_EOF_check(conf, ch);
             // The last double quote is found for the ending sequence of the multi line string
             // [""" DATA """]
             if (ch == '"') {
@@ -684,11 +684,10 @@ token_t get_token(scanner_conf_t *conf) {
         case STATE_ZERO:
             // The input is a number
             if (isdigit(ch) || ch == '_') {
-                fprintf(stderr,
-                        "Lexical analysis Error 1: Invalid Number format, cannot accept a number "
-                        "with a leading zero or a trailing underscore after zero: 0%c \n",
-                        ch);
-                exit(1);
+                set_scanner_error(conf, 1,
+                                  "Invalid number format, cannot accept a number with a leading "
+                                  "zero or a trailing underscore after zero");
+                return token;
             }
             // The next character is a dot
             else if (ch == '.') {
@@ -758,11 +757,8 @@ token_t get_token(scanner_conf_t *conf) {
             }
             // Number ends with an underscore
             else {
-                fprintf(stderr,
-                        "Lexical analysis Error 1: Number literal cannot end with an underscore "
-                        "%d%c \n",
-                        token.attr.int_val, ch);
-                exit(1);
+                set_scanner_error(conf, 1, "Number literal cannot end with an underscore");
+                return token;
             }
             break;
 
@@ -795,13 +791,10 @@ token_t get_token(scanner_conf_t *conf) {
             }
             // Invalid double sequence
             else {
-                store_char(conf, ch);
-                fprintf(stderr,
-                        "Lexical analysis Error 1: Invalid double number sequence double number "
-                        "has to have a digit after a dot: "
-                        "%d.%c \n",
-                        (int)token.attr.double_val, ch);
-                exit(1);
+                set_scanner_error(
+                    conf, 1,
+                    "Invalid double number sequence double number has to have a digit after a dot");
+                return token;
             }
             break;
 
@@ -849,11 +842,8 @@ token_t get_token(scanner_conf_t *conf) {
             }
             // Number ends with an underscore
             else {
-                fprintf(stderr,
-                        "Lexical analysis Error 1: Number literal cannot end with an underscore "
-                        "%f%c \n",
-                        token.attr.double_val, ch);
-                exit(1);
+                set_scanner_error(conf, 1, "Number literal cannot end with an underscore");
+                return token;
             }
             break;
 
@@ -879,10 +869,8 @@ token_t get_token(scanner_conf_t *conf) {
             }
             // Not a valid exponent sequence
             else {
-                fprintf(stderr,
-                        "Lexical analysis Error 1: Not a valid double exponent sequence: e%c \n",
-                        ch);
-                exit(1);
+                set_scanner_error(conf, 1, "Not a valid double exponent sequence");
+                return token;
             }
             break;
 
@@ -897,10 +885,9 @@ token_t get_token(scanner_conf_t *conf) {
             }
             // The exponent line sequence is empty
             else {
-                fprintf(stderr,
-                        "Lexical analysis Error 1: Double number has exponent but it doesn't "
-                        "contain any number in it \n");
-                exit(1);
+                set_scanner_error(
+                    conf, 1, "Double number has exponent but it doesn't contain any number in it");
+                return token;
             }
 
         case STATE_DOUBLE_EXPO:
@@ -960,11 +947,8 @@ token_t get_token(scanner_conf_t *conf) {
             }
             // Number ends with an underscore
             else {
-                fprintf(stderr,
-                        "Lexical analysis Error 1: Number exponent cannot end with an underscore "
-                        "%d%c \n",
-                        exponent_value, ch);
-                exit(1);
+                set_scanner_error(conf, 1, "Number exponent cannot end with an underscore");
+                return token;
             }
             break;
 
@@ -1000,7 +984,7 @@ token_t get_token(scanner_conf_t *conf) {
 
         case STATE_COMMENT_BLOCK:
             // Check for end of file in the block comment
-            comment_EOF_check(ch);
+            comment_EOF_check(conf, ch);
 
             // The comment contains a new line
             if (ch == '\n') {
@@ -1025,7 +1009,7 @@ token_t get_token(scanner_conf_t *conf) {
 
         case STATE_COMMENT_BLOCK_STAR:
             // Check for end of file in the block comment
-            comment_EOF_check(ch);
+            comment_EOF_check(conf, ch);
 
             // The input is a finished comment block ending sequence
             if (ch == '/') {
@@ -1053,9 +1037,8 @@ token_t get_token(scanner_conf_t *conf) {
                 }
                 // Else state just to be safe
                 else {
-                    fprintf(stderr,
-                            "Lexical analysis Error 1: The comment depth is somehow negative");
-                    exit(1);
+                    set_scanner_error(conf, 1, "The comment depth is somehow negative");
+                    return token;
                 }
             }
             // Check for new line
@@ -1074,7 +1057,7 @@ token_t get_token(scanner_conf_t *conf) {
 
         case STATE_COMMENT_BLOCK_SLASH:
             // Check for end of file in the block comment
-            comment_EOF_check(ch);
+            comment_EOF_check(conf, ch);
 
             // New comment block has started
             if (ch == '*') {
@@ -1112,9 +1095,9 @@ token_t get_token(scanner_conf_t *conf) {
             }
             // After the block comment with new line is not EOL
             else {
-                fprintf(stderr, "Lexical analysis Error 1: Invalid character after a block comment "
-                                "containing a newline \n");
-                exit(1);
+                set_scanner_error(conf, 1,
+                                  "Invalid character after a block comment containing a newline");
+                return token;
             }
             break;
 
@@ -1134,10 +1117,8 @@ token_t get_token(scanner_conf_t *conf) {
             }
             // Found tabulator while reading the spaces
             else if (ch == '\t') {
-                fprintf(
-                    stderr,
-                    "Lexical analysis Error 1: Tabulator at the beginning of a non empty line\n");
-                exit(1);
+                set_scanner_error(conf, 1, "Tabulator at the beginning of a non empty line");
+                return token;
             }
             // First non empty character found
             else {
@@ -1182,8 +1163,8 @@ token_t get_token(scanner_conf_t *conf) {
 
         // If not in any valid state
         default:
-            fprintf(stderr, "Lexical analysis Error 1: Invalid token type: %c \n", ch);
-            exit(1);
+            set_scanner_error(conf, 1, "Invalid token type");
+            return token;
             break;
         } // End of switch case
 

@@ -19,7 +19,7 @@ Description: Parser implementation.
 // result
 static void set_parse_result_error(parse_result_t *result, const parser_context_t *context) {
     result->error_code = context->error_code;
-    result->error_line = context->error_line;
+    result->error_line = context->line;
     result->error_msg = context->error_message;
 }
 
@@ -41,7 +41,7 @@ parse_result_t parse(ast_node_t **ast_root, scanner_conf_t *scanner_conf) {
     *ast_root = NULL;
 
     parser_context_t context = {.scanner_conf = scanner_conf,
-                                .error_line = 0,
+                                .line = 0,
                                 .error_message = NULL,
                                 .error_code = PARSE_SUCCESS};
 
@@ -61,7 +61,7 @@ parse_result_t parse(ast_node_t **ast_root, scanner_conf_t *scanner_conf) {
     ast_node_t *prolog = parse_import(&context);
     if (prolog == NULL) {
         ast_dispose(&root);
-        result.error_line = context.error_line;
+        result.error_line = context.line;
         result.error_msg = context.error_message;
         result.error_code = context.error_code;
         return result;
@@ -108,7 +108,7 @@ parse_result_t parse(ast_node_t **ast_root, scanner_conf_t *scanner_conf) {
 
             result.success = false;
             result.error_code = context.error_code;
-            result.error_line = context.error_line;
+            result.error_line = context.line;
             result.error_msg = context.error_message;
             return result;
         }
