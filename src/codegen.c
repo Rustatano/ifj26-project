@@ -333,11 +333,11 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
         // save pointer to the params linked list for value assignment from stack
         symtable_fun_param_t *params_ptr = node->fun_definition.params;
         // define params and load them from stack
-        while (node->fun_definition.params != NULL) {
-            fprintf(context->file, "DEFVAR LF@%s$%d\n", node->fun_definition.params->name,
-                    node->fun_definition.params->unique_id);
-            node->fun_definition.params = node->fun_definition.params->next;
+        while (params_ptr != NULL) {
+            fprintf(context->file, "DEFVAR LF@%s$%d\n", params_ptr->name, params_ptr->unique_id);
+            params_ptr = params_ptr->next;
         }
+        params_ptr = node->fun_definition.params;
         load_params_from_stack_reverse(params_ptr, context);
 
         // body of the function
