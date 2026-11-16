@@ -108,7 +108,7 @@ void codegen_program_and_constants_test(void **state) {
 
     assert_true(result);
     assert_non_null(strstr(output, ".IFJcode26\n"));
-    assert_non_null(strstr(output, "LABEL main\n"));
+    assert_non_null(strstr(output, "LABEL $main\n"));
     assert_non_null(strstr(output, "PUSHS int@42\n"));
     assert_non_null(strstr(output, "PUSHS float@0x1.8p+0\n"));
     assert_non_null(strstr(output, "PUSHS string@hello\n"));
@@ -168,5 +168,5 @@ void codegen_integer_arithmetic_test(void **state) {
 
     free(output);
     free_test_ast(main_node);
-    // remove(CODEGEN_TEST_OUTPUT);
+    remove(CODEGEN_TEST_OUTPUT);
 }

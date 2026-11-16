@@ -64,7 +64,7 @@ codegen_context_t *create_codegen_context(const char *output_file) {
 
 void destroy_codegen_context(codegen_context_t *context) {
     if (context != NULL) {
-        if (context->file != NULL) {
+        if (context->file != NULL && context->file != stdout) {
             fclose(context->file);
         }
         free(context);
@@ -470,7 +470,7 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
         // set in loop to alter var declaration behavior
         context->is_in_loop = true;
         // extract variable declarations first in case this block is a loop block
-        extract_var_declarations(node->next->block.first_statement, context);
+        extract_var_declarations(node->while_statement.body_block, context);
 
         context->label_counter++;
         fprintf(context->file, "JUMP $WHILE_CONDITION$%d\n", label_id);
