@@ -296,6 +296,8 @@ void generate_builtin_function_in_place(char *fun_name, ast_node_t *node,
         // first char
         fprintf(context->file, "GETCHAR GF@tmp3 GF@tmp0 GF@tmp1\n");
         fprintf(context->file, "ADD GF@tmp1 GF@tmp1 int@1\n");
+        // sub 1 from end index so we can loop till start is > end (instead of >=)
+        fprintf(context->file, "SUB GF@tmp2 GF@tmp2 int@1\n");
         // loop for other chars
         fprintf(context->file, "LABEL $SUBSTR_LOOP%d\n", label_id);
         // check if start index has gone over end index
@@ -476,7 +478,7 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
         // set in loop to alter var declaration behavior
         context->is_in_loop = true;
         // extract variable declarations first in case this block is a loop block
-        extract_var_declarations(node->while_statement.body_block, context);
+        extract_var_declarations(node->while_statement.body_block->block.first_statement, context);
 
         context->label_counter++;
         fprintf(context->file, "JUMP $WHILE_CONDITION$%d\n", label_id);
