@@ -569,7 +569,16 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
         break;
 
     case AST_NODE_CONST_STRING:
-        fprintf(context->file, "PUSHS string@%s\n", node->str_value);
+        fprintf(context->file, "PUSHS string@");
+        // whitespace, # and \ needs to be written as escape sequence
+        for (char *c = node->str_value; *c != '\0'; c++) {
+            if ((0 <= *c && *c <= 32) || *c == 35 || *c == 92) {
+                fprintf(context->file, "\\%03d", *c);
+            } else {
+                fprintf(context->file, "%c", *c);
+            }
+        }
+        fprintf(context->file, "\n");
         break;
 
     case AST_NODE_CONST_UNIT:
