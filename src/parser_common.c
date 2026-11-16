@@ -14,7 +14,7 @@ Description: Common parser helpers and parser context operations
 #include <stdlib.h>
 
 // Function for loading the next token into context (from lookahead buffer or scanner)
-bool load_token(parser_context_t *context) {
+void load_token(parser_context_t *context) {
     token_t loaded_token;
     if (context->has_buffered_token) {
         loaded_token = context->buffered_token;
@@ -23,15 +23,7 @@ bool load_token(parser_context_t *context) {
         loaded_token = get_token(context->scanner_conf);
     }
     context->current_token = loaded_token;
-    context->line = loaded_token.line;
-
-    // Lexical error occured
-    if (!context->scanner_conf->result.success) {
-        context->error_message = context->scanner_conf->result.error_msg;
-        context->error_code = context->scanner_conf->result.error_code;
-    }
-
-    return context->scanner_conf->result.success;
+    context->error_line = loaded_token.line;
 }
 
 // Function for pushing the current token into a single-token lookahead buffer
@@ -85,6 +77,13 @@ bool parse_argument_list(parser_context_t *context, ast_node_t **params, int *pa
         skip_eols(context);
 
         if (check_token(context, TOKEN_RPAREN)) {
+            // Trailing comma is allowed only if a line break follows it (spec 1.2)
+            if (!context->current_token.newline_before) {
+                ast_dispose(params);
+                parser_fail_syntax(context, context->current_token.line,
+                                   "Trailing comma must be followed by a line break");
+                return false;
+            }
             load_token(context);
             return true;
         }
@@ -142,7 +141,7 @@ bool consume_token(parser_context_t *context, token_type_t expected, const char 
 void *parser_fail_syntax(parser_context_t *context, int error_line, const char *error_message) {
     if (context->error_code != PARSE_ERR_INTERNAL) {
         context->error_code = PARSE_ERR_SYNTAX;
-        context->line = error_line;
+        context->error_line = error_line;
         context->error_message = error_message;
     }
     return NULL;
@@ -151,7 +150,7 @@ void *parser_fail_syntax(parser_context_t *context, int error_line, const char *
 // Function for recording an internal compiler error
 void *parser_fail_internal(parser_context_t *context, int error_line) {
     context->error_code = PARSE_ERR_INTERNAL;
-    context->line = error_line;
+    context->error_line = error_line;
     context->error_message = "Memory allocation failed";
     return NULL;
 }

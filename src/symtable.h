@@ -35,6 +35,7 @@ typedef enum {
     SYM_DATATYPE_DOUBLE,
     SYM_DATATYPE_STRING,
     SYM_DATATYPE_UNIT,
+    SYM_DATATYPE_BOOL, // Result of relational operators, usable only in conditions
 } symtable_datatype_t;
 
 // Linked list representing parameters of functions
@@ -61,6 +62,10 @@ typedef struct {
             symtable_datatype_t return_type;
             int param_count; // Saved because counting by looping through linked list can be slow
             symtable_fun_param_t *params;
+            bool params_shared; // True if params list is owned by someone else (AST), not freed
+            bool body_checked;  // Body was already checked by the semantic analyzer
+            bool in_progress;   // Body is being checked right now (detects recursion)
+            void *definition;   // Pointer to function definition node in AST (set by semantic)
         } fun;
     };
 } symtable_data_t;

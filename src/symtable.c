@@ -309,7 +309,7 @@ void delete_node(symtable_node_t *node) {
     free(node->key);
 
     // Delete function parameters and its names
-    if (node->data.type == SYM_TYPE_FUNC) {
+    if (node->data.type == SYM_TYPE_FUNC && !node->data.fun.params_shared) {
         symtable_fun_param_t *param = node->data.fun.params;
         symtable_fun_param_t *next_param;
         while (param != NULL) {

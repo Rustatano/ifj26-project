@@ -19,7 +19,7 @@ Description: Parser implementation.
 // result
 static void set_parse_result_error(parse_result_t *result, const parser_context_t *context) {
     result->error_code = context->error_code;
-    result->error_line = context->line;
+    result->error_line = context->error_line;
     result->error_msg = context->error_message;
 }
 
@@ -41,7 +41,7 @@ parse_result_t parse(ast_node_t **ast_root, scanner_conf_t *scanner_conf) {
     *ast_root = NULL;
 
     parser_context_t context = {.scanner_conf = scanner_conf,
-                                .line = 0,
+                                .error_line = 0,
                                 .error_message = NULL,
                                 .error_code = PARSE_SUCCESS};
 
@@ -61,14 +61,13 @@ parse_result_t parse(ast_node_t **ast_root, scanner_conf_t *scanner_conf) {
     ast_node_t *prolog = parse_import(&context);
     if (prolog == NULL) {
         ast_dispose(&root);
-        result.error_line = context.line;
+        result.error_line = context.error_line;
         result.error_msg = context.error_message;
         result.error_code = context.error_code;
         return result;
     }
     ast_block_append(root, prolog);
 
-    bool main_seen = false;
     while (!check_token(&context, TOKEN_EOF)) {
         while (check_token(&context, TOKEN_EOL)) {
             load_token(&context);
@@ -80,14 +79,7 @@ parse_result_t parse(ast_node_t **ast_root, scanner_conf_t *scanner_conf) {
         bool is_main = false;
         if (check_token(&context, TOKEN_ANNOTATION)) {
             is_main = true;
-            if (main_seen) {
-                ast_dispose(&root);
-                parser_fail_syntax(&context, context.current_token.line,
-                                   "Duplicate @main annotation");
-                set_parse_result_error(&result, &context);
-                return result;
-            }
-            main_seen = true;
+            // Missing / duplicate @main is a semantic error (3 / 4), reported by semantic analysis
             load_token(&context);
             while (check_token(&context, TOKEN_EOL)) {
                 load_token(&context);
@@ -108,20 +100,12 @@ parse_result_t parse(ast_node_t **ast_root, scanner_conf_t *scanner_conf) {
 
             result.success = false;
             result.error_code = context.error_code;
-            result.error_line = context.line;
+            result.error_line = context.error_line;
             result.error_msg = context.error_message;
             return result;
         }
 
         ast_block_append(root, stmt);
-    }
-
-    if (main_seen == false) {
-        ast_dispose(&root);
-        parser_fail_syntax(&context, context.current_token.line,
-                           "Program must contain a function annotated with @main");
-        set_parse_result_error(&result, &context);
-        return result;
     }
 
     *ast_root = root;

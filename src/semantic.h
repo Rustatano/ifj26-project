@@ -37,6 +37,13 @@ typedef struct {
     symtable_datatype_t return_type;
 } builtin_fun_t;
 
+typedef struct {
+    symtable_datatype_t type;
+    bool returns;
+    bool is_if;
+    ast_node_t **last_link;
+} block_result_t;
+
 // Report semantic error
 void set_semantic_error(semantic_context_t *ctx, int code, const char *msg, int line);
 
@@ -104,6 +111,6 @@ bool first_ast_passage(semantic_context_t *ctx, symtable_stack_t *symtable_stack
 bool second_ast_passage(semantic_context_t *ctx, symtable_stack_t *symtable_stack, ast_node_t *ast);
 
 // Wrapper function to call in main()
-semantic_result_t semantic_analysis(ast_node_t *ast);
+semantic_result_t semantic_analysis(ast_node_t *ast, symtable_stack_t *symtable_stack);
 
 #endif // SEMANTIC_H

@@ -16,16 +16,16 @@ Description: Common parser declarations and parser context
 
 typedef struct parser_context {
     token_t current_token;
-    int line;
+    int error_line;
     const char *error_message;
-    int error_code;
+    parse_error_code error_code;
     scanner_conf_t *scanner_conf;
     token_t buffered_token;
     bool has_buffered_token;
 } parser_context_t;
 
 // Function for loading the next token into context (from lookahead buffer or scanner)
-bool load_token(parser_context_t *context);
+void load_token(parser_context_t *context);
 // Function for pushing the current token into a single-token lookahead buffer
 // and restoring the given token as the current token
 void unread_token(parser_context_t *context, token_t token);

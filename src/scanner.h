@@ -97,13 +97,8 @@ typedef struct {
     token_type_t type;
     token_attr_t attr;
     int line;
+    bool newline_before; // A line break inside parentheses was skipped before this token
 } token_t;
-
-typedef struct {
-    bool success;
-    int error_code;
-    const char *error_msg;
-} scanner_result_t;
 
 typedef struct {
     FILE *source_file;
@@ -113,8 +108,10 @@ typedef struct {
     int indent_top;    // First unoccupied space
     bool line_start;   // For indentation
     int space_counter; // For indentation
-    int line;
-    scanner_result_t result; // Result of scanner call with error info
+    int line;          // Current line (counted from 1)
+    int paren_depth;   // Depth of opened parentheses (line breaks inside them are whitespace)
+    bool newline_seen; // A line break inside parentheses was skipped (for the next token)
+    bool after_dedent; // A DEDENT was just returned for this line (checks dedent to unknown level)
 } scanner_conf_t;
 
 // Functions
