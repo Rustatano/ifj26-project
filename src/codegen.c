@@ -417,11 +417,14 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
         extract_var_declarations(node->next->block.first_statement, context);
 
         context->label_counter++;
+        fprintf(context->file, "JUMP $WHILE_CONDITION$%d\n", label_id);
         fprintf(context->file, "LABEL $WHILE$%d\n", label_id);
 
+        // while body
         handle_node(node->while_statement.body_block, context);
 
         // while condition
+        fprintf(context->file, "LABEL $WHILE_CONDITION$%d\n", label_id);
         handle_node(node->while_statement.condition, context);
         // result of the condition is on top of the stack
         // push true to the stack and check if the condition is true
