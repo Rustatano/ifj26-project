@@ -13,7 +13,7 @@ Description: Generates IFJcode26 from the Abstract Syntax Tree
 #include "codegen.h"
 #define BUILTIN_FUN_LIST                                                                           \
     {"print", "readLine",  "readInt", "readDouble", "toStr",                                       \
-     "toInt", "strLength", "substr",  "ord",        "chr"}
+     "toInt", "strLength", "subStr",  "ord",        "chr"}
 #define BUILTIN_FUN_COUNT 10
 
 typedef struct {
@@ -200,12 +200,14 @@ void generate_builtin_function_in_place(char *fun_name, ast_node_t *node,
         // push result to stack
         fprintf(context->file, "PUSHS GF@tmp1\n");
 
-    } else if (strcmp(fun_name, "substr") == 0) {
+    } else if (strcmp(fun_name, "subStr") == 0) {
+        int label_id = context->label_counter;
+        context->label_counter++;
+
         handle_node(node->expression_fun_call.params, context);
         fprintf(context->file, "POPS GF@tmp2\n"); // end index
         fprintf(context->file, "POPS GF@tmp1\n"); // start index
         fprintf(context->file, "POPS GF@tmp0\n"); // string
-        fprintf(context->file, "SUBSTR GF@tmp0 GF@tmp0 GF@tmp1 GF@tmp2\n");
 
         // check if params are valid
         // start < 0
@@ -251,29 +253,29 @@ void generate_builtin_function_in_place(char *fun_name, ast_node_t *node,
         fprintf(context->file, "JUMPIFEQS $EXIT40\n");
         // end of checks
 
-        // actual code of substr
+        // actual code of subStr
         // sub result is gonna be in GF@tmp3 (strLength is no longer needed)
         // GF@tmp4 is gonna be used for getchar results
         // first char
         fprintf(context->file, "GETCHAR GF@tmp3 GF@tmp0 GF@tmp1\n");
         fprintf(context->file, "ADD GF@tmp1 GF@tmp1 int@1\n");
         // loop for other chars
-        fprintf(context->file, "LABEL $SUBSTR_LOOP\n");
+        fprintf(context->file, "LABEL $SUBSTR_LOOP%d\n", label_id);
         // check if start index has gone over end index
         fprintf(context->file, "PUSHS GF@tmp1\n");
         fprintf(context->file, "PUSHS GF@tmp2\n");
         fprintf(context->file, "GTS\n");
         fprintf(context->file, "PUSHS bool@true\n");
-        fprintf(context->file, "JUMPIFEQS $SUBSTR_LOOP_END\n");
+        fprintf(context->file, "JUMPIFEQS $SUBSTR_LOOP_END%d\n", label_id);
         // get current char and concat it
         fprintf(context->file, "GETCHAR GF@tmp4 GF@tmp0 GF@tmp1\n");
         fprintf(context->file, "CONCAT GF@tmp3 GF@tmp3 GF@tmp4\n");
         // increment and jump
         fprintf(context->file, "ADD GF@tmp1 GF@tmp1 int@1\n");
-        fprintf(context->file, "JUMP $SUBSTR_LOOP\n");
+        fprintf(context->file, "JUMP $SUBSTR_LOOP%d\n", label_id);
 
         // end of loop
-        fprintf(context->file, "LABEL $SUBSTR_LOOP_END\n");
+        fprintf(context->file, "LABEL $SUBSTR_LOOP_END%d\n", label_id);
         // push result to stack
         fprintf(context->file, "PUSHS GF@tmp3\n");
 
@@ -306,7 +308,7 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
 
     switch (node->type) {
     case AST_NODE_MAIN:
-        fprintf(context->file, "LABEL main\n");
+        fprintf(context->file, "LABEL $main\n");
         handle_node(node->block.first_statement, context);
         fprintf(context->file, "EXIT int@0\n");
         break;
@@ -575,7 +577,7 @@ bool codegen(ast_node_t *ast_root, const char *output_file) {
     fprintf(context->file, "DEFVAR GF@tmp2\n");
     fprintf(context->file, "DEFVAR GF@tmp3\n");
     fprintf(context->file, "DEFVAR GF@tmp4\n");
-    fprintf(context->file, "JUMP main\n");
+    fprintf(context->file, "JUMP $main\n");
 
     // handle AST nodes
     bool result = handle_node(ast_root, context);
