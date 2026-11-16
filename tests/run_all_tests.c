@@ -17,6 +17,9 @@ Description: Main file for running all tests.
 
 #include <cmocka.h> // must be under std includes
 
+// Code generation test functions
+extern void codegen_factorial_program_test(void **state);
+
 // Symbol table test functions
 extern void symtable_init_null_test(void **state);
 extern void symtable_init_test(void **state);
@@ -79,6 +82,7 @@ int main(void) {
         cmocka_unit_test(codegen_program_and_constants_test),
         cmocka_unit_test(codegen_variable_declaration_and_assignment_test),
         cmocka_unit_test(codegen_integer_arithmetic_test),
+        cmocka_unit_test(codegen_factorial_program_test),
     };
     int res2 = cmocka_run_group_tests(codegen_tests, NULL, NULL);
 

@@ -369,7 +369,7 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
         fprintf(context->file, "LABEL $main\n");
         fprintf(context->file, "CREATEFRAME\n");
         fprintf(context->file, "PUSHFRAME\n");
-        handle_node(node->block.first_statement, context);
+        handle_node(node->fun_definition.body_block, context);
         // implicitly exit with 0 if no return was used in main
         fprintf(context->file, "PUSHS int@0\n");
         fprintf(context->file, "POPFRAME\n");
