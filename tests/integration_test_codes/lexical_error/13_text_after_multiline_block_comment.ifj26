@@ -1,0 +1,6 @@
+import ifj26.*
+
+/* a
+b */ val x = 1
+@main def main(): Unit =
+  ()
