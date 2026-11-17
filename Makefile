@@ -35,6 +35,10 @@ archive:
 	rm -rf $(ARCHIVE)
 	zip $(ARCHIVE) -r $(SRC_DIR)/ $(TEST_DIR)/ $(DOC_MAIN).pdf Makefile rozdeleni rozsireni
 
+# check archive composition
+check-archive:
+	bash is_it_ok.sh $(ARCHIVE)
+
 # check pre-commit and commit-msg hooks
 check:
 	pre-commit run --all-files

@@ -16,6 +16,7 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     libcmocka-dev \
     cmocka-doc \
     cmake \
+    file \
     && add-apt-repository -y ppa:ubuntu-toolchain-r/test \
     && apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y gcc-16 g++-16 \

@@ -1,0 +1,9 @@
+OK: Velikost archivu: 100469 B
+OK: Archiv lze rozbalit
+OK: Nalezeno: Makefile
+ERROR: Nenalezen vyžadovaný soubor: dokumentace.pdf
+OK: Nalezeno: rozdeleni
+OK: Nalezeno: rozsireni
+WARNING: V kořeni je podezřelý soubor (očekávány jen vyžadované soubory a soubory .c/.h): main.pdf
+WARNING: Není možné vyzkoušet přeložitelnost! Nainstalujte Docker (ověřte, že jej váš uživatel má právo používat) či Podman; nebo vyzkoušejte skript na Merlinovi.
+Došlo k 1 chybě!
