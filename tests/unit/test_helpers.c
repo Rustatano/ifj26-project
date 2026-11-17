@@ -91,7 +91,13 @@ int scan_in_child(const char *text) {
                 break;
             }
         }
+#ifdef SCANNER_HAS_RESULT
+        // The scanner does not exit on errors, the error code is in its result
+        _exit(conf.result.success ? 0 : conf.result.error_code);
+#else
+        // The scanner ends the process with exit(1) on a lexical error
         _exit(0);
+#endif
     }
     int status = 0;
     waitpid(pid, &status, 0);

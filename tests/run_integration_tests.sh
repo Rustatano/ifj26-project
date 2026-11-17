@@ -33,7 +33,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 CASES_DIR="$SCRIPT_DIR/integration_test_codes"
 COMPILER="${COMPILER:-$ROOT_DIR/ifj26}"
-INTERP="${INTERP:-$ROOT_DIR/ic26int-linux-x86_64}"
+INTERP="${INTERP:-$ROOT_DIR/ic26int}"
+[ -x "$INTERP" ] || INTERP="$ROOT_DIR/ic26int-linux-x86_64"
 TIMEOUT="${TIMEOUT:-10}"
 OUT_DIR="$SCRIPT_DIR/integration_out"
 
@@ -57,13 +58,19 @@ else
 fi
 
 # ---- prerequisites ---------------------------------------------------------
+# No compiler binary in the project root: build one from ../src into ./build/ifj26
 if [ ! -x "$COMPILER" ]; then
-    echo "Compiler '$COMPILER' not found; trying 'make' in $ROOT_DIR ..." >&2
-    (cd "$ROOT_DIR" && make >/dev/null 2>&1)
+    BUILT_COMPILER="$SCRIPT_DIR/build/ifj26"
+    echo "Compiler '$COMPILER' not found, building $BUILT_COMPILER from $ROOT_DIR/src ..." >&2
+    mkdir -p "$SCRIPT_DIR/build"
+    if cc -std=c11 -g -O1 -Wall -Wextra -pedantic -I"$ROOT_DIR/src" "$ROOT_DIR"/src/*.c \
+        -o "$BUILT_COMPILER" -lm; then
+        COMPILER="$BUILT_COMPILER"
+    fi
 fi
 if [ ! -x "$COMPILER" ]; then
     echo "${RED}ERROR${RESET}: compiler binary not found: $COMPILER" >&2
-    echo "Build the project first (make) or set COMPILER=/path/to/binary." >&2
+    echo "Build the project first or set COMPILER=/path/to/binary." >&2
     exit 2
 fi
 if [ ! -x "$INTERP" ]; then

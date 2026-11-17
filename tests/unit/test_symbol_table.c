@@ -10,7 +10,11 @@ Description: Unit tests (cmocka) of the symbol table - a stack of AVL
 -------------------------------------------------------
 */
 
-#include "symbol_table.h"
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
+#include "symtable.h"
 #include "test_helpers.h"
 #include <stdlib.h>
 #include <string.h>

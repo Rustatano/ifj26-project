@@ -207,9 +207,9 @@ static void test_empty_input_is_syntax_error(void **state) {
 
 static void test_only_prolog_without_function_is_not_success(void **state) {
     (void)state;
-    // there is no @main function at all
+    // missing @main is reported by the semantic analysis (error 3), the parser accepts the program
     parsed_t p = parse_text(PROLOG);
-    assert_false(p.result.success);
+    assert_true(p.result.success);
     parsed_free(&p);
 }
 

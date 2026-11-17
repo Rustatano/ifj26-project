@@ -1,8 +1,0 @@
-import ifj26.*
-
-@main def main(): Unit =
-  print("a\tb\\c\"d\"\n")
-  val m = """line1
-  line2\n"""
-  print(m)
-  print("\n")

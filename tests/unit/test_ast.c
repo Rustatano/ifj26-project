@@ -9,6 +9,10 @@ Description: Unit tests (cmocka) of AST node constructors,
 -------------------------------------------------------
 */
 
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
 #include "ast.h"
 #include "test_helpers.h"
 #include <stdlib.h>
@@ -67,7 +71,7 @@ static void test_const_unit_create(void **state) {
 
 static void test_new_nodes_are_zero_initialized(void **state) {
     (void)state;
-    ast_node_t *n = ast_const_unit_create(1);
+    ast_node_t *n = ast_block_create(1);
     assert_null(n->next);
     assert_int_equal(n->result_type, 0);
     ast_dispose(&n);

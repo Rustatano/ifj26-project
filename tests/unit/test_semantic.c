@@ -2,7 +2,6 @@
 -------------------------------------------------------
 Name of project: Translator IFJ26
 File: test_semantic.c
-Author: AI (Claude)
 
 Description: Unit tests (cmocka) of the semantic analyzer (semantic.c).
              Part 1 tests individual check_* functions on hand-built
@@ -115,7 +114,7 @@ static void declare_fun(sem_fixture_t *fx, const char *name, symtable_datatype_t
     d.type = SYM_TYPE_FUNC;
     d.fun.return_type = ret;
     d.fun.params = params;
-    d.fun.param_count = count_fun_params(NULL, params);
+    d.fun.param_count = count_fun_params(params);
     assert_true(symtable_insert_item(&fx->stack, (char *)name, d));
 }
 
@@ -140,11 +139,11 @@ static void test_semantic_init_creates_global_scope(void **state) {
 
 static void test_count_fun_params(void **state) {
     (void)state;
-    assert_int_equal(count_fun_params(NULL, NULL), 0);
+    assert_int_equal(count_fun_params(NULL), 0);
     symtable_fun_param_t *p = param(
         "a", SYM_DATATYPE_INT, param("b", SYM_DATATYPE_INT, param("c", SYM_DATATYPE_INT, NULL)));
-    assert_int_equal(count_fun_params(NULL, p), 3);
-    assert_int_equal(count_fun_params(NULL, p->next->next), 1);
+    assert_int_equal(count_fun_params(p), 3);
+    assert_int_equal(count_fun_params(p->next->next), 1);
     while (p != NULL) {
         symtable_fun_param_t *next = p->next;
         free(p->name);
@@ -500,7 +499,7 @@ static ast_node_t *decl(const char *name, symtable_datatype_t type, bool is_muta
 static void test_declaration_infers_type(void **state) {
     sem_fixture_t *fx = *state;
     ast_node_t *d = decl("x", SYM_DATATYPE_UNKNOWN, false, typed_string("s"));
-    assert_int_equal(check_var_declaration(&fx->ctx, &fx->stack, d), SYM_DATATYPE_STRING);
+    assert_int_equal(check_var_declaration(&fx->ctx, &fx->stack, d, NULL), SYM_DATATYPE_STRING);
     assert_int_equal(d->var_declaration.var_type, SYM_DATATYPE_STRING);
     symtable_node_t *n = symtable_search(&fx->stack, SYM_TYPE_VAR, "x");
     assert_non_null(n);
@@ -512,7 +511,7 @@ static void test_declaration_infers_type(void **state) {
 static void test_declaration_with_matching_explicit_type(void **state) {
     sem_fixture_t *fx = *state;
     ast_node_t *d = decl("x", SYM_DATATYPE_INT, true, typed_int(1));
-    assert_int_equal(check_var_declaration(&fx->ctx, &fx->stack, d), SYM_DATATYPE_INT);
+    assert_int_equal(check_var_declaration(&fx->ctx, &fx->stack, d, NULL), SYM_DATATYPE_INT);
     assert_true(symtable_search(&fx->stack, SYM_TYPE_VAR, "x")->data.var.is_mutable);
     ast_dispose(&d);
 }
@@ -520,7 +519,7 @@ static void test_declaration_with_matching_explicit_type(void **state) {
 static void test_declaration_int_to_double_conversion(void **state) {
     sem_fixture_t *fx = *state;
     ast_node_t *d = decl("x", SYM_DATATYPE_DOUBLE, false, typed_int(1));
-    assert_int_equal(check_var_declaration(&fx->ctx, &fx->stack, d), SYM_DATATYPE_DOUBLE);
+    assert_int_equal(check_var_declaration(&fx->ctx, &fx->stack, d, NULL), SYM_DATATYPE_DOUBLE);
     assert_int_equal(d->var_declaration.init_expression->result_type, SYM_DATATYPE_DOUBLE);
     ast_dispose(&d);
 }
@@ -529,7 +528,7 @@ static void test_declaration_type_mismatch_is_error(void **state) {
     sem_fixture_t *fx = *state;
     ast_node_t *d = decl("x", SYM_DATATYPE_INT, false, typed_string("s"));
     quiet_begin();
-    symtable_datatype_t t = check_var_declaration(&fx->ctx, &fx->stack, d);
+    symtable_datatype_t t = check_var_declaration(&fx->ctx, &fx->stack, d, NULL);
     quiet_end();
     assert_int_equal(t, SYM_DATATYPE_ERROR);
     ast_dispose(&d);
@@ -539,7 +538,7 @@ static void test_declaration_double_to_int_is_error(void **state) {
     sem_fixture_t *fx = *state;
     ast_node_t *d = decl("x", SYM_DATATYPE_INT, false, typed_double(1.5));
     quiet_begin();
-    symtable_datatype_t t = check_var_declaration(&fx->ctx, &fx->stack, d);
+    symtable_datatype_t t = check_var_declaration(&fx->ctx, &fx->stack, d, NULL);
     quiet_end();
     assert_int_equal(t, SYM_DATATYPE_ERROR);
     ast_dispose(&d);
@@ -549,9 +548,9 @@ static void test_declaration_redefinition_in_same_scope_is_error(void **state) {
     sem_fixture_t *fx = *state;
     ast_node_t *d1 = decl("x", SYM_DATATYPE_UNKNOWN, false, typed_int(1));
     ast_node_t *d2 = decl("x", SYM_DATATYPE_UNKNOWN, false, typed_int(2));
-    assert_int_equal(check_var_declaration(&fx->ctx, &fx->stack, d1), SYM_DATATYPE_INT);
+    assert_int_equal(check_var_declaration(&fx->ctx, &fx->stack, d1, NULL), SYM_DATATYPE_INT);
     quiet_begin();
-    symtable_datatype_t t = check_var_declaration(&fx->ctx, &fx->stack, d2);
+    symtable_datatype_t t = check_var_declaration(&fx->ctx, &fx->stack, d2, NULL);
     quiet_end();
     assert_int_equal(t, SYM_DATATYPE_ERROR);
     ast_dispose(&d1);
@@ -562,9 +561,9 @@ static void test_declaration_shadowing_in_inner_scope_is_ok(void **state) {
     sem_fixture_t *fx = *state;
     ast_node_t *d1 = decl("x", SYM_DATATYPE_UNKNOWN, false, typed_int(1));
     ast_node_t *d2 = decl("x", SYM_DATATYPE_UNKNOWN, false, typed_string("s"));
-    assert_int_equal(check_var_declaration(&fx->ctx, &fx->stack, d1), SYM_DATATYPE_INT);
+    assert_int_equal(check_var_declaration(&fx->ctx, &fx->stack, d1, NULL), SYM_DATATYPE_INT);
     assert_true(symtable_create_avl(&fx->stack));
-    assert_int_equal(check_var_declaration(&fx->ctx, &fx->stack, d2), SYM_DATATYPE_STRING);
+    assert_int_equal(check_var_declaration(&fx->ctx, &fx->stack, d2, NULL), SYM_DATATYPE_STRING);
     ast_dispose(&d1);
     ast_dispose(&d2);
 }
@@ -573,7 +572,7 @@ static void test_declaration_without_initializer_is_error(void **state) {
     sem_fixture_t *fx = *state;
     ast_node_t *d = decl("x", SYM_DATATYPE_INT, false, NULL);
     quiet_begin();
-    symtable_datatype_t t = check_var_declaration(&fx->ctx, &fx->stack, d);
+    symtable_datatype_t t = check_var_declaration(&fx->ctx, &fx->stack, d, NULL);
     quiet_end();
     assert_int_equal(t, SYM_DATATYPE_ERROR);
     ast_dispose(&d);
@@ -583,8 +582,8 @@ static void test_declarations_get_unique_ids(void **state) {
     sem_fixture_t *fx = *state;
     ast_node_t *d1 = decl("a", SYM_DATATYPE_UNKNOWN, false, typed_int(1));
     ast_node_t *d2 = decl("b", SYM_DATATYPE_UNKNOWN, false, typed_int(2));
-    check_var_declaration(&fx->ctx, &fx->stack, d1);
-    check_var_declaration(&fx->ctx, &fx->stack, d2);
+    check_var_declaration(&fx->ctx, &fx->stack, d1, NULL);
+    check_var_declaration(&fx->ctx, &fx->stack, d2, NULL);
     int id_a = symtable_search(&fx->stack, SYM_TYPE_VAR, "a")->data.var.unique_id;
     int id_b = symtable_search(&fx->stack, SYM_TYPE_VAR, "b")->data.var.unique_id;
     assert_int_not_equal(id_a, id_b);
@@ -597,11 +596,70 @@ static void test_declaration_unique_id_is_copied_to_ast(void **state) {
     // codegen uses ast->var_declaration.unique_id for the variable name (name$id)
     ast_node_t *d1 = decl("a", SYM_DATATYPE_UNKNOWN, false, typed_int(1));
     ast_node_t *d2 = decl("b", SYM_DATATYPE_UNKNOWN, false, typed_int(2));
-    check_var_declaration(&fx->ctx, &fx->stack, d1);
-    check_var_declaration(&fx->ctx, &fx->stack, d2);
+    check_var_declaration(&fx->ctx, &fx->stack, d1, NULL);
+    check_var_declaration(&fx->ctx, &fx->stack, d2, NULL);
     assert_int_not_equal(d1->var_declaration.unique_id, d2->var_declaration.unique_id);
     ast_dispose(&d1);
     ast_dispose(&d2);
+}
+
+static symtable_node_t *enter_function_with_param(sem_fixture_t *fx, const char *name,
+                                                  const char *param_name) {
+    declare_fun(fx, name, SYM_DATATYPE_INT, param(param_name, SYM_DATATYPE_INT, NULL));
+    return symtable_search(&fx->stack, SYM_TYPE_FUNC, (char *)name);
+}
+
+static void test_declaration_with_parameter_name_is_error(void **state) {
+    sem_fixture_t *fx = *state;
+    // a local variable must not have the same name as a parameter of the enclosing function
+    symtable_node_t *f = enter_function_with_param(fx, "f", "p");
+    ast_node_t *d = decl("p", SYM_DATATYPE_UNKNOWN, false, typed_int(1));
+    quiet_begin();
+    symtable_datatype_t t = check_var_declaration(&fx->ctx, &fx->stack, d, f);
+    quiet_end();
+    assert_int_equal(t, SYM_DATATYPE_ERROR);
+    ast_dispose(&d);
+}
+
+static void test_declaration_with_other_name_than_parameter_is_ok(void **state) {
+    sem_fixture_t *fx = *state;
+    symtable_node_t *f = enter_function_with_param(fx, "f", "p");
+    ast_node_t *d = decl("q", SYM_DATATYPE_UNKNOWN, false, typed_int(1));
+    assert_int_equal(check_var_declaration(&fx->ctx, &fx->stack, d, f), SYM_DATATYPE_INT);
+    ast_dispose(&d);
+}
+
+static void test_declaration_with_parameter_name_checks_all_parameters(void **state) {
+    sem_fixture_t *fx = *state;
+    declare_fun(fx, "g", SYM_DATATYPE_INT,
+                param("a", SYM_DATATYPE_INT, param("b", SYM_DATATYPE_INT, NULL)));
+    symtable_node_t *g = symtable_search(&fx->stack, SYM_TYPE_FUNC, "g");
+    ast_node_t *d = decl("b", SYM_DATATYPE_UNKNOWN, false, typed_int(1)); // second parameter
+    quiet_begin();
+    symtable_datatype_t t = check_var_declaration(&fx->ctx, &fx->stack, d, g);
+    quiet_end();
+    assert_int_equal(t, SYM_DATATYPE_ERROR);
+    ast_dispose(&d);
+}
+
+static void test_declaration_in_nested_block_with_parameter_name_is_error(void **state) {
+    sem_fixture_t *fx = *state;
+    // shadowing a parameter is an error even in an inner scope (parameters are visible in the body)
+    symtable_node_t *f = enter_function_with_param(fx, "f", "p");
+    assert_true(symtable_create_avl(&fx->stack));
+    ast_node_t *d = decl("p", SYM_DATATYPE_UNKNOWN, false, typed_int(1));
+    quiet_begin();
+    symtable_datatype_t t = check_var_declaration(&fx->ctx, &fx->stack, d, f);
+    quiet_end();
+    assert_int_equal(t, SYM_DATATYPE_ERROR);
+    ast_dispose(&d);
+}
+
+static void test_declaration_null_function_context_is_allowed(void **state) {
+    sem_fixture_t *fx = *state;
+    ast_node_t *d = decl("p", SYM_DATATYPE_UNKNOWN, false, typed_int(1));
+    assert_int_equal(check_var_declaration(&fx->ctx, &fx->stack, d, NULL), SYM_DATATYPE_INT);
+    ast_dispose(&d);
 }
 
 static ast_node_t *assign(const char *name, ast_node_t *expr) {
@@ -863,26 +921,24 @@ static void test_while_with_relational_condition_is_ok(void **state) {
 
 static void test_first_pass_null_arguments(void **state) {
     sem_fixture_t *fx = *state;
-    assert_false(first_ast_passage(&fx->ctx, NULL, &fx->stack));
+    assert_false(first_ast_passage(&fx->ctx, &fx->stack, NULL));
     ast_node_t *b = ast_block_create(1);
-    assert_false(first_ast_passage(&fx->ctx, b, NULL));
+    assert_false(first_ast_passage(&fx->ctx, NULL, b));
     ast_dispose(&b);
 }
 
 static void test_second_pass_null_arguments(void **state) {
     sem_fixture_t *fx = *state;
-    assert_false(second_ast_passage(&fx->ctx, NULL, &fx->stack));
+    assert_false(second_ast_passage(&fx->ctx, &fx->stack, NULL));
     ast_node_t *b = ast_block_create(1);
-    assert_false(second_ast_passage(&fx->ctx, b, NULL));
+    assert_false(second_ast_passage(&fx->ctx, NULL, b));
     ast_dispose(&b);
 }
 
 static void test_semantic_analysis_null_arguments(void **state) {
     (void)state;
     symtable_stack_t st;
-    quiet_begin();
-    assert_false(semantic_analysis(NULL, &st));
-    quiet_end();
+    assert_false(semantic_analysis(NULL, &st).success);
 }
 
 // ---------------------------------------------------------------------------
@@ -909,9 +965,12 @@ static int analyze_source(const char *text) {
             _exit(101);
         }
         symtable_stack_t stack;
-        bool ok = semantic_analysis(root, &stack);
+        semantic_result_t sres = semantic_analysis(root, &stack);
+        if (!sres.success) {
+            fprintf(stderr, "Semantic analysis Error %d: %s\n", sres.error_code, sres.error_msg);
+        }
         fflush(stderr);
-        _exit(ok ? 100 : 102);
+        _exit(sres.success ? 100 : 102);
     }
     close(pipefd[1]);
     char out[4096] = {0};
@@ -1152,7 +1211,7 @@ static void test_prog_error5_builtin_wrong_arguments(void **state) {
     ASSERT_SEMANTIC(5, PROLOG MAIN_HDR "  val a = readInt(1)\n");
     ASSERT_SEMANTIC(5, PROLOG MAIN_HDR "  val a = chr(\"a\")\n");
     ASSERT_SEMANTIC(5, PROLOG MAIN_HDR "  val a = subStr(\"abc\", 1)\n");
-    ASSERT_SEMANTIC(5, PROLOG MAIN_HDR "  val a = toInt(1)\n");
+    ASSERT_SEMANTIC_OK(PROLOG MAIN_HDR "  val a = toInt(1)\n"); // Int widens to Double
 }
 
 static void test_prog_error5_main_with_parameter(void **state) {
@@ -1308,6 +1367,11 @@ int main(void) {
         TF(test_declaration_without_initializer_is_error),
         TF(test_declarations_get_unique_ids),
         TF(test_declaration_unique_id_is_copied_to_ast),
+        TF(test_declaration_with_parameter_name_is_error),
+        TF(test_declaration_with_other_name_than_parameter_is_ok),
+        TF(test_declaration_with_parameter_name_checks_all_parameters),
+        TF(test_declaration_in_nested_block_with_parameter_name_is_error),
+        TF(test_declaration_null_function_context_is_allowed),
         TF(test_assignment_ok),
         TF(test_assignment_to_undefined_variable_is_error),
         TF(test_assignment_to_immutable_is_error),

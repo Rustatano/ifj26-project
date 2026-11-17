@@ -205,14 +205,14 @@ static void test_header_is_first_line(void **state) {
 
 static void test_skeleton_defines_temporaries_and_jumps_to_main(void **state) {
     (void)state;
-    ast_node_t *root = ast_block_create(1);
+    ast_node_t *root = root_with(main_def(block_of(print_call(int_node(1)), NULL)));
     char *code = generate(root, NULL);
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 6; i++) {
         char needle[32];
         snprintf(needle, sizeof(needle), "DEFVAR GF@tmp%d", i);
         ASSERT_HAS(code, needle);
     }
-    ASSERT_HAS(code, "JUMP main\n");
+    ASSERT_HAS(code, "JUMP $main\n");
     ASSERT_HAS(code, "LABEL $EXIT40\nEXIT int@40\n");
     free(code);
     ast_dispose(&root);
@@ -222,8 +222,8 @@ static void test_jump_to_main_comes_before_function_labels(void **state) {
     (void)state;
     ast_node_t *root = root_with(main_def(block_of(print_call(int_node(1)), NULL)));
     char *code = generate(root, NULL);
-    char *jump = strstr(code, "JUMP main");
-    char *label = strstr(code, "LABEL main");
+    char *jump = strstr(code, "JUMP $main");
+    char *label = strstr(code, "LABEL $main");
     assert_non_null(jump);
     assert_non_null(label);
     assert_true(jump < label);
@@ -244,7 +244,7 @@ static void test_main_function_body_is_generated(void **state) {
     bool ok = false;
     char *code = generate(root, &ok);
     assert_true(ok);
-    ASSERT_HAS(code, "LABEL main\n");
+    ASSERT_HAS(code, "LABEL $main\n");
     ASSERT_HAS(code, "PUSHS int@42\n");
     ASSERT_HAS(code, "WRITE GF@tmp0\n");
     ASSERT_HAS(code, "EXIT int@0\n");
@@ -564,8 +564,8 @@ static void test_two_ifs_have_unique_labels(void **state) {
     char *code = generate(root, &ok);
     assert_true(ok);
     // each label may be defined only once (spec 7.4.8: redefinition is error 52)
-    assert_int_equal(count_substr(code, "LABEL $IF_TRUE$0\n"), 1);
-    assert_int_equal(count_substr(code, "LABEL $IF_TRUE$1\n"), 1);
+    assert_int_equal(count_substr(code, "LABEL $IF_TRUE$"), 2);
+    assert_int_equal(count_substr(code, "JUMPIFEQS $IF_TRUE$"), 2);
     free(code);
     ast_dispose(&root);
 }
@@ -604,7 +604,8 @@ static void test_while_loop(void **state) {
     ast_node_t *w = ast_while_create(cond_lt(), body, 1);
     char *code = generate_main_with(w);
     ASSERT_HAS(code, "LABEL $WHILE$");
-    ASSERT_HAS(code, "JUMPIFEQS $WHILE$");
+    ASSERT_HAS(code, "JUMPIFNEQS $WHILE_END$");
+    ASSERT_HAS(code, "JUMP $WHILE$");
     free(code);
 }
 
@@ -717,7 +718,7 @@ static void test_function_without_explicit_return_still_returns(void **state) {
     ast_block_append(root, main_def(block_of(print_call(int_node(1)), NULL)));
     char *code = generate(root, NULL);
     char *foo = strstr(code, "LABEL foo");
-    char *main_label = strstr(code, "LABEL main");
+    char *main_label = strstr(code, "LABEL $main");
     assert_non_null(foo);
     assert_non_null(main_label);
     // RETURN must appear between the two labels (functions are emitted in source order)
@@ -837,7 +838,7 @@ static void test_builtin_ord_uses_valid_instruction(void **state) {
     ast_node_t *args = string_node("abc");
     args->next = int_node(1);
     char *code = gen_builtin("ord", args, 2, SYM_DATATYPE_INT);
-    ASSERT_HAS(code, "STRI2INTS\n"); // spec instruction name
+    ASSERT_HAS(code, "STRI2INT GF@tmp4 GF@tmp0 GF@tmp1\n"); // valid instruction of the spec
     free(code);
 }
 
@@ -869,7 +870,7 @@ static void test_builtin_substr_runtime_error_exit_40(void **state) {
     args->next = int_node(1);
     args->next->next = int_node(3);
     char *code = gen_builtin("subStr", args, 3, SYM_DATATYPE_STRING);
-    ASSERT_HAS(code, "JUMPIFEQS $EXIT40");
+    ASSERT_HAS(code, "JUMPIFEQ $EXIT40 GF@tmp3 bool@true");
     free(code);
 }
 

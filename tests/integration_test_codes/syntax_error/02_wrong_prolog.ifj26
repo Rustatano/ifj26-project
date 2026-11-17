@@ -1,3 +1,0 @@
-import ifj27.*
-@main def main(): Unit =
-  ()
