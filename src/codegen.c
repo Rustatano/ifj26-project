@@ -13,7 +13,7 @@ Description: Generates IFJcode26 from the Abstract Syntax Tree
 #include "codegen.h"
 #define BUILTIN_FUN_LIST                                                                           \
     {"print", "readLine",  "readInt", "readDouble", "toStr",                                       \
-     "toInt", "strLength", "substr",  "ord",        "chr"}
+     "toInt", "strLength", "subStr",  "ord",        "chr"}
 #define BUILTIN_FUN_COUNT 10
 
 typedef struct {
@@ -21,6 +21,9 @@ typedef struct {
     int label_counter;             // used for while and if
     bool is_in_loop;               // used for handling var declaration vs assignment
     bool is_overflow_check_needed; // whether to generate the code for it
+    bool is_eof_check_needed;      // whether to generate the code for it
+    bool is_unit_function;         // whether the function must return unit
+    ast_node_t *last_node;         // used for handling function returns
 } codegen_context_t;
 
 // forward declaration so it can be used in other functions
@@ -33,7 +36,12 @@ FILE *create_file(const char *output_file) {
 }
 
 codegen_context_t *create_codegen_context(const char *output_file) {
-    FILE *file = create_file(output_file);
+    FILE *file;
+    if (output_file == NULL) {
+        file = stdout;
+    } else {
+        file = create_file(output_file);
+    }
     if (file == NULL) {
         fprintf(stderr, "Failed to create file\n");
         return NULL;
@@ -48,12 +56,15 @@ codegen_context_t *create_codegen_context(const char *output_file) {
     context->label_counter = 0;
     context->is_in_loop = false;
     context->is_overflow_check_needed = false;
+    context->is_eof_check_needed = false;
+    context->is_unit_function = false;
+    context->last_node = NULL;
     return context;
 }
 
 void destroy_codegen_context(codegen_context_t *context) {
     if (context != NULL) {
-        if (context->file != NULL) {
+        if (context->file != NULL && context->file != stdout) {
             fclose(context->file);
         }
         free(context);
@@ -98,6 +109,20 @@ void generate_oveflow_check(codegen_context_t *context) {
     fprintf(context->file, "MULS\n");
     fprintf(context->file, "PUSHS GF@tmp0\n");
     fprintf(context->file, "ADDS\n");
+    fprintf(context->file, "RETURN\n");
+}
+
+// for readLine, readInt and readDouble, convert nil to empty string or 0
+void generate_eof_check(codegen_context_t *context) {
+    fprintf(context->file, "LABEL $EOF_CHECK\n");
+    fprintf(context->file, "POPS GF@tmp0\n");         // default value
+    fprintf(context->file, "POPS GF@tmp1\n");         // value from read
+    fprintf(context->file, "TYPE GF@tmp2 GF@tmp1\n"); // type of value from read
+    fprintf(context->file, "JUMPIFEQ $EOF_CHECK_DEFAULT GF@tmp2 string@nil\n");
+    fprintf(context->file, "PUSHS GF@tmp1\n");
+    fprintf(context->file, "RETURN\n");
+    fprintf(context->file, "LABEL $EOF_CHECK_DEFAULT\n");
+    fprintf(context->file, "PUSHS GF@tmp0\n");
     fprintf(context->file, "RETURN\n");
 }
 
@@ -157,19 +182,31 @@ void generate_builtin_function_in_place(char *fun_name, ast_node_t *node,
         fprintf(context->file, "PUSHS nil@nil\n");
 
     } else if (strcmp(fun_name, "readLine") == 0) {
+        context->is_eof_check_needed = true;
         fprintf(context->file, "READ GF@tmp0 string\n");
         // push the value to stack because the rest of codegen expects it
         fprintf(context->file, "PUSHS GF@tmp0\n");
+        // push default value to stack for the check_eof function
+        fprintf(context->file, "PUSHS string@\n");
+        fprintf(context->file, "CALL $EOF_CHECK\n");
 
     } else if (strcmp(fun_name, "readInt") == 0) {
+        context->is_eof_check_needed = true;
         fprintf(context->file, "READ GF@tmp0 int\n");
         // push to stack, same as readLine
         fprintf(context->file, "PUSHS GF@tmp0\n");
+        // push default value to stack for the check_eof function
+        fprintf(context->file, "PUSHS int@0\n");
+        fprintf(context->file, "CALL $EOF_CHECK\n");
 
     } else if (strcmp(fun_name, "readDouble") == 0) {
+        context->is_eof_check_needed = true;
         fprintf(context->file, "READ GF@tmp0 float\n");
         // push to stack, same as readLine
         fprintf(context->file, "PUSHS GF@tmp0\n");
+        // push default value to stack for the check_eof function
+        fprintf(context->file, "PUSHS float@0\n");
+        fprintf(context->file, "CALL $EOF_CHECK\n");
 
     } else if (strcmp(fun_name, "toStr") == 0) {
         handle_node(node->expression_fun_call.params, context);
@@ -200,12 +237,14 @@ void generate_builtin_function_in_place(char *fun_name, ast_node_t *node,
         // push result to stack
         fprintf(context->file, "PUSHS GF@tmp1\n");
 
-    } else if (strcmp(fun_name, "substr") == 0) {
+    } else if (strcmp(fun_name, "subStr") == 0) {
+        int label_id = context->label_counter;
+        context->label_counter++;
+
         handle_node(node->expression_fun_call.params, context);
         fprintf(context->file, "POPS GF@tmp2\n"); // end index
         fprintf(context->file, "POPS GF@tmp1\n"); // start index
         fprintf(context->file, "POPS GF@tmp0\n"); // string
-        fprintf(context->file, "SUBSTR GF@tmp0 GF@tmp0 GF@tmp1 GF@tmp2\n");
 
         // check if params are valid
         // start < 0
@@ -251,35 +290,58 @@ void generate_builtin_function_in_place(char *fun_name, ast_node_t *node,
         fprintf(context->file, "JUMPIFEQS $EXIT40\n");
         // end of checks
 
-        // actual code of substr
+        // actual code of subStr
         // sub result is gonna be in GF@tmp3 (strLength is no longer needed)
         // GF@tmp4 is gonna be used for getchar results
         // first char
         fprintf(context->file, "GETCHAR GF@tmp3 GF@tmp0 GF@tmp1\n");
         fprintf(context->file, "ADD GF@tmp1 GF@tmp1 int@1\n");
+        // sub 1 from end index so we can loop till start is > end (instead of >=)
+        fprintf(context->file, "SUB GF@tmp2 GF@tmp2 int@1\n");
         // loop for other chars
-        fprintf(context->file, "LABEL $SUBSTR_LOOP\n");
+        fprintf(context->file, "LABEL $SUBSTR_LOOP%d\n", label_id);
         // check if start index has gone over end index
         fprintf(context->file, "PUSHS GF@tmp1\n");
         fprintf(context->file, "PUSHS GF@tmp2\n");
         fprintf(context->file, "GTS\n");
         fprintf(context->file, "PUSHS bool@true\n");
-        fprintf(context->file, "JUMPIFEQS $SUBSTR_LOOP_END\n");
+        fprintf(context->file, "JUMPIFEQS $SUBSTR_LOOP_END%d\n", label_id);
         // get current char and concat it
         fprintf(context->file, "GETCHAR GF@tmp4 GF@tmp0 GF@tmp1\n");
         fprintf(context->file, "CONCAT GF@tmp3 GF@tmp3 GF@tmp4\n");
         // increment and jump
         fprintf(context->file, "ADD GF@tmp1 GF@tmp1 int@1\n");
-        fprintf(context->file, "JUMP $SUBSTR_LOOP\n");
+        fprintf(context->file, "JUMP $SUBSTR_LOOP%d\n", label_id);
 
         // end of loop
-        fprintf(context->file, "LABEL $SUBSTR_LOOP_END\n");
+        fprintf(context->file, "LABEL $SUBSTR_LOOP_END%d\n", label_id);
         // push result to stack
         fprintf(context->file, "PUSHS GF@tmp3\n");
 
     } else if (strcmp(fun_name, "ord") == 0) {
+        int label_id = context->label_counter;
+        context->label_counter++;
+
         handle_node(node->expression_fun_call.params, context);
-        fprintf(context->file, "STR2INTS\n");
+        fprintf(context->file, "POPS GF@tmp1\n");           // index in the string
+        fprintf(context->file, "POPS GF@tmp0\n");           // the value of the string
+        fprintf(context->file, "STRLEN GF@tmp2 GF@tmp0\n"); // string length
+        // check if index is valid
+        fprintf(context->file, "JUMPIFEQ $ORD_ERROR%d GF@tmp2 int@0\n", label_id);
+        fprintf(context->file, "SUB GF@tmp2 GF@tmp2 int@1\n");
+        fprintf(context->file, "GT GF@tmp3 GF@tmp1 GF@tmp2\n");
+        fprintf(context->file, "JUMPIFEQ $ORD_ERROR%d GF@tmp3 bool@true\n", label_id);
+        fprintf(context->file, "LT GF@tmp3 GF@tmp1 int@0\n");
+        fprintf(context->file, "JUMPIFEQ $ORD_ERROR%d GF@tmp3 bool@true\n", label_id);
+        // index is valid
+        fprintf(context->file, "STRI2INT GF@tmp4 GF@tmp0 GF@tmp1\n");
+        fprintf(context->file, "PUSHS GF@tmp4\n");
+        fprintf(context->file, "JUMP $ORD_END%d\n", label_id);
+        // index is invalid
+        fprintf(context->file, "LABEL $ORD_ERROR%d\n", label_id);
+        fprintf(context->file, "PUSHS int@-1\n");
+        // end
+        fprintf(context->file, "LABEL $ORD_END%d\n", label_id);
 
     } else if (strcmp(fun_name, "chr") == 0) {
         handle_node(node->expression_fun_call.params, context);
@@ -306,9 +368,14 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
 
     switch (node->type) {
     case AST_NODE_MAIN:
-        fprintf(context->file, "LABEL main\n");
-        handle_node(node->block.first_statement, context);
-        fprintf(context->file, "EXIT int@0\n");
+        fprintf(context->file, "LABEL $main\n");
+        fprintf(context->file, "CREATEFRAME\n");
+        fprintf(context->file, "PUSHFRAME\n");
+        handle_node(node->fun_definition.body_block, context);
+        // implicitly exit with 0 if no return was used in main
+        fprintf(context->file, "PUSHS int@0\n");
+        fprintf(context->file, "POPFRAME\n");
+        fprintf(context->file, "RETURN\n");
         break;
 
     case AST_NODE_BLOCK:
@@ -322,6 +389,11 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
         break;
 
     case AST_NODE_FUN_DEFINITION:
+        if (node->fun_definition.return_type == SYM_DATATYPE_UNIT) {
+            context->is_unit_function = true;
+        } else {
+            context->is_unit_function = false;
+        }
         // create label and frame
         fprintf(context->file, "LABEL %s\n", node->fun_definition.name);
         fprintf(context->file, "CREATEFRAME\n");
@@ -330,16 +402,30 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
         // save pointer to the params linked list for value assignment from stack
         symtable_fun_param_t *params_ptr = node->fun_definition.params;
         // define params and load them from stack
-        while (node->fun_definition.params != NULL) {
-            fprintf(context->file, "DEFVAR LF@%s$%d\n", node->fun_definition.params->name,
-                    node->fun_definition.params->unique_id);
-            node->fun_definition.params = node->fun_definition.params->next;
+        while (params_ptr != NULL) {
+            fprintf(context->file, "DEFVAR LF@%s$%d\n", params_ptr->name, params_ptr->unique_id);
+            params_ptr = params_ptr->next;
         }
+        params_ptr = node->fun_definition.params;
         load_params_from_stack_reverse(params_ptr, context);
 
         // body of the function
         handle_node(node->fun_definition.body_block, context);
-        // done, return is in the body
+
+        // done, check if return was used
+        if (context->last_node == NULL || context->last_node->type != AST_NODE_STATEMENT_RETURN) {
+            // check if the last node was a definition, assignment or while
+            // if so push unit to stack as return value
+            if ((context->last_node != NULL &&
+                 (context->last_node->type == AST_NODE_VAR_DECLARATION ||
+                  context->last_node->type == AST_NODE_VALUE_ASSIGNMENT ||
+                  context->last_node->type == AST_NODE_STATEMENT_WHILE)) ||
+                context->is_unit_function) {
+                fprintf(context->file, "PUSHS nil@nil\n");
+            }
+            fprintf(context->file, "POPFRAME\n");
+            fprintf(context->file, "RETURN\n");
+        }
         break;
 
     case AST_NODE_VAR_DECLARATION:
@@ -392,14 +478,17 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
         // set in loop to alter var declaration behavior
         context->is_in_loop = true;
         // extract variable declarations first in case this block is a loop block
-        extract_var_declarations(node->next->block.first_statement, context);
+        extract_var_declarations(node->while_statement.body_block->block.first_statement, context);
 
         context->label_counter++;
+        fprintf(context->file, "JUMP $WHILE_CONDITION$%d\n", label_id);
         fprintf(context->file, "LABEL $WHILE$%d\n", label_id);
 
+        // while body
         handle_node(node->while_statement.body_block, context);
 
         // while condition
+        fprintf(context->file, "LABEL $WHILE_CONDITION$%d\n", label_id);
         handle_node(node->while_statement.condition, context);
         // result of the condition is on top of the stack
         // push true to the stack and check if the condition is true
@@ -410,7 +499,11 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
         break;
 
     case AST_NODE_STATEMENT_RETURN:
-        handle_node(node->return_statement.expression, context);
+        if (context->is_unit_function) {
+            fprintf(context->file, "PUSHS nil@nil\n");
+        } else {
+            handle_node(node->return_statement.expression, context);
+        }
         fprintf(context->file, "POPFRAME\n");
         fprintf(context->file, "RETURN\n");
         break;
@@ -480,8 +573,8 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
             fprintf(context->file, "POPS GF@tmp0\n");
             fprintf(context->file, "POPS GF@tmp1\n");
             // push them back for <
-            fprintf(context->file, "PUSHS GF@tmp0\n");
             fprintf(context->file, "PUSHS GF@tmp1\n");
+            fprintf(context->file, "PUSHS GF@tmp0\n");
             fprintf(context->file, "LTS\n");
             // push them back again for =
             fprintf(context->file, "PUSHS GF@tmp0\n");
@@ -501,8 +594,8 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
             fprintf(context->file, "POPS GF@tmp0\n");
             fprintf(context->file, "POPS GF@tmp1\n");
             // push them back for >
-            fprintf(context->file, "PUSHS GF@tmp0\n");
             fprintf(context->file, "PUSHS GF@tmp1\n");
+            fprintf(context->file, "PUSHS GF@tmp0\n");
             fprintf(context->file, "GTS\n");
             // push them back again for =
             fprintf(context->file, "PUSHS GF@tmp0\n");
@@ -544,7 +637,16 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
         break;
 
     case AST_NODE_CONST_STRING:
-        fprintf(context->file, "PUSHS string@%s\n", node->str_value);
+        fprintf(context->file, "PUSHS string@");
+        // whitespace, # and \ needs to be written as escape sequence
+        for (char *c = node->str_value; *c != '\0'; c++) {
+            if ((0 <= *c && *c <= 32) || *c == 35 || *c == 92) {
+                fprintf(context->file, "\\%03d", *c);
+            } else {
+                fprintf(context->file, "%c", *c);
+            }
+        }
+        fprintf(context->file, "\n");
         break;
 
     case AST_NODE_CONST_UNIT:
@@ -554,6 +656,11 @@ bool handle_node(ast_node_t *node, codegen_context_t *context) {
     default:
         fprintf(stderr, "Unknown AST node\n");
         return false;
+    }
+
+    if (node->type != AST_NODE_BLOCK) {
+        // we are not interested in the block as all funcs have a block
+        context->last_node = node;
     }
 
     return handle_node(node->next, context);
@@ -574,7 +681,9 @@ bool codegen(ast_node_t *ast_root, const char *output_file) {
     fprintf(context->file, "DEFVAR GF@tmp2\n");
     fprintf(context->file, "DEFVAR GF@tmp3\n");
     fprintf(context->file, "DEFVAR GF@tmp4\n");
-    fprintf(context->file, "JUMP main\n");
+    fprintf(context->file, "CALL $main\n");
+    fprintf(context->file, "POPS GF@tmp0\n");
+    fprintf(context->file, "EXIT GF@tmp0\n");
 
     // handle AST nodes
     bool result = handle_node(ast_root, context);
@@ -582,6 +691,9 @@ bool codegen(ast_node_t *ast_root, const char *output_file) {
     // end of file code
     if (context->is_overflow_check_needed) {
         generate_oveflow_check(context);
+    }
+    if (context->is_eof_check_needed) {
+        generate_eof_check(context);
     }
     fprintf(context->file, "LABEL $EXIT40\n");
     fprintf(context->file, "EXIT int@40\n");
