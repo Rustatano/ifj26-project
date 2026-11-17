@@ -9,6 +9,10 @@ Description: Unit tests (cmocka) of the lexical analyzer (scanner.c).
 -------------------------------------------------------
 */
 
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
 #include "test_helpers.h"
 #include <math.h>
 #include <stdlib.h>

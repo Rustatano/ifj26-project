@@ -1,5 +1,0 @@
-import ifj26.*
-
-@main def main(): Unit =
-  val s = subStr("abcdef", 4, 2)
-  print(s)

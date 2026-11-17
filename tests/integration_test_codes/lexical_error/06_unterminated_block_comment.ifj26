@@ -1,5 +1,0 @@
-import ifj26.*
-
-/* never closed
-@main def main(): Unit =
-  ()
