@@ -1063,11 +1063,17 @@ token_t get_token(scanner_conf_t *conf) {
             if (ch == '/') {
                 // The block comment isn't inside another block comment
                 if (comment_depth == 0) {
-                    // Return token new line because the comment had '\n' inside
+                    // Multiline block comment inside parentheses: ignore EOL, mark newline seen,
+                    // and continue
                     if (comment_has_newline && conf->paren_depth > 0) {
                         conf->newline_seen = true;
+                        comment_depth = 0;
+                        comment_has_newline = false;
+                        state = STATE_START;
+                        continue;
                     }
-                    if (comment_has_newline && conf->paren_depth == 0) {
+                    // Multiline block comment outside parentheses: must be followed by EOL or EOF
+                    else if (comment_has_newline && conf->paren_depth == 0) {
                         state = STATE_COMMENT_BLOCK_END_CHECK; // Check for EOL after the comment
                         continue;
                     }
@@ -1095,6 +1101,7 @@ token_t get_token(scanner_conf_t *conf) {
             }
             // Check for new line
             else if (ch == '\n') {
+                conf->line++;
                 comment_has_newline = true;
                 state = STATE_COMMENT_BLOCK;
                 continue;
@@ -1119,6 +1126,7 @@ token_t get_token(scanner_conf_t *conf) {
             }
             // Check for new line
             else if (ch == '\n') {
+                conf->line++;
                 comment_has_newline = true;
                 state = STATE_COMMENT_BLOCK;
                 continue;
@@ -1170,14 +1178,6 @@ token_t get_token(scanner_conf_t *conf) {
                 token.type = TOKEN_EOL;
                 break;
             }
-            // Spaces at the end of the file without a newline
-            else if (ch == EOF) {
-                conf->space_counter = 0;
-                conf->line_start = false;
-                store_char(conf, ch);
-                state = STATE_START;
-                continue;
-            }
             // Found tabulator while reading the spaces
             else if (ch == '\t') {
                 fprintf(
@@ -1187,6 +1187,12 @@ token_t get_token(scanner_conf_t *conf) {
             }
             // First non empty character found
             else {
+                // Makes scanner return first all the indent tokens before finally returning the EOF
+                // token
+                if (ch == EOF) {
+                    conf->space_counter = 0;
+                }
+
                 // A line containing only a line comment is ignored (it does not change indentation)
                 if (ch == '/') {
                     int next_ch = get_char(conf);
@@ -1203,6 +1209,7 @@ token_t get_token(scanner_conf_t *conf) {
                         token.type = TOKEN_EOL;
                         break;
                     }
+                    // The "/" is not a comment beggining, return the char after it back for a read
                     store_char(conf, next_ch);
                 }
 
@@ -1273,6 +1280,15 @@ token_t get_token(scanner_conf_t *conf) {
         } else {
             conf->line_start = false;
         }
+
+        // Update token line after skipping lines and NOT returning EOL with comments and
+        // parentheses. EOL itself belongs to the ended line
+        if (token.type == TOKEN_EOL) {
+            token.line = conf->line - 1;
+        } else {
+            token.line = conf->line;
+        }
+
         // Remember whether a line break inside parentheses preceded this token
         token.newline_before = conf->newline_seen;
         conf->newline_seen = false;
