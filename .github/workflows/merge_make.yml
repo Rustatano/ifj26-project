@@ -45,7 +45,7 @@ jobs:
           root_file: dokumentace.tex
           working_directory: doc
           compiler: latexmk
-          args: -pdf -outdir=build -pdflatex="pdflatex -interaction=nonstopmode"
+          args: -pdf -interaction=nonstopmode -outdir=build
 
   tests:
     runs-on: ubuntu-latest
