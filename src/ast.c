@@ -136,6 +136,7 @@ ast_node_t *ast_const_int_create(int value, int source_code_line) {
         return NULL;
     }
     new_node->int_value = value;
+    new_node->result_type = SYM_DATATYPE_INT;
     return new_node;
 }
 
@@ -146,6 +147,7 @@ ast_node_t *ast_const_double_create(double value, int source_code_line) {
         return NULL;
     }
     new_node->double_value = value;
+    new_node->result_type = SYM_DATATYPE_DOUBLE;
     return new_node;
 }
 
@@ -156,12 +158,18 @@ ast_node_t *ast_const_string_create(char *value, int source_code_line) {
         return NULL;
     }
     new_node->str_value = value;
+    new_node->result_type = SYM_DATATYPE_STRING;
     return new_node;
 }
 
 // Functions for creating ast nodes of type unit constant
 ast_node_t *ast_const_unit_create(int source_code_line) {
-    return ast_node_create(AST_NODE_CONST_UNIT, source_code_line);
+    ast_node_t *new_node = ast_node_create(AST_NODE_CONST_UNIT, source_code_line);
+    if (new_node == NULL) {
+        return NULL;
+    }
+    new_node->result_type = SYM_DATATYPE_UNIT;
+    return new_node;
 }
 
 // Function for creating ast node of type function call expression

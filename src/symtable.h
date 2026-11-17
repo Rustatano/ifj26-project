@@ -3,7 +3,7 @@
 Name of project: Translator IFJ26
 Authors: xondrus00 (Sebastian Ondruska), xsvoboj01 (Jakub Svoboda)
 Creation date: 14.10.2026
-File: symbol_table.h
+File: symtable.h
 
 Description: Header file for symbol table as a stack of height-balanced AVL trees
 -------------------------------------------------------
@@ -29,11 +29,13 @@ typedef enum {
 typedef enum {
     SYM_DATATYPE_UNKNOWN,
     SYM_DATATYPE_ERROR,
+    SYM_DATATYPE_ANY,
     SYM_DATATYPE_ID,
     SYM_DATATYPE_INT,
     SYM_DATATYPE_DOUBLE,
     SYM_DATATYPE_STRING,
     SYM_DATATYPE_UNIT,
+    SYM_DATATYPE_BOOL, // Result of relational operators, usable only in conditions
 } symtable_datatype_t;
 
 // Linked list representing parameters of functions
@@ -60,6 +62,10 @@ typedef struct {
             symtable_datatype_t return_type;
             int param_count; // Saved because counting by looping through linked list can be slow
             symtable_fun_param_t *params;
+            bool params_shared; // True if params list is owned by someone else (AST), not freed
+            bool body_checked;  // Body was already checked by the semantic analyzer
+            bool in_progress;   // Body is being checked right now (detects recursion)
+            void *definition;   // Pointer to function definition node in AST (set by semantic)
         } fun;
     };
 } symtable_data_t;
@@ -96,7 +102,7 @@ bool symtable_create_avl(symtable_stack_t *stack);
 void symtable_pop_avl(symtable_stack_t *stack);
 
 // Insert item to highest AVL
-bool symtable_insert_item(symtable_stack_t *stack, char *id, symtable_data_t data);
+bool symtable_insert_item(symtable_stack_t *stack, const char *id, symtable_data_t data);
 
 // Search item through every scope from top to bottom/global
 symtable_node_t *symtable_search(symtable_stack_t *stack, symtable_type_t type, char *id);

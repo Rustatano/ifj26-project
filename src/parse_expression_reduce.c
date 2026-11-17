@@ -81,6 +81,7 @@ static bool reduce_unary_expression(parser_context_t *context, parser_prec_stack
 
     ast_node_t *operand = right_item->node;
     int line = operator_item->source_code_line;
+    // The operator item is freed by the pops below, so the operator is determined before them
     ast_expression_operator_t operator= operator_item->token_type == TOKEN_PLUS
         ? AST_EXPRESSION_OPERATOR_UNARY_PLUS
         : AST_EXPRESSION_OPERATOR_UNARY_MINUS;
@@ -152,6 +153,8 @@ static bool reduce_binary_expression(parser_context_t *context, parser_prec_stac
     ast_node_t *left = left_item->node;
     ast_node_t *right = right_item->node;
     int line = operator_item->source_code_line;
+    // The operator item is freed by the pops below, so its token type must be read before them
+    ast_expression_operator_t operator_type = parser_remap_operator(operator_item->token_type);
     left_item->node = NULL;
     right_item->node = NULL;
     parser_prec_stack_pop(stack);
@@ -159,8 +162,7 @@ static bool reduce_binary_expression(parser_context_t *context, parser_prec_stac
     parser_prec_stack_pop(stack);
     parser_prec_stack_pop(stack);
 
-    ast_node_t *operation = ast_expression_operation_create(
-        parser_remap_operator(operator_item->token_type), left, right, line);
+    ast_node_t *operation = ast_expression_operation_create(operator_type, left, right, line);
     if (operation == NULL) {
         ast_dispose(&left);
         ast_dispose(&right);

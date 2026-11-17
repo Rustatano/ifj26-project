@@ -90,6 +90,13 @@ static bool parse_parameter_list(parser_context_t *context, symtable_fun_param_t
         skip_eols(context);
 
         if (check_token(context, TOKEN_RPAREN)) {
+            // Trailing comma is allowed only if a line break follows it (spec 1.2)
+            if (!context->current_token.newline_before) {
+                dispose_parameters(&head);
+                parser_fail_syntax(context, context->current_token.line,
+                                   "Trailing comma must be followed by a line break");
+                return false;
+            }
             load_token(context);
             *parameters = head;
             return true;

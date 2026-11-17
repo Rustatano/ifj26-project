@@ -16,20 +16,45 @@ Description: Header file for semantic analyzer
 #include <stdbool.h>
 
 #include "ast.h"
-#include "symbol_table.h"
+#include "symtable.h"
+
+typedef struct {
+    bool success;
+    int error_code;
+    int error_line;
+    const char *error_msg;
+} semantic_result_t;
 
 typedef struct {
     int unique_var_id;
+    semantic_result_t res;
 } semantic_context_t;
 
+typedef struct {
+    const char *name;
+    int param_count;
+    symtable_datatype_t param_types[3];
+    symtable_datatype_t return_type;
+} builtin_fun_t;
+
+typedef struct {
+    symtable_datatype_t type;
+    bool returns;
+    bool is_if;
+    ast_node_t **last_link;
+} block_result_t;
+
 // Report semantic error
-void report_semantic_error(semantic_context_t *ctx, int code, const char *msg, int line);
+void set_semantic_error(semantic_context_t *ctx, int code, const char *msg, int line);
+
+// Inserts supported builtin function declarations to global symtable
+bool include_builtin_funs(semantic_context_t *ctx, symtable_stack_t *symtable_stack);
 
 // Initialize global symtable
 bool semantic_init(semantic_context_t *ctx, symtable_stack_t *symtable_stack);
 
 // Count function parameters recursively
-int count_fun_params(semantic_context_t *ctx, symtable_fun_param_t *param);
+int count_fun_params(symtable_fun_param_t *param);
 
 // Check if variable is defined
 symtable_datatype_t check_expres_var(semantic_context_t *ctx, symtable_stack_t *symtable_stack,
@@ -80,12 +105,12 @@ symtable_datatype_t check_block(semantic_context_t *ctx, symtable_stack_t *symta
                                 ast_node_t *node, symtable_node_t *fun_context);
 
 // First passage of AST saves global definitions of functions
-bool first_ast_passage(semantic_context_t *ctx, ast_node_t *ast, symtable_stack_t *symtable_stack);
+bool first_ast_passage(semantic_context_t *ctx, symtable_stack_t *symtable_stack, ast_node_t *ast);
 
 // Second pasasge of AST checks every block and statement
-bool second_ast_passage(semantic_context_t *ctx, ast_node_t *ast, symtable_stack_t *symtable_stack);
+bool second_ast_passage(semantic_context_t *ctx, symtable_stack_t *symtable_stack, ast_node_t *ast);
 
 // Wrapper function to call in main()
-bool semantic_analysis(ast_node_t *ast, symtable_stack_t *symtable_stack);
+semantic_result_t semantic_analysis(ast_node_t *ast, symtable_stack_t *symtable_stack);
 
 #endif // SEMANTIC_H
