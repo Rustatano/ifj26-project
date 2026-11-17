@@ -1,0 +1,29 @@
+import ifj26.*
+
+@main def main(): Unit =
+  val a = 1.5
+  val b = a * 2
+  val c: Double = 1
+  val d = c + 0.25
+  val e = 7 / 2.0
+  val f = 1 + 0.5
+  showD(b)
+  showD(d)
+  showD(e)
+  showD(f)
+  val g = 3.99
+  val h = -3.99
+  val i = toInt(g)
+  val j = toInt(h)
+  show(i)
+  show(j)
+
+def show(n: Int): Unit =
+  val s = toStr(n)
+  print(s)
+  print("\n")
+
+def showD(x: Double): Unit =
+  val s = toStr(x)
+  print(s)
+  print("\n")

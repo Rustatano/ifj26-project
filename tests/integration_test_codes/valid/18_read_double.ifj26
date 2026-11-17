@@ -1,0 +1,11 @@
+import ifj26.*
+
+@main def main(): Unit =
+  val d = readDouble()
+  val e = d * 2
+  showD(e)
+
+def showD(x: Double): Unit =
+  val s = toStr(x)
+  print(s)
+  print("\n")

@@ -1,0 +1,8 @@
+import ifj26.*
+
+@main def main(): Unit =
+  print(42)
+  print("\n")
+  val s = "text"
+  print(s)
+  print("\n")

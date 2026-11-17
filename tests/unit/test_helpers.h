@@ -12,11 +12,12 @@ Description: Shared helpers for cmocka unit tests
 #ifndef TEST_HELPERS_H
 #define TEST_HELPERS_H
 
-#include <cmocka.h>
 #include <setjmp.h>
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdio.h>
+
+#include <cmocka.h>
 
 #include "scanner.h"
 
