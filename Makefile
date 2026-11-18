@@ -37,7 +37,7 @@ doc:
 	cp $(DOC_DIR)/$(DOC_BUILD_DIR)/$(DOC_MAIN).pdf .
 
 # build archive
-archive:
+archive: doc
 	rm -rf $(ARCHIVE)
 	zip $(ARCHIVE) -r $(SRC_DIR)/ $(DOC_MAIN).pdf Makefile rozdeleni rozsireni
 
