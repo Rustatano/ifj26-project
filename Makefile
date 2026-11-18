@@ -7,7 +7,12 @@ DOC_BUILD_DIR = build
 ARCHIVE = ifj26_xsvoboj01_xzobals00_xtajovm00_xondrus00.zip
 
 # source code variables
-CC = gcc-16
+# detecting gcc-16 as a priority, then gcc-16.2 as second choice (located on Merlin server), fallback to default gcc
+CC ?= $(shell \
+    if command -v gcc-16 >/dev/null 2>&1; then echo gcc-16; \
+    elif command -v gcc-16.2 >/dev/null 2>&1; then echo gcc-16.2; \
+    else echo gcc; fi \
+)
 CFLAGS = -Wall -Wextra -Werror -pedantic -std=c11 -Isrc
 SRC_DIR = src
 SRC_FILES = $(filter-out $(SRC_DIR)/main.c, $(wildcard $(SRC_DIR)/*.c))
@@ -19,11 +24,12 @@ TEST_DIR = tests
 
 .PHONY: all build doc archive clean
 
-all: build doc archive
-
 # build project binary from source code
 build:
 	$(CC) $(CFLAGS) -o $(OUT) $(SRC_DIR)/*.c -lm
+
+# all target is not on top, because of the need to run only build target when running just 'make' in terminal
+all: build doc archive
 
 # build documentation
 doc:
