@@ -33,7 +33,7 @@ doc:
 # build archive
 archive:
 	rm -rf $(ARCHIVE)
-	zip $(ARCHIVE) -r $(SRC_DIR)/ $(TEST_DIR)/ $(DOC_MAIN).pdf Makefile rozdeleni
+	zip $(ARCHIVE) -r $(SRC_DIR)/ $(TEST_DIR)/ $(DOC_MAIN).pdf Makefile rozdeleni rozsireni
 
 # check pre-commit and commit-msg hooks
 check:
