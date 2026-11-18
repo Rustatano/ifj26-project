@@ -1,0 +1,17 @@
+import ifj26.*
+
+def twice(x: Int) = x * 2
+
+def greet() = "hi"
+
+@main def main(): Unit =
+  val t = twice(21)
+  val g = greet()
+  show(t)
+  print(g)
+  print("\n")
+
+def show(n: Int): Unit =
+  val s = toStr(n)
+  print(s)
+  print("\n")

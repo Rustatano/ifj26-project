@@ -12,7 +12,7 @@ Description: Header file for Abstract Syntax Tree (AST)
 #ifndef AST_H
 #define AST_H
 
-#include "symbol_table.h"
+#include "symtable.h"
 #include <stdbool.h>
 #include <stddef.h>
 

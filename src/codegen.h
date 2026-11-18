@@ -14,7 +14,7 @@ Description: Header file for code generation
 #define CODEGEN_H
 
 #include "ast.h"
-#include "symbol_table.h"
+#include "symtable.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>

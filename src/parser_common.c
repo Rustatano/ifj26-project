@@ -23,6 +23,7 @@ void load_token(parser_context_t *context) {
         loaded_token = get_token(context->scanner_conf);
     }
     context->current_token = loaded_token;
+    context->error_line = loaded_token.line;
 }
 
 // Function for pushing the current token into a single-token lookahead buffer
@@ -76,6 +77,13 @@ bool parse_argument_list(parser_context_t *context, ast_node_t **params, int *pa
         skip_eols(context);
 
         if (check_token(context, TOKEN_RPAREN)) {
+            // Trailing comma is allowed only if a line break follows it (spec 1.2)
+            if (!context->current_token.newline_before) {
+                ast_dispose(params);
+                parser_fail_syntax(context, context->current_token.line,
+                                   "Trailing comma must be followed by a line break");
+                return false;
+            }
             load_token(context);
             return true;
         }
