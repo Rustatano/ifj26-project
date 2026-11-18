@@ -8,6 +8,7 @@ main.pdf
 # binaries
 ifj26
 test
+tests/build
 
 # local test files for scanner
 local_scanner_main.c
