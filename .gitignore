@@ -17,3 +17,6 @@ local_test_runner
 
 # target output file
 OUTPUT.ifjcode
+
+# log files
+ifj26_is-it-ok_*.log
