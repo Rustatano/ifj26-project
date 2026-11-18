@@ -1,6 +1,6 @@
 # documentation variables
 DOC_DIR = doc
-DOC_MAIN = main
+DOC_MAIN = dokumentace
 DOC_BUILD_DIR = build
 
 # archivation variables
@@ -27,13 +27,17 @@ build:
 
 # build documentation
 doc:
-	latexmk -pdf -outdir=$(DOC_BUILD_DIR) -cd $(DOC_DIR)/$(DOC_MAIN).tex
+	latexmk -pdf -interaction=nonstopmode -outdir=$(DOC_BUILD_DIR) -cd $(DOC_DIR)/$(DOC_MAIN).tex
 	cp $(DOC_DIR)/$(DOC_BUILD_DIR)/$(DOC_MAIN).pdf .
 
 # build archive
 archive:
 	rm -rf $(ARCHIVE)
 	zip $(ARCHIVE) -r $(SRC_DIR)/ $(DOC_MAIN).pdf Makefile rozdeleni rozsireni
+
+# check archive composition
+check-archive:
+	bash is_it_ok.sh $(ARCHIVE)
 
 # check pre-commit and commit-msg hooks
 check:

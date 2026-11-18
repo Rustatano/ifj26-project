@@ -1,0 +1,25 @@
+\section{Spolupráce v týmu}
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{p{0.28\textwidth}p{0.62\textwidth}}
+        \textbf{Jakub Svoboda}      & sémantický analyzátor, dokumentace, nastavení git repozitáře, testy \\
+        \textbf{Štěpán Zobal}       & lexikální analyzátor                                                \\
+        \textbf{Matěj Tajovský}     & generátor kódu, dokumentace                                         \\
+        \textbf{Sebastián Ondruška} & syntaktický analyzátor, návrh komunikace modulů                     \\
+    \end{tabular}
+\end{table}
+
+Na začátku byla dohoda, že se vytvoří hlavičkové soubory jednotlivých modulů co nejdříve,
+aby mohl každý pracovat na své odpovědné části.
+Pull requesty byla snaha tvořit vždy, když se implementovala značná funkční část modulu.
+Pro pull request bylo nutné, aby byl po code review schválen alespoň jedním členem,
+který se na pull requestu nepodílel.
+
+Testování probíhá jako unit testy a integrační testy překladače jako celku.
+Unit testy kontrolují jednotlivé funkce každého modulu. Testují ideální použití i krajní případy nebo chybové použití.
+Integrační testy probíhají tak, že se přeloží kód, správný nebo chybový, poté se spustí výsledný kód interpretem ic26int a
+porovná se výstup s očekávaným výstupem. Pro unit testy se používá testovací framework pro jazyk C cmocka a integrační testy
+se provádí pomocí bash skriptu a nástroje diff.
+
+Zvolený styl formátování C kódu je pomocí clang-format verze v18.1.8 skrze nástroj pre-commit.
