@@ -27,5 +27,5 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            ifj26_xsvoboj01_xzobals00_xtajovm00_xondrus00.zip
+            xsvoboj01
           generate_release_notes: true

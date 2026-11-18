@@ -4,7 +4,7 @@ DOC_MAIN = dokumentace
 DOC_BUILD_DIR = build
 
 # archivation variables
-ARCHIVE = ifj26_xsvoboj01_xzobals00_xtajovm00_xondrus00.zip
+ARCHIVE = xsvoboj01
 
 # source code variables
 # detecting gcc-16 as a priority, then gcc-16.2 as second choice (located on Merlin server), fallback to default gcc
@@ -37,7 +37,7 @@ doc:
 	cp $(DOC_DIR)/$(DOC_BUILD_DIR)/$(DOC_MAIN).pdf .
 
 # build archive
-archive:
+archive: doc
 	rm -rf $(ARCHIVE)
 	zip $(ARCHIVE) -r $(SRC_DIR)/ $(DOC_MAIN).pdf Makefile rozdeleni rozsireni
 
