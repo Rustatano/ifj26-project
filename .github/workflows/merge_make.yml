@@ -32,7 +32,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: release-asset-archive
-          path: xsvoboj01
+          path: xsvoboj01.zip
 
   build-doc:
     runs-on: ubuntu-latest
