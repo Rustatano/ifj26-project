@@ -1,0 +1,13 @@
+import ifj26.*
+
+@main def main(): Unit =
+  val a = 0 - 7
+  val b = a / 2
+  val c = 7 / (0 - 2)
+  show(b)
+  show(c)
+
+def show(n: Int): Unit =
+  val s = toStr(n)
+  print(s)
+  print("\n")

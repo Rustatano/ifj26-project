@@ -33,17 +33,14 @@ doc:
 # build archive
 archive:
 	rm -rf $(ARCHIVE)
-	zip $(ARCHIVE) -r $(SRC_DIR)/ $(TEST_DIR)/ $(DOC_MAIN).pdf Makefile rozdeleni rozsireni
+	zip $(ARCHIVE) -r $(SRC_DIR)/ $(DOC_MAIN).pdf Makefile rozdeleni rozsireni
 
 # check pre-commit and commit-msg hooks
 check:
 	pre-commit run --all-files
 
-test-build:
-	$(CC) $(CFLAGS) -o $(TEST_OUT) $(TEST_DIR)/*.c $(SRC_FILES) -lcmocka -lm
-
-test: test-build
-	./$(TEST_OUT)
+test:
+	make -C tests/ all
 
 # clean project from generated files
 clean:

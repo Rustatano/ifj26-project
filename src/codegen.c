@@ -11,6 +11,16 @@ Description: Generates IFJcode26 from the Abstract Syntax Tree
 */
 
 #include "codegen.h"
+#include <string.h>
+
+// Protocol of the generated code:
+//  - every expression leaves exactly one value on the data stack,
+//  - every function leaves exactly one return value on the data stack (Unit is nil@nil),
+//  - the value of an expression statement is dropped (POPS) unless it is the return value of
+//    a function (last statement of its body),
+//  - local variables are named LF@name$unique_id, all of them are defined at the beginning
+//    of the function (DEFVAR must not be executed twice, e.g. in a loop body).
+
 #define BUILTIN_FUN_LIST                                                                           \
     {"print", "readLine",  "readInt", "readDouble", "toStr",                                       \
      "toInt", "strLength", "subStr",  "ord",        "chr"}
@@ -18,141 +28,107 @@ Description: Generates IFJcode26 from the Abstract Syntax Tree
 
 typedef struct {
     FILE *file;
-    int label_counter;             // used for while and if
-    bool is_in_loop;               // used for handling var declaration vs assignment
+    int label_counter;             // used for unique labels (if, while, builtins)
     bool is_overflow_check_needed; // whether to generate the code for it
-    bool is_eof_check_needed;      // whether to generate the code for it
-    bool is_unit_function;         // whether the function must return unit
-    ast_node_t *last_node;         // used for handling function returns
+    bool is_in_main;               // return in the main function ends the program
+    bool is_unit_function;         // function returns Unit, so returned values are dropped
+    bool failed;                   // error during generation
 } codegen_context_t;
 
-// forward declaration so it can be used in other functions
-bool handle_node(ast_node_t *node, codegen_context_t *context);
+// forward declarations
+static void generate_expression(ast_node_t *node, codegen_context_t *context);
+static void generate_statement_list(ast_node_t *first, ast_node_t *last_value_statement,
+                                    codegen_context_t *context);
 
-// create file
-FILE *create_file(const char *output_file) {
-    FILE *file = fopen(output_file, "w");
-    return file;
-}
-
-codegen_context_t *create_codegen_context(const char *output_file) {
-    FILE *file;
-    if (output_file == NULL) {
-        file = stdout;
-    } else {
-        file = create_file(output_file);
-    }
-    if (file == NULL) {
-        fprintf(stderr, "Failed to create file\n");
-        return NULL;
+static codegen_context_t *create_codegen_context(const char *output_file) {
+    FILE *file = stdout;
+    if (output_file != NULL) {
+        file = fopen(output_file, "w");
+        if (file == NULL) {
+            fprintf(stderr, "Failed to create file\n");
+            return NULL;
+        }
     }
 
     codegen_context_t *context = malloc(sizeof(codegen_context_t));
     if (context == NULL) {
         fprintf(stderr, "Failed malloc\n");
+        if (file != stdout) {
+            fclose(file);
+        }
         return NULL;
     }
     context->file = file;
     context->label_counter = 0;
-    context->is_in_loop = false;
     context->is_overflow_check_needed = false;
-    context->is_eof_check_needed = false;
+    context->is_in_main = false;
     context->is_unit_function = false;
-    context->last_node = NULL;
+    context->failed = false;
     return context;
 }
 
-void destroy_codegen_context(codegen_context_t *context) {
+static void destroy_codegen_context(codegen_context_t *context) {
     if (context != NULL) {
         if (context->file != NULL && context->file != stdout) {
             fclose(context->file);
+        } else if (context->file != NULL) {
+            fflush(context->file);
         }
         free(context);
     }
 }
 
-void generate_oveflow_check(codegen_context_t *context) {
-    fprintf(context->file, "LABEL $OVERFLOW_CHECK\n");
-    // assuming result (int) on top of the stack
-    fprintf(context->file, "POPS GF@tmp0\n");
-    fprintf(context->file, "PUSHS GF@tmp0\n");
-    fprintf(context->file, "PUSHS int@%d\n", INT32_MAX);
-    fprintf(context->file, "GTS\n");
-    fprintf(context->file, "PUSHS bool@true\n");
-    fprintf(context->file, "JUMPIFEQS $OVERFLOW_POSITIVE\n");
-
-    fprintf(context->file, "PUSHS GF@tmp0\n");
-    fprintf(context->file, "PUSHS int@%d\n", INT32_MIN);
-    fprintf(context->file, "LTS\n");
-    fprintf(context->file, "PUSHS bool@true\n");
-    fprintf(context->file, "JUMPIFEQS $OVERFLOW_NEGATIVE\n");
-
-    // if no overflow, push back the original value and return
-    fprintf(context->file, "PUSHS GF@tmp0\n");
-    fprintf(context->file, "RETURN\n");
-
-    // positive overflow
-    fprintf(context->file, "LABEL $OVERFLOW_POSITIVE\n");
-    fprintf(context->file, "PUSHS int@%d\n", INT32_MIN);
-    fprintf(context->file, "PUSHS int@2\n");
-    fprintf(context->file, "MULS\n");
-    fprintf(context->file, "PUSHS GF@tmp0\n");
-    fprintf(context->file, "ADDS\n");
-    fprintf(context->file, "RETURN\n");
-
-    // negative overflow
-    fprintf(context->file, "LABEL $OVERFLOW_NEGATIVE\n");
-    fprintf(context->file, "PUSHS int@%d\n", INT32_MAX);
-    fprintf(context->file, "PUSHS int@1\n");
-    fprintf(context->file, "ADDS\n");
-    fprintf(context->file, "PUSHS int@2\n");
-    fprintf(context->file, "MULS\n");
-    fprintf(context->file, "PUSHS GF@tmp0\n");
-    fprintf(context->file, "ADDS\n");
-    fprintf(context->file, "RETURN\n");
+// Integer operations are done on 64 bit integers, the result is wrapped to 32 bit Int
+// (like in Scala). Value is taken from the top of the stack and the wrapped one is pushed back.
+static void generate_overflow_check(codegen_context_t *context) {
+    FILE *f = context->file;
+    fprintf(f, "LABEL $OVERFLOW_CHECK\n");
+    fprintf(f, "POPS GF@tmp0\n");
+    // tmp0 = tmp0 - (tmp0 / 2^32) * 2^32  -> |tmp0| < 2^32
+    fprintf(f, "IDIV GF@tmp1 GF@tmp0 int@4294967296\n");
+    fprintf(f, "MUL GF@tmp1 GF@tmp1 int@4294967296\n");
+    fprintf(f, "SUB GF@tmp0 GF@tmp0 GF@tmp1\n");
+    fprintf(f, "GT GF@tmp1 GF@tmp0 int@%d\n", INT32_MAX);
+    fprintf(f, "JUMPIFEQ $OVERFLOW_POSITIVE GF@tmp1 bool@true\n");
+    fprintf(f, "LT GF@tmp1 GF@tmp0 int@%d\n", INT32_MIN);
+    fprintf(f, "JUMPIFEQ $OVERFLOW_NEGATIVE GF@tmp1 bool@true\n");
+    fprintf(f, "PUSHS GF@tmp0\n");
+    fprintf(f, "RETURN\n");
+    fprintf(f, "LABEL $OVERFLOW_POSITIVE\n");
+    fprintf(f, "SUB GF@tmp0 GF@tmp0 int@4294967296\n");
+    fprintf(f, "PUSHS GF@tmp0\n");
+    fprintf(f, "RETURN\n");
+    fprintf(f, "LABEL $OVERFLOW_NEGATIVE\n");
+    fprintf(f, "ADD GF@tmp0 GF@tmp0 int@4294967296\n");
+    fprintf(f, "PUSHS GF@tmp0\n");
+    fprintf(f, "RETURN\n");
 }
 
-// for readLine, readInt and readDouble, convert nil to empty string or 0
-void generate_eof_check(codegen_context_t *context) {
-    fprintf(context->file, "LABEL $EOF_CHECK\n");
-    fprintf(context->file, "POPS GF@tmp0\n");         // default value
-    fprintf(context->file, "POPS GF@tmp1\n");         // value from read
-    fprintf(context->file, "TYPE GF@tmp2 GF@tmp1\n"); // type of value from read
-    fprintf(context->file, "JUMPIFEQ $EOF_CHECK_DEFAULT GF@tmp2 string@nil\n");
-    fprintf(context->file, "PUSHS GF@tmp1\n");
-    fprintf(context->file, "RETURN\n");
-    fprintf(context->file, "LABEL $EOF_CHECK_DEFAULT\n");
-    fprintf(context->file, "PUSHS GF@tmp0\n");
-    fprintf(context->file, "RETURN\n");
-}
-
-void check_and_correct_inf_overflow(ast_node_t *node, codegen_context_t *context) {
-    if (node->expression_operator.left_side->result_type != SYM_DATATYPE_INT ||
-        node->expression_operator.right_side->result_type != SYM_DATATYPE_INT) {
-        return;
-    }
-    // only if both sides are int do the check
+// Wraps the Int result on the top of the stack, only if both operands were Int
+static void generate_int_overflow_check(codegen_context_t *context) {
     context->is_overflow_check_needed = true;
     fprintf(context->file, "CALL $OVERFLOW_CHECK\n");
 }
 
-// this is used to extract variable declarations from block nodes
-// so there is no multiple var declarations in case of a loop block
-void extract_var_declarations(ast_node_t *node, codegen_context_t *context) {
-    if (node == NULL) {
-        return;
-    }
+static bool is_int_operation(ast_node_t *node) {
+    return node->expression_operator.left_side->result_type == SYM_DATATYPE_INT &&
+           node->expression_operator.right_side->result_type == SYM_DATATYPE_INT;
+}
 
-    if (node->type == AST_NODE_VAR_DECLARATION) {
-        fprintf(context->file, "DEFVAR LF@%s$%d\n", node->var_declaration.name,
-                node->var_declaration.unique_id);
+// Writes string constant in the format of IFJcode26 (escape sequence \xyz)
+static void write_string_constant(const char *str, codegen_context_t *context) {
+    fprintf(context->file, "string@");
+    for (const unsigned char *p = (const unsigned char *)str; *p != '\0'; p++) {
+        if (*p <= 32 || *p == 35 || *p == 92 || *p > 126) {
+            fprintf(context->file, "\\%03d", *p);
+        } else {
+            fputc(*p, context->file);
+        }
     }
-
-    extract_var_declarations(node->next, context);
 }
 
 // check if a function is builtin and needs custom codegen
-bool check_function_is_builtin(char *fun_name) {
+static bool check_function_is_builtin(const char *fun_name) {
     const char *builtin_functions[BUILTIN_FUN_COUNT] = BUILTIN_FUN_LIST;
 
     for (int i = 0; i < BUILTIN_FUN_COUNT; i++) {
@@ -164,539 +140,557 @@ bool check_function_is_builtin(char *fun_name) {
     return false;
 }
 
+// Generates arguments of a call left to right (the last one is on the top of the stack)
+static void generate_arguments(ast_node_t *first_argument, codegen_context_t *context) {
+    for (ast_node_t *arg = first_argument; arg != NULL; arg = arg->next) {
+        generate_expression(arg, context);
+    }
+}
+
 // generate code for builtin functions in place
-void generate_builtin_function_in_place(char *fun_name, ast_node_t *node,
-                                        codegen_context_t *context) {
+static void generate_builtin_function_in_place(const char *fun_name, ast_node_t *node,
+                                               codegen_context_t *context) {
+    FILE *f = context->file;
+    ast_node_t *args = node->expression_fun_call.params;
+    int id = context->label_counter++;
+
+    generate_arguments(args, context);
+
     if (strcmp(fun_name, "print") == 0) {
-        // evaluate the param (only one in this case), result is on top of the stack
-        handle_node(node->expression_fun_call.params, context);
-        // move the value from stack to var, so it can be used with write
-        fprintf(context->file, "POPS GF@tmp0\n");
-        if (node->expression_fun_call.params->result_type == SYM_DATATYPE_UNIT) {
+        // value of the argument is on top of the stack, WRITE needs a variable
+        fprintf(f, "POPS GF@tmp0\n");
+        if (args->result_type == SYM_DATATYPE_UNIT) {
             // special case, unit should be printed as "()"
-            fprintf(context->file, "MOVE GF@tmp0 string@()\n");
+            fprintf(f, "MOVE GF@tmp0 string@()\n");
         }
-        // write the value
-        fprintf(context->file, "WRITE GF@tmp0\n");
-        // push unit to stack as return of the print function
-        fprintf(context->file, "PUSHS nil@nil\n");
+        fprintf(f, "WRITE GF@tmp0\n");
+        // result of print is Unit
+        fprintf(f, "PUSHS nil@nil\n");
 
     } else if (strcmp(fun_name, "readLine") == 0) {
-        context->is_eof_check_needed = true;
-        fprintf(context->file, "READ GF@tmp0 string\n");
-        // push the value to stack because the rest of codegen expects it
-        fprintf(context->file, "PUSHS GF@tmp0\n");
-        // push default value to stack for the check_eof function
-        fprintf(context->file, "PUSHS string@\n");
-        fprintf(context->file, "CALL $EOF_CHECK\n");
+        // READ gives nil on EOF, the function returns an empty string then
+        fprintf(f, "READ GF@tmp0 string\n");
+        fprintf(f, "JUMPIFNEQ $READ_OK$%d GF@tmp0 nil@nil\n", id);
+        fprintf(f, "MOVE GF@tmp0 string@\n");
+        fprintf(f, "LABEL $READ_OK$%d\n", id);
+        fprintf(f, "PUSHS GF@tmp0\n");
 
     } else if (strcmp(fun_name, "readInt") == 0) {
-        context->is_eof_check_needed = true;
-        fprintf(context->file, "READ GF@tmp0 int\n");
-        // push to stack, same as readLine
-        fprintf(context->file, "PUSHS GF@tmp0\n");
-        // push default value to stack for the check_eof function
-        fprintf(context->file, "PUSHS int@0\n");
-        fprintf(context->file, "CALL $EOF_CHECK\n");
+        // nil (EOF or bad format) -> 0
+        fprintf(f, "READ GF@tmp0 int\n");
+        fprintf(f, "JUMPIFNEQ $READ_OK$%d GF@tmp0 nil@nil\n", id);
+        fprintf(f, "MOVE GF@tmp0 int@0\n");
+        fprintf(f, "LABEL $READ_OK$%d\n", id);
+        fprintf(f, "PUSHS GF@tmp0\n");
 
     } else if (strcmp(fun_name, "readDouble") == 0) {
-        context->is_eof_check_needed = true;
-        fprintf(context->file, "READ GF@tmp0 float\n");
-        // push to stack, same as readLine
-        fprintf(context->file, "PUSHS GF@tmp0\n");
-        // push default value to stack for the check_eof function
-        fprintf(context->file, "PUSHS float@0\n");
-        fprintf(context->file, "CALL $EOF_CHECK\n");
+        fprintf(f, "READ GF@tmp0 float\n");
+        fprintf(f, "JUMPIFNEQ $READ_OK$%d GF@tmp0 nil@nil\n", id);
+        fprintf(f, "MOVE GF@tmp0 float@%a\n", 0.0);
+        fprintf(f, "LABEL $READ_OK$%d\n", id);
+        fprintf(f, "PUSHS GF@tmp0\n");
 
     } else if (strcmp(fun_name, "toStr") == 0) {
-        handle_node(node->expression_fun_call.params, context);
-
-        if (node->expression_fun_call.params->result_type == SYM_DATATYPE_UNIT) {
-            // // special case, unit should be converted to "()"
-            fprintf(context->file, "POPS GF@tmp0\n");
-            fprintf(context->file, "MOVE GF@tmp0 string@()\n");
-            fprintf(context->file, "PUSHS GF@tmp0\n");
-
-        } else if (node->expression_fun_call.params->result_type == SYM_DATATYPE_DOUBLE) {
-            fprintf(context->file, "FLOAT2STRS\n");
-
-        } else if (node->expression_fun_call.params->result_type == SYM_DATATYPE_INT) {
-            fprintf(context->file, "INT2STRS\n");
-        } else {
-            // for string, we can leave it be
+        if (args->result_type == SYM_DATATYPE_UNIT) {
+            // special case, unit should be converted to "()"
+            fprintf(f, "POPS GF@tmp0\n");
+            fprintf(f, "PUSHS string@()\n");
+        } else if (args->result_type == SYM_DATATYPE_DOUBLE) {
+            fprintf(f, "FLOAT2STRS\n");
+        } else if (args->result_type == SYM_DATATYPE_INT) {
+            fprintf(f, "INT2STRS\n");
         }
+        // string stays as it is
 
     } else if (strcmp(fun_name, "toInt") == 0) {
-        handle_node(node->expression_fun_call.params, context);
-        fprintf(context->file, "FLOAT2INTS\n");
+        fprintf(f, "FLOAT2INTS\n");
 
     } else if (strcmp(fun_name, "strLength") == 0) {
-        handle_node(node->expression_fun_call.params, context);
-        fprintf(context->file, "POPS GF@tmp0\n"); // string
-        fprintf(context->file, "STRLEN GF@tmp1 GF@tmp0\n");
-        // push result to stack
-        fprintf(context->file, "PUSHS GF@tmp1\n");
+        fprintf(f, "POPS GF@tmp0\n");
+        fprintf(f, "STRLEN GF@tmp1 GF@tmp0\n");
+        fprintf(f, "PUSHS GF@tmp1\n");
 
     } else if (strcmp(fun_name, "subStr") == 0) {
-        int label_id = context->label_counter;
-        context->label_counter++;
+        // tmp0 = string, tmp1 = start (also the current index), tmp2 = end,
+        // tmp3 = bool / current char, tmp4 = length of the string, tmp5 = result
+        fprintf(f, "POPS GF@tmp2\n");
+        fprintf(f, "POPS GF@tmp1\n");
+        fprintf(f, "POPS GF@tmp0\n");
 
-        handle_node(node->expression_fun_call.params, context);
-        fprintf(context->file, "POPS GF@tmp2\n"); // end index
-        fprintf(context->file, "POPS GF@tmp1\n"); // start index
-        fprintf(context->file, "POPS GF@tmp0\n"); // string
-
-        // check if params are valid
         // start < 0
-        fprintf(context->file, "PUSHS GF@tmp1\n");
-        fprintf(context->file, "PUSHS int@0\n");
-        fprintf(context->file, "LTS\n");
-        fprintf(context->file, "PUSHS bool@true\n");
-        fprintf(context->file, "JUMPIFEQS $EXIT40\n");
-
+        fprintf(f, "LT GF@tmp3 GF@tmp1 int@0\n");
+        fprintf(f, "JUMPIFEQ $EXIT40 GF@tmp3 bool@true\n");
         // end < 0
-        fprintf(context->file, "PUSHS GF@tmp2\n");
-        fprintf(context->file, "PUSHS int@0\n");
-        fprintf(context->file, "LTS\n");
-        fprintf(context->file, "PUSHS bool@true\n");
-        fprintf(context->file, "JUMPIFEQS $EXIT40\n");
-
+        fprintf(f, "LT GF@tmp3 GF@tmp2 int@0\n");
+        fprintf(f, "JUMPIFEQ $EXIT40 GF@tmp3 bool@true\n");
         // start > end
-        fprintf(context->file, "PUSHS GF@tmp1\n");
-        fprintf(context->file, "PUSHS GF@tmp2\n");
-        fprintf(context->file, "GTS\n");
-        fprintf(context->file, "PUSHS bool@true\n");
-        fprintf(context->file, "JUMPIFEQS $EXIT40\n");
+        fprintf(f, "GT GF@tmp3 GF@tmp1 GF@tmp2\n");
+        fprintf(f, "JUMPIFEQ $EXIT40 GF@tmp3 bool@true\n");
+        // start >= length
+        fprintf(f, "STRLEN GF@tmp4 GF@tmp0\n");
+        fprintf(f, "LT GF@tmp3 GF@tmp1 GF@tmp4\n");
+        fprintf(f, "JUMPIFNEQ $EXIT40 GF@tmp3 bool@true\n");
+        // end > length
+        fprintf(f, "GT GF@tmp3 GF@tmp2 GF@tmp4\n");
+        fprintf(f, "JUMPIFEQ $EXIT40 GF@tmp3 bool@true\n");
 
-        // store strLength to gf@tmp3 for further checks
-        fprintf(context->file, "STRLEN GF@tmp3 GF@tmp0\n");
-
-        // start >= strLength
-        fprintf(context->file, "PUSHS GF@tmp1\n");
-        fprintf(context->file, "PUSHS GF@tmp3\n");
-        fprintf(context->file, "GTS\n");
-        fprintf(context->file, "PUSHS GF@tmp1\n");
-        fprintf(context->file, "PUSHS GF@tmp3\n");
-        fprintf(context->file, "EQS\n");
-        fprintf(context->file, "ORS\n");
-        fprintf(context->file, "PUSHS bool@true\n");
-        fprintf(context->file, "JUMPIFEQS $EXIT40\n");
-
-        // end > strLength
-        fprintf(context->file, "PUSHS GF@tmp2\n");
-        fprintf(context->file, "PUSHS GF@tmp3\n");
-        fprintf(context->file, "GTS\n");
-        fprintf(context->file, "PUSHS bool@true\n");
-        fprintf(context->file, "JUMPIFEQS $EXIT40\n");
-        // end of checks
-
-        // actual code of subStr
-        // sub result is gonna be in GF@tmp3 (strLength is no longer needed)
-        // GF@tmp4 is gonna be used for getchar results
-        // first char
-        fprintf(context->file, "GETCHAR GF@tmp3 GF@tmp0 GF@tmp1\n");
-        fprintf(context->file, "ADD GF@tmp1 GF@tmp1 int@1\n");
-        // sub 1 from end index so we can loop till start is > end (instead of >=)
-        fprintf(context->file, "SUB GF@tmp2 GF@tmp2 int@1\n");
-        // loop for other chars
-        fprintf(context->file, "LABEL $SUBSTR_LOOP%d\n", label_id);
-        // check if start index has gone over end index
-        fprintf(context->file, "PUSHS GF@tmp1\n");
-        fprintf(context->file, "PUSHS GF@tmp2\n");
-        fprintf(context->file, "GTS\n");
-        fprintf(context->file, "PUSHS bool@true\n");
-        fprintf(context->file, "JUMPIFEQS $SUBSTR_LOOP_END%d\n", label_id);
-        // get current char and concat it
-        fprintf(context->file, "GETCHAR GF@tmp4 GF@tmp0 GF@tmp1\n");
-        fprintf(context->file, "CONCAT GF@tmp3 GF@tmp3 GF@tmp4\n");
-        // increment and jump
-        fprintf(context->file, "ADD GF@tmp1 GF@tmp1 int@1\n");
-        fprintf(context->file, "JUMP $SUBSTR_LOOP%d\n", label_id);
-
-        // end of loop
-        fprintf(context->file, "LABEL $SUBSTR_LOOP_END%d\n", label_id);
-        // push result to stack
-        fprintf(context->file, "PUSHS GF@tmp3\n");
+        // copy characters start .. end - 1
+        fprintf(f, "MOVE GF@tmp5 string@\n");
+        fprintf(f, "LABEL $SUBSTR_LOOP$%d\n", id);
+        fprintf(f, "LT GF@tmp3 GF@tmp1 GF@tmp2\n");
+        fprintf(f, "JUMPIFNEQ $SUBSTR_END$%d GF@tmp3 bool@true\n", id);
+        fprintf(f, "GETCHAR GF@tmp3 GF@tmp0 GF@tmp1\n");
+        fprintf(f, "CONCAT GF@tmp5 GF@tmp5 GF@tmp3\n");
+        fprintf(f, "ADD GF@tmp1 GF@tmp1 int@1\n");
+        fprintf(f, "JUMP $SUBSTR_LOOP$%d\n", id);
+        fprintf(f, "LABEL $SUBSTR_END$%d\n", id);
+        fprintf(f, "PUSHS GF@tmp5\n");
 
     } else if (strcmp(fun_name, "ord") == 0) {
-        int label_id = context->label_counter;
-        context->label_counter++;
-
-        handle_node(node->expression_fun_call.params, context);
-        fprintf(context->file, "POPS GF@tmp1\n");           // index in the string
-        fprintf(context->file, "POPS GF@tmp0\n");           // the value of the string
-        fprintf(context->file, "STRLEN GF@tmp2 GF@tmp0\n"); // string length
-        // check if index is valid
-        fprintf(context->file, "JUMPIFEQ $ORD_ERROR%d GF@tmp2 int@0\n", label_id);
-        fprintf(context->file, "SUB GF@tmp2 GF@tmp2 int@1\n");
-        fprintf(context->file, "GT GF@tmp3 GF@tmp1 GF@tmp2\n");
-        fprintf(context->file, "JUMPIFEQ $ORD_ERROR%d GF@tmp3 bool@true\n", label_id);
-        fprintf(context->file, "LT GF@tmp3 GF@tmp1 int@0\n");
-        fprintf(context->file, "JUMPIFEQ $ORD_ERROR%d GF@tmp3 bool@true\n", label_id);
-        // index is valid
-        fprintf(context->file, "STRI2INT GF@tmp4 GF@tmp0 GF@tmp1\n");
-        fprintf(context->file, "PUSHS GF@tmp4\n");
-        fprintf(context->file, "JUMP $ORD_END%d\n", label_id);
-        // index is invalid
-        fprintf(context->file, "LABEL $ORD_ERROR%d\n", label_id);
-        fprintf(context->file, "PUSHS int@-1\n");
-        // end
-        fprintf(context->file, "LABEL $ORD_END%d\n", label_id);
+        // -1 for an empty string or an index out of range
+        fprintf(f, "POPS GF@tmp1\n");
+        fprintf(f, "POPS GF@tmp0\n");
+        fprintf(f, "LT GF@tmp3 GF@tmp1 int@0\n");
+        fprintf(f, "JUMPIFEQ $ORD_BAD$%d GF@tmp3 bool@true\n", id);
+        fprintf(f, "STRLEN GF@tmp2 GF@tmp0\n");
+        fprintf(f, "LT GF@tmp3 GF@tmp1 GF@tmp2\n");
+        fprintf(f, "JUMPIFNEQ $ORD_BAD$%d GF@tmp3 bool@true\n", id);
+        fprintf(f, "STRI2INT GF@tmp4 GF@tmp0 GF@tmp1\n");
+        fprintf(f, "PUSHS GF@tmp4\n");
+        fprintf(f, "JUMP $ORD_END$%d\n", id);
+        fprintf(f, "LABEL $ORD_BAD$%d\n", id);
+        fprintf(f, "PUSHS int@-1\n");
+        fprintf(f, "LABEL $ORD_END$%d\n", id);
 
     } else if (strcmp(fun_name, "chr") == 0) {
-        handle_node(node->expression_fun_call.params, context);
-        fprintf(context->file, "INT2CHARS\n");
+        fprintf(f, "INT2CHARS\n");
     }
 }
 
-void load_params_from_stack_reverse(symtable_fun_param_t *params, codegen_context_t *context) {
-    // end of the linked list
-    if (params == NULL) {
+// Generates relational operator, operands are on the stack
+static void generate_comparison(ast_expression_operator_t op, codegen_context_t *context) {
+    FILE *f = context->file;
+    switch (op) {
+    case AST_EXPRESSION_OPERATOR_EQUAL:
+        fprintf(f, "EQS\n");
+        break;
+    case AST_EXPRESSION_OPERATOR_NOT_EQUAL:
+        fprintf(f, "EQS\n");
+        fprintf(f, "NOTS\n");
+        break;
+    case AST_EXPRESSION_OPERATOR_SMALLER:
+        fprintf(f, "LTS\n");
+        break;
+    case AST_EXPRESSION_OPERATOR_BIGGER:
+        fprintf(f, "GTS\n");
+        break;
+    case AST_EXPRESSION_OPERATOR_SMALLER_EQUAL:
+    case AST_EXPRESSION_OPERATOR_BIGGER_EQUAL:
+        // a <= b  ==  (a < b) or (a == b),  a >= b  ==  (a > b) or (a == b)
+        // stack: [a, b] -> tmp0 = b, tmp1 = a, operands are pushed back in the original order
+        fprintf(f, "POPS GF@tmp0\n");
+        fprintf(f, "POPS GF@tmp1\n");
+        fprintf(f, "PUSHS GF@tmp1\n");
+        fprintf(f, "PUSHS GF@tmp0\n");
+        fprintf(f, op == AST_EXPRESSION_OPERATOR_SMALLER_EQUAL ? "LTS\n" : "GTS\n");
+        fprintf(f, "PUSHS GF@tmp1\n");
+        fprintf(f, "PUSHS GF@tmp0\n");
+        fprintf(f, "EQS\n");
+        fprintf(f, "ORS\n");
+        break;
+    default:
+        break;
+    }
+}
+
+static void generate_operator(ast_node_t *node, codegen_context_t *context) {
+    FILE *f = context->file;
+    ast_expression_operator_t op = node->expression_operator.op;
+    ast_node_t *left = node->expression_operator.left_side;
+    ast_node_t *right = node->expression_operator.right_side;
+
+    // Unary operators
+    if (op == AST_EXPRESSION_OPERATOR_UNARY_PLUS) {
+        generate_expression(right, context);
         return;
     }
-    // first handle the next param
-    load_params_from_stack_reverse(params->next, context);
-    // then handle the current one
-    fprintf(context->file, "POPS LF@%s$%d\n", params->name, params->unique_id);
+    if (op == AST_EXPRESSION_OPERATOR_UNARY_MINUS) {
+        if (right->result_type == SYM_DATATYPE_DOUBLE) {
+            generate_expression(right, context);
+            fprintf(f, "PUSHS float@%a\n", -1.0);
+            fprintf(f, "MULS\n");
+        } else {
+            fprintf(f, "PUSHS int@0\n");
+            generate_expression(right, context);
+            fprintf(f, "SUBS\n");
+            generate_int_overflow_check(context);
+        }
+        return;
+    }
+
+    // Binary operators: operands first, then the operator on top of the stack
+    generate_expression(left, context);
+    generate_expression(right, context);
+
+    switch (op) {
+    case AST_EXPRESSION_OPERATOR_ADD:
+        if (left->result_type == SYM_DATATYPE_STRING) {
+            // concat does not have a stack version
+            fprintf(f, "POPS GF@tmp0\n");
+            fprintf(f, "POPS GF@tmp1\n");
+            fprintf(f, "CONCAT GF@tmp0 GF@tmp1 GF@tmp0\n");
+            fprintf(f, "PUSHS GF@tmp0\n");
+        } else {
+            fprintf(f, "ADDS\n");
+            if (is_int_operation(node)) {
+                generate_int_overflow_check(context);
+            }
+        }
+        break;
+    case AST_EXPRESSION_OPERATOR_SUB:
+        fprintf(f, "SUBS\n");
+        if (is_int_operation(node)) {
+            generate_int_overflow_check(context);
+        }
+        break;
+    case AST_EXPRESSION_OPERATOR_MUL:
+        fprintf(f, "MULS\n");
+        if (is_int_operation(node)) {
+            generate_int_overflow_check(context);
+        }
+        break;
+    case AST_EXPRESSION_OPERATOR_DIV:
+        if (is_int_operation(node)) {
+            fprintf(f, "IDIVS\n");
+            generate_int_overflow_check(context); // INT_MIN / -1
+        } else {
+            fprintf(f, "DIVS\n");
+        }
+        break;
+    default:
+        generate_comparison(op, context);
+        break;
+    }
 }
 
-bool handle_node(ast_node_t *node, codegen_context_t *context) {
+// Generates code of an expression, its value is left on the top of the stack
+static void generate_expression(ast_node_t *node, codegen_context_t *context) {
+    FILE *f = context->file;
     if (node == NULL) {
-        return true;
+        return;
     }
-    int label_id = context->label_counter;
 
     switch (node->type) {
-    case AST_NODE_MAIN:
-        fprintf(context->file, "LABEL $main\n");
-        fprintf(context->file, "CREATEFRAME\n");
-        fprintf(context->file, "PUSHFRAME\n");
-        handle_node(node->fun_definition.body_block, context);
-        // implicitly exit with 0 if no return was used in main
-        fprintf(context->file, "PUSHS int@0\n");
-        fprintf(context->file, "POPFRAME\n");
-        fprintf(context->file, "RETURN\n");
+    case AST_NODE_EXPRESSION_OPERATOR:
+        generate_operator(node, context);
         break;
 
-    case AST_NODE_BLOCK:
-        handle_node(node->block.first_statement, context);
+    case AST_NODE_EXPRESSION_FUN_CALL:
+        if (check_function_is_builtin(node->expression_fun_call.fun_name)) {
+            generate_builtin_function_in_place(node->expression_fun_call.fun_name, node, context);
+        } else {
+            // arguments are pushed left to right, the callee pops them in reverse order
+            generate_arguments(node->expression_fun_call.params, context);
+            fprintf(f, "CALL %s\n", node->expression_fun_call.fun_name);
+        }
         break;
 
     case AST_NODE_CONVERT:
-        // usef for implicit conversion of int to float in expression
-        handle_node(node->block.first_statement, context);
-        fprintf(context->file, "INT2FLOATS\n");
+        // implicit conversion of Int to Double
+        generate_expression(node->block.first_statement, context);
+        fprintf(f, "INT2FLOATS\n");
         break;
 
-    case AST_NODE_FUN_DEFINITION:
-        if (node->fun_definition.return_type == SYM_DATATYPE_UNIT) {
-            context->is_unit_function = true;
-        } else {
-            context->is_unit_function = false;
-        }
-        // create label and frame
-        fprintf(context->file, "LABEL %s\n", node->fun_definition.name);
-        fprintf(context->file, "CREATEFRAME\n");
-        fprintf(context->file, "PUSHFRAME\n");
+    case AST_NODE_EXPRESSION_VAR:
+        fprintf(f, "PUSHS LF@%s$%d\n", node->expression_var.name, node->expression_var.unique_id);
+        break;
 
-        // save pointer to the params linked list for value assignment from stack
-        symtable_fun_param_t *params_ptr = node->fun_definition.params;
-        // define params and load them from stack
-        while (params_ptr != NULL) {
-            fprintf(context->file, "DEFVAR LF@%s$%d\n", params_ptr->name, params_ptr->unique_id);
-            params_ptr = params_ptr->next;
-        }
-        params_ptr = node->fun_definition.params;
-        load_params_from_stack_reverse(params_ptr, context);
+    case AST_NODE_CONST_INT:
+        fprintf(f, "PUSHS int@%d\n", node->int_value);
+        break;
 
-        // body of the function
-        handle_node(node->fun_definition.body_block, context);
+    case AST_NODE_CONST_DOUBLE:
+        fprintf(f, "PUSHS float@%a\n", node->double_value);
+        break;
 
-        // done, check if return was used
-        if (context->last_node == NULL || context->last_node->type != AST_NODE_STATEMENT_RETURN) {
-            // check if the last node was a definition, assignment or while
-            // if so push unit to stack as return value
-            if ((context->last_node != NULL &&
-                 (context->last_node->type == AST_NODE_VAR_DECLARATION ||
-                  context->last_node->type == AST_NODE_VALUE_ASSIGNMENT ||
-                  context->last_node->type == AST_NODE_STATEMENT_WHILE)) ||
-                context->is_unit_function) {
-                fprintf(context->file, "PUSHS nil@nil\n");
+    case AST_NODE_CONST_STRING:
+        fprintf(f, "PUSHS ");
+        write_string_constant(node->str_value, context);
+        fprintf(f, "\n");
+        break;
+
+    case AST_NODE_CONST_UNIT:
+        fprintf(f, "PUSHS nil@nil\n");
+        break;
+
+    default:
+        fprintf(stderr, "Unknown AST expression node\n");
+        context->failed = true;
+        break;
+    }
+}
+
+static bool is_expression_node(ast_node_t *node) {
+    switch (node->type) {
+    case AST_NODE_EXPRESSION_OPERATOR:
+    case AST_NODE_EXPRESSION_FUN_CALL:
+    case AST_NODE_EXPRESSION_VAR:
+    case AST_NODE_CONST_INT:
+    case AST_NODE_CONST_DOUBLE:
+    case AST_NODE_CONST_STRING:
+    case AST_NODE_CONST_UNIT:
+    case AST_NODE_CONVERT:
+        return true;
+    default:
+        return false;
+    }
+}
+
+// Defines all variables declared in the list of statements (including nested blocks) - each
+// variable has a unique id, so one DEFVAR per variable is enough even for loops
+static void define_local_variables(ast_node_t *first, codegen_context_t *context) {
+    for (ast_node_t *node = first; node != NULL; node = node->next) {
+        switch (node->type) {
+        case AST_NODE_VAR_DECLARATION:
+            fprintf(context->file, "DEFVAR LF@%s$%d\n", node->var_declaration.name,
+                    node->var_declaration.unique_id);
+            break;
+        case AST_NODE_STATEMENT_IF:
+            if (node->if_statement.if_block != NULL) {
+                define_local_variables(node->if_statement.if_block->block.first_statement, context);
             }
-            fprintf(context->file, "POPFRAME\n");
-            fprintf(context->file, "RETURN\n");
+            if (node->if_statement.else_block != NULL) {
+                define_local_variables(node->if_statement.else_block->block.first_statement,
+                                       context);
+            }
+            break;
+        case AST_NODE_STATEMENT_WHILE:
+            if (node->while_statement.body_block != NULL) {
+                define_local_variables(node->while_statement.body_block->block.first_statement,
+                                       context);
+            }
+            break;
+        default:
+            break;
         }
+    }
+}
+
+// Generates one statement. The value of an expression statement is dropped unless it is
+// `keep_value` (the value of the function body).
+static void generate_statement(ast_node_t *node, bool keep_value, codegen_context_t *context) {
+    FILE *f = context->file;
+
+    if (is_expression_node(node)) {
+        generate_expression(node, context);
+        if (!keep_value) {
+            fprintf(f, "POPS GF@tmp0\n");
+        }
+        return;
+    }
+
+    switch (node->type) {
+    case AST_NODE_STATEMENT_IMPORT:
+        // header is already in the startup code
         break;
 
     case AST_NODE_VAR_DECLARATION:
-        // define the variable if outside a loop
-        if (!context->is_in_loop) {
-            fprintf(context->file, "DEFVAR LF@%s$%d\n", node->var_declaration.name,
-                    node->var_declaration.unique_id);
-        }
+        // variable is already defined at the beginning of the function
         if (node->var_declaration.init_expression != NULL) {
-            // handle the expression, result is on top of the stack
-            handle_node(node->var_declaration.init_expression, context);
-            // save the result from the stack to the variable
-            fprintf(context->file, "POPS LF@%s$%d\n", node->var_declaration.name,
+            generate_expression(node->var_declaration.init_expression, context);
+            fprintf(f, "POPS LF@%s$%d\n", node->var_declaration.name,
                     node->var_declaration.unique_id);
         }
         break;
 
     case AST_NODE_VALUE_ASSIGNMENT:
-        // same as variable declaration but just the assignment part
-        handle_node(node->assign_statement.expression, context);
-        fprintf(context->file, "POPS LF@%s$%d\n", node->assign_statement.target_var_name,
+        generate_expression(node->assign_statement.expression, context);
+        fprintf(f, "POPS LF@%s$%d\n", node->assign_statement.target_var_name,
                 node->assign_statement.unique_id);
         break;
 
-    case AST_NODE_STATEMENT_IF:
-        context->label_counter++;
+    case AST_NODE_STATEMENT_IF: {
+        int id = context->label_counter++;
+        generate_expression(node->if_statement.condition, context);
+        fprintf(f, "PUSHS bool@true\n");
+        fprintf(f, "JUMPIFEQS $IF_TRUE$%d\n", id);
+        fprintf(f, "JUMP $IF_FALSE$%d\n", id);
 
-        // handle condition
-        handle_node(node->if_statement.condition, context);
-        // push true to stack to compare with the condition
-        fprintf(context->file, "PUSHS bool@true\n");
-        fprintf(context->file, "JUMPIFEQS $IF_TRUE$%d\n", label_id);
-        fprintf(context->file, "JUMP $IF_FALSE$%d\n", label_id);
+        fprintf(f, "LABEL $IF_TRUE$%d\n", id);
+        if (node->if_statement.if_block != NULL) {
+            generate_statement_list(node->if_statement.if_block->block.first_statement, NULL,
+                                    context);
+        }
+        fprintf(f, "JUMP $IF_END$%d\n", id);
 
-        // write if block
-        fprintf(context->file, "LABEL $IF_TRUE$%d\n", label_id);
-        handle_node(node->if_statement.if_block, context);
-        fprintf(context->file, "JUMP $IF_END$%d\n", label_id);
-
-        // write else block
-        fprintf(context->file, "LABEL $IF_FALSE$%d\n", label_id);
-        handle_node(node->if_statement.else_block, context);
-        // dont need to jump to end here because the label is here anyway
-
-        // end label
-        fprintf(context->file, "LABEL $IF_END$%d\n", label_id);
+        fprintf(f, "LABEL $IF_FALSE$%d\n", id);
+        if (node->if_statement.else_block != NULL) {
+            generate_statement_list(node->if_statement.else_block->block.first_statement, NULL,
+                                    context);
+        }
+        fprintf(f, "LABEL $IF_END$%d\n", id);
         break;
+    }
 
-    case AST_NODE_STATEMENT_WHILE:
-        // set in loop to alter var declaration behavior
-        context->is_in_loop = true;
-        // extract variable declarations first in case this block is a loop block
-        extract_var_declarations(node->while_statement.body_block->block.first_statement, context);
-
-        context->label_counter++;
-        fprintf(context->file, "JUMP $WHILE_CONDITION$%d\n", label_id);
-        fprintf(context->file, "LABEL $WHILE$%d\n", label_id);
-
-        // while body
-        handle_node(node->while_statement.body_block, context);
-
-        // while condition
-        fprintf(context->file, "LABEL $WHILE_CONDITION$%d\n", label_id);
-        handle_node(node->while_statement.condition, context);
-        // result of the condition is on top of the stack
-        // push true to the stack and check if the condition is true
-        fprintf(context->file, "PUSHS bool@true\n");
-        fprintf(context->file, "JUMPIFEQS $WHILE$%d\n", label_id);
-
-        context->is_in_loop = false;
+    case AST_NODE_STATEMENT_WHILE: {
+        int id = context->label_counter++;
+        // the condition is tested before every iteration, including the first one
+        fprintf(f, "LABEL $WHILE$%d\n", id);
+        generate_expression(node->while_statement.condition, context);
+        fprintf(f, "PUSHS bool@true\n");
+        fprintf(f, "JUMPIFNEQS $WHILE_END$%d\n", id);
+        if (node->while_statement.body_block != NULL) {
+            generate_statement_list(node->while_statement.body_block->block.first_statement, NULL,
+                                    context);
+        }
+        fprintf(f, "JUMP $WHILE$%d\n", id);
+        fprintf(f, "LABEL $WHILE_END$%d\n", id);
         break;
+    }
 
     case AST_NODE_STATEMENT_RETURN:
-        if (context->is_unit_function) {
-            fprintf(context->file, "PUSHS nil@nil\n");
+        if (context->is_in_main) {
+            // return from the main function ends the program
+            fprintf(f, "EXIT int@0\n");
+            break;
+        }
+        if (node->return_statement.expression != NULL) {
+            generate_expression(node->return_statement.expression, context);
+            if (context->is_unit_function) {
+                // value is dropped in functions returning Unit
+                fprintf(f, "POPS GF@tmp0\n");
+                fprintf(f, "PUSHS nil@nil\n");
+            }
         } else {
-            handle_node(node->return_statement.expression, context);
+            fprintf(f, "PUSHS nil@nil\n");
         }
-        fprintf(context->file, "POPFRAME\n");
-        fprintf(context->file, "RETURN\n");
-        break;
-
-    case AST_NODE_STATEMENT_IMPORT:
-        // dont need do anything here, header is already in startup code
-        break;
-
-    case AST_NODE_EXPRESSION_OPERATOR:
-        // first handle left and right side
-        handle_node(node->expression_operator.left_side, context);
-        handle_node(node->expression_operator.right_side, context);
-
-        // then handle operator on the top of the stack
-        switch (node->expression_operator.op) {
-        case AST_EXPRESSION_OPERATOR_ADD:
-            if (node->expression_operator.left_side->result_type == SYM_DATATYPE_STRING &&
-                node->expression_operator.right_side->result_type == SYM_DATATYPE_STRING) {
-                // because concat does not have stack version, pop the values
-                // concat adn put it back to stack
-                fprintf(context->file, "POPS GF@tmp0\n");
-                fprintf(context->file, "POPS GF@tmp1\n");
-                fprintf(context->file, "CONCAT GF@tmp0 GF@tmp1 GF@tmp0\n");
-                fprintf(context->file, "PUSHS GF@tmp0\n");
-            } else {
-                fprintf(context->file, "ADDS\n");
-                check_and_correct_inf_overflow(node, context);
-            }
-            break;
-
-        case AST_EXPRESSION_OPERATOR_SUB:
-            fprintf(context->file, "SUBS\n");
-            check_and_correct_inf_overflow(node, context);
-            break;
-
-        case AST_EXPRESSION_OPERATOR_MUL:
-            fprintf(context->file, "MULS\n");
-            check_and_correct_inf_overflow(node, context);
-            break;
-
-        case AST_EXPRESSION_OPERATOR_DIV:
-            if (node->expression_operator.left_side->result_type == SYM_DATATYPE_INT &&
-                node->expression_operator.right_side->result_type == SYM_DATATYPE_INT) {
-                fprintf(context->file, "IDIVS\n");
-                check_and_correct_inf_overflow(node, context);
-            } else {
-                fprintf(context->file, "DIVS\n");
-            }
-            break;
-
-        case AST_EXPRESSION_OPERATOR_EQUAL:
-            fprintf(context->file, "EQS\n");
-            break;
-
-        case AST_EXPRESSION_OPERATOR_NOT_EQUAL:
-            fprintf(context->file, "EQS\n");
-            fprintf(context->file, "NOTS\n");
-            break;
-
-        case AST_EXPRESSION_OPERATOR_SMALLER:
-            fprintf(context->file, "LTS\n");
-            break;
-
-        case AST_EXPRESSION_OPERATOR_SMALLER_EQUAL:
-            // < or =
-            // save vars to temp
-            fprintf(context->file, "POPS GF@tmp0\n");
-            fprintf(context->file, "POPS GF@tmp1\n");
-            // push them back for <
-            fprintf(context->file, "PUSHS GF@tmp1\n");
-            fprintf(context->file, "PUSHS GF@tmp0\n");
-            fprintf(context->file, "LTS\n");
-            // push them back again for =
-            fprintf(context->file, "PUSHS GF@tmp0\n");
-            fprintf(context->file, "PUSHS GF@tmp1\n");
-            fprintf(context->file, "EQS\n");
-            // check if < or = is true
-            fprintf(context->file, "ORS\n");
-            break;
-
-        case AST_EXPRESSION_OPERATOR_BIGGER:
-            fprintf(context->file, "GTS\n");
-            break;
-
-        case AST_EXPRESSION_OPERATOR_BIGGER_EQUAL:
-            // > or =
-            // save vars to temp
-            fprintf(context->file, "POPS GF@tmp0\n");
-            fprintf(context->file, "POPS GF@tmp1\n");
-            // push them back for >
-            fprintf(context->file, "PUSHS GF@tmp1\n");
-            fprintf(context->file, "PUSHS GF@tmp0\n");
-            fprintf(context->file, "GTS\n");
-            // push them back again for =
-            fprintf(context->file, "PUSHS GF@tmp0\n");
-            fprintf(context->file, "PUSHS GF@tmp1\n");
-            fprintf(context->file, "EQS\n");
-            // check if > or = is true
-            fprintf(context->file, "ORS\n");
-            break;
-
-        default:
-            fprintf(stderr, "Unknown AST operator\n");
-            return false;
-        }
-        break;
-
-    case AST_NODE_EXPRESSION_FUN_CALL:
-        // first check if a function is builtin or user defined
-        if (check_function_is_builtin(node->expression_fun_call.fun_name)) {
-            generate_builtin_function_in_place(node->expression_fun_call.fun_name, node, context);
-        } else {
-            // params, results will be on stack (in reverse order)
-            handle_node(node->expression_fun_call.params, context);
-            // call the function
-            fprintf(context->file, "CALL %s\n", node->expression_fun_call.fun_name);
-        }
-        break;
-
-    case AST_NODE_EXPRESSION_VAR:
-        fprintf(context->file, "PUSHS LF@%s$%d\n", node->expression_var.name,
-                node->expression_var.unique_id);
-        break;
-
-    case AST_NODE_CONST_INT:
-        fprintf(context->file, "PUSHS int@%d\n", node->int_value);
-        break;
-
-    case AST_NODE_CONST_DOUBLE:
-        fprintf(context->file, "PUSHS float@%a\n", node->double_value);
-        break;
-
-    case AST_NODE_CONST_STRING:
-        fprintf(context->file, "PUSHS string@");
-        // whitespace, # and \ needs to be written as escape sequence
-        for (char *c = node->str_value; *c != '\0'; c++) {
-            if ((0 <= *c && *c <= 32) || *c == 35 || *c == 92) {
-                fprintf(context->file, "\\%03d", *c);
-            } else {
-                fprintf(context->file, "%c", *c);
-            }
-        }
-        fprintf(context->file, "\n");
-        break;
-
-    case AST_NODE_CONST_UNIT:
-        fprintf(context->file, "PUSHS nil@nil\n");
+        fprintf(f, "POPFRAME\n");
+        fprintf(f, "RETURN\n");
         break;
 
     default:
         fprintf(stderr, "Unknown AST node\n");
-        return false;
+        context->failed = true;
+        break;
     }
-
-    if (node->type != AST_NODE_BLOCK) {
-        // we are not interested in the block as all funcs have a block
-        context->last_node = node;
-    }
-
-    return handle_node(node->next, context);
 }
 
-// main function for code generation
+// Generates a list of statements; last_value_statement is the statement whose value is kept
+static void generate_statement_list(ast_node_t *first, ast_node_t *last_value_statement,
+                                    codegen_context_t *context) {
+    for (ast_node_t *node = first; node != NULL; node = node->next) {
+        generate_statement(node, node == last_value_statement, context);
+    }
+}
+
+static ast_node_t *find_last_statement(ast_node_t *first) {
+    ast_node_t *last = first;
+    while (last != NULL && last->next != NULL) {
+        last = last->next;
+    }
+    return last;
+}
+
+// Generates a function (the main function is the entry of the program)
+static void generate_function(ast_node_t *node, codegen_context_t *context) {
+    FILE *f = context->file;
+    bool is_main = node->type == AST_NODE_MAIN;
+    ast_node_t *first = node->fun_definition.body_block != NULL
+                            ? node->fun_definition.body_block->block.first_statement
+                            : NULL;
+    ast_node_t *last = find_last_statement(first);
+
+    context->is_in_main = is_main;
+    context->is_unit_function = node->fun_definition.return_type == SYM_DATATYPE_UNIT ||
+                                node->fun_definition.return_type == SYM_DATATYPE_UNKNOWN;
+
+    if (is_main) {
+        fprintf(f, "LABEL $main\n");
+    } else {
+        fprintf(f, "LABEL %s\n", node->fun_definition.name);
+    }
+    fprintf(f, "CREATEFRAME\n");
+    fprintf(f, "PUSHFRAME\n");
+
+    // define parameters and local variables
+    for (symtable_fun_param_t *p = node->fun_definition.params; p != NULL; p = p->next) {
+        fprintf(f, "DEFVAR LF@%s$%d\n", p->name, p->unique_id);
+    }
+    define_local_variables(first, context);
+
+    // load parameters from the stack (the last one is on the top)
+    int param_count = 0;
+    for (symtable_fun_param_t *p = node->fun_definition.params; p != NULL; p = p->next) {
+        param_count++;
+    }
+    for (int i = param_count; i > 0; i--) {
+        symtable_fun_param_t *p = node->fun_definition.params;
+        for (int j = 1; j < i; j++) {
+            p = p->next;
+        }
+        fprintf(f, "POPS LF@%s$%d\n", p->name, p->unique_id);
+    }
+
+    // value of the last expression is the return value (unless the function returns Unit)
+    bool keep_last = last != NULL && is_expression_node(last) && !context->is_unit_function;
+    generate_statement_list(first, keep_last ? last : NULL, context);
+
+    if (is_main) {
+        fprintf(f, "EXIT int@0\n");
+    } else {
+        if (context->is_unit_function) {
+            fprintf(f, "PUSHS nil@nil\n");
+        }
+        fprintf(f, "POPFRAME\n");
+        fprintf(f, "RETURN\n");
+    }
+    context->is_in_main = false;
+}
+
+// main function for code generation, output_file == NULL means standard output
 bool codegen(ast_node_t *ast_root, const char *output_file) {
     // create context including the output file
     codegen_context_t *context = create_codegen_context(output_file);
     if (context == NULL) {
         return false;
     }
+    FILE *f = context->file;
 
     // startup code
-    fprintf(context->file, ".IFJcode26\n");
-    fprintf(context->file, "DEFVAR GF@tmp0\n");
-    fprintf(context->file, "DEFVAR GF@tmp1\n");
-    fprintf(context->file, "DEFVAR GF@tmp2\n");
-    fprintf(context->file, "DEFVAR GF@tmp3\n");
-    fprintf(context->file, "DEFVAR GF@tmp4\n");
-    fprintf(context->file, "CALL $main\n");
-    fprintf(context->file, "POPS GF@tmp0\n");
-    fprintf(context->file, "EXIT GF@tmp0\n");
+    fprintf(f, ".IFJcode26\n");
+    for (int i = 0; i < 6; i++) {
+        fprintf(f, "DEFVAR GF@tmp%d\n", i);
+    }
 
-    // handle AST nodes
-    bool result = handle_node(ast_root, context);
+    bool has_main = false;
+    if (ast_root != NULL && ast_root->type == AST_NODE_BLOCK) {
+        for (ast_node_t *n = ast_root->block.first_statement; n != NULL; n = n->next) {
+            if (n->type == AST_NODE_MAIN) {
+                has_main = true;
+            }
+        }
+    }
+    if (has_main) {
+        fprintf(f, "JUMP $main\n");
+    }
+
+    // functions
+    if (ast_root != NULL && ast_root->type == AST_NODE_BLOCK) {
+        for (ast_node_t *n = ast_root->block.first_statement; n != NULL; n = n->next) {
+            if (n->type == AST_NODE_FUN_DEFINITION || n->type == AST_NODE_MAIN) {
+                generate_function(n, context);
+            }
+        }
+    }
 
     // end of file code
     if (context->is_overflow_check_needed) {
-        generate_oveflow_check(context);
+        generate_overflow_check(context);
     }
-    if (context->is_eof_check_needed) {
-        generate_eof_check(context);
-    }
-    fprintf(context->file, "LABEL $EXIT40\n");
-    fprintf(context->file, "EXIT int@40\n");
+    fprintf(f, "LABEL $EXIT40\n");
+    fprintf(f, "EXIT int@40\n");
+
+    bool result = !context->failed;
 
     // cleanup
     destroy_codegen_context(context);

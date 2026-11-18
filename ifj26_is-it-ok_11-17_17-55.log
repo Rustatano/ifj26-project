@@ -1,0 +1,8 @@
+OK: Velikost archivu: 188492 B
+OK: Archiv lze rozbalit
+OK: Nalezeno: Makefile
+OK: Nalezeno: dokumentace.pdf
+OK: Nalezeno: rozdeleni
+OK: Nalezeno: rozsireni
+WARNING: Není možné vyzkoušet přeložitelnost! Nainstalujte Docker (ověřte, že jej váš uživatel má právo používat) či Podman; nebo vyzkoušejte skript na Merlinovi.
+Všechny kontroly proběhly úspěšně!

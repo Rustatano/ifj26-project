@@ -196,6 +196,10 @@ void scanner_init(scanner_conf_t *conf, FILE *file) {
 
     conf->indent_stack[0] = 0; // Set zero space indent as the base indent
     conf->space_counter = 0;
+    conf->line = 1;
+    conf->paren_depth = 0;
+    conf->newline_seen = false;
+    conf->after_dedent = false;
 }
 
 // Reads next char, if there are chars on stack it will read them first before reading from input
@@ -232,6 +236,7 @@ token_t get_token(scanner_conf_t *conf) {
 
     token.attr.double_val = 0; // Set values for safety
     token.attr.int_val = 0;    // Set values for safety
+    token.line = conf->line;
 
     // State automaton
     // Key structure elements
@@ -250,6 +255,12 @@ token_t get_token(scanner_conf_t *conf) {
             }
             // New line
             else if (ch == '\n') {
+                conf->line++;
+                // Line break inside parentheses is just whitespace (spec 1.2)
+                if (conf->paren_depth > 0) {
+                    conf->newline_seen = true;
+                    continue;
+                }
                 token.type = TOKEN_EOL;
                 break;
             }
@@ -334,9 +345,13 @@ token_t get_token(scanner_conf_t *conf) {
                 token.type = TOKEN_COLON;
                 break;
             } else if (ch == '(') {
+                conf->paren_depth++;
                 token.type = TOKEN_LPAREN;
                 break;
             } else if (ch == ')') {
+                if (conf->paren_depth > 0) {
+                    conf->paren_depth--;
+                }
                 token.type = TOKEN_RPAREN;
                 break;
             } else if (ch == '.') {
@@ -525,9 +540,10 @@ token_t get_token(scanner_conf_t *conf) {
                 state = STATE_SEC_QUOTE;
                 continue;
             }
-            // The input is ["A]
+            // The input is ["A] - the char is processed by the one line string state,
+            // because it can be an escape sequence or an invalid line break
             else {
-                str_add_char(&str, ch);
+                store_char(conf, ch);
                 state = STATE_ONE_L_STR_DATA;
                 continue;
             }
@@ -631,6 +647,9 @@ token_t get_token(scanner_conf_t *conf) {
             // The input is just data
             // [""" DATA NEW_DATA]
             else {
+                if (ch == '\n') {
+                    conf->line++;
+                }
                 str_add_char(&str, ch);
                 continue;
             }
@@ -648,6 +667,9 @@ token_t get_token(scanner_conf_t *conf) {
             // with another two pairs of double quotes => next char is not a double quote
             // [""" DATA " DATA]
             else {
+                if (ch == '\n') {
+                    conf->line++;
+                }
                 state = STATE_MUL_L_STR_DATA;
                 str_add_char(&str, '"');
                 str_add_char(&str, ch);
@@ -668,6 +690,9 @@ token_t get_token(scanner_conf_t *conf) {
             // sequence
             // [""" DATA "" DATA]
             else {
+                if (ch == '\n') {
+                    conf->line++;
+                }
                 state = STATE_MUL_L_STR_DATA;
                 str_add_char(&str, '"');
                 str_add_char(&str, '"');
@@ -987,6 +1012,15 @@ token_t get_token(scanner_conf_t *conf) {
         case STATE_COMMENT_LINE:
             // The line comment has ended
             if (ch == '\n' || ch == EOF) {
+                if (ch == '\n') {
+                    conf->line++;
+                    // Inside parentheses the line break is only whitespace
+                    if (conf->paren_depth > 0) {
+                        conf->newline_seen = true;
+                        state = STATE_START;
+                        continue;
+                    }
+                }
                 token.type = TOKEN_EOL;
             }
             // The line comment continues
@@ -1001,6 +1035,7 @@ token_t get_token(scanner_conf_t *conf) {
 
             // The comment contains a new line
             if (ch == '\n') {
+                conf->line++;
                 comment_has_newline = true;
                 continue;
             }
@@ -1028,8 +1063,17 @@ token_t get_token(scanner_conf_t *conf) {
             if (ch == '/') {
                 // The block comment isn't inside another block comment
                 if (comment_depth == 0) {
-                    // Return token new line because the comment had '\n' inside
-                    if (comment_has_newline) {
+                    // Multiline block comment inside parentheses: ignore EOL, mark newline seen,
+                    // and continue
+                    if (comment_has_newline && conf->paren_depth > 0) {
+                        conf->newline_seen = true;
+                        comment_depth = 0;
+                        comment_has_newline = false;
+                        state = STATE_START;
+                        continue;
+                    }
+                    // Multiline block comment outside parentheses: must be followed by EOL or EOF
+                    else if (comment_has_newline && conf->paren_depth == 0) {
                         state = STATE_COMMENT_BLOCK_END_CHECK; // Check for EOL after the comment
                         continue;
                     }
@@ -1057,6 +1101,7 @@ token_t get_token(scanner_conf_t *conf) {
             }
             // Check for new line
             else if (ch == '\n') {
+                conf->line++;
                 comment_has_newline = true;
                 state = STATE_COMMENT_BLOCK;
                 continue;
@@ -1081,6 +1126,7 @@ token_t get_token(scanner_conf_t *conf) {
             }
             // Check for new line
             else if (ch == '\n') {
+                conf->line++;
                 comment_has_newline = true;
                 state = STATE_COMMENT_BLOCK;
                 continue;
@@ -1103,6 +1149,8 @@ token_t get_token(scanner_conf_t *conf) {
                 // If EOF was found store it for another read as s separate token after EOL token
                 if (ch == EOF) {
                     store_char(conf, ch);
+                } else {
+                    conf->line++;
                 }
                 token.type = TOKEN_EOL;
                 break;
@@ -1125,6 +1173,7 @@ token_t get_token(scanner_conf_t *conf) {
             else if (ch == '\n') {
                 // Reset the counter
                 conf->space_counter = 0;
+                conf->line++;
 
                 token.type = TOKEN_EOL;
                 break;
@@ -1138,11 +1187,50 @@ token_t get_token(scanner_conf_t *conf) {
             }
             // First non empty character found
             else {
+                // Makes scanner return first all the indent tokens before finally returning the EOF
+                // token
+                if (ch == EOF) {
+                    conf->space_counter = 0;
+                }
+
+                // A line containing only a line comment is ignored (it does not change indentation)
+                if (ch == '/') {
+                    int next_ch = get_char(conf);
+                    if (next_ch == '/') {
+                        int comment_ch;
+                        while ((comment_ch = get_char(conf)) != '\n' && comment_ch != EOF) {
+                        }
+                        conf->space_counter = 0;
+                        if (comment_ch == '\n') {
+                            conf->line++;
+                        } else {
+                            store_char(conf, EOF);
+                        }
+                        token.type = TOKEN_EOL;
+                        break;
+                    }
+                    // The "/" is not a comment beggining, return the char after it back for a read
+                    store_char(conf, next_ch);
+                }
+
                 // Store unused char for another read
                 store_char(conf, ch);
 
                 // Checks if we have found more spaces than last indentation
                 if (conf->space_counter > conf->indent_stack[conf->indent_top - 1]) {
+                    // Dedent to a column that is not an indentation level of any open block
+                    if (conf->after_dedent) {
+                        fprintf(stderr,
+                                "Lexical analysis Error 1: Inconsistent indentation "
+                                "(dedent to unknown level) on line %d\n",
+                                conf->line);
+                        exit(1);
+                    }
+                    if (conf->indent_top >= INDENT_STACK_SIZE) {
+                        fprintf(stderr, "Lexical analysis Error 1: Indentation is nested too "
+                                        "deeply\n");
+                        exit(1);
+                    }
                     // Sets new space count as the stack top
                     conf->indent_stack[conf->indent_top] = conf->space_counter;
                     // Increments the top
@@ -1160,6 +1248,7 @@ token_t get_token(scanner_conf_t *conf) {
 
                     // Decrements the top
                     conf->indent_top--;
+                    conf->after_dedent = true;
 
                     // Returns dedent token
                     token.type = TOKEN_DEDENT;
@@ -1170,6 +1259,7 @@ token_t get_token(scanner_conf_t *conf) {
 
                     // Set a clean table for reading further
                     conf->space_counter = 0;
+                    conf->after_dedent = false;
                     conf->line_start = false; // Sets indentation as done for this line
                     state = STATE_START;
                     continue;
@@ -1190,6 +1280,18 @@ token_t get_token(scanner_conf_t *conf) {
         } else {
             conf->line_start = false;
         }
+
+        // Update token line after skipping lines and NOT returning EOL with comments and
+        // parentheses. EOL itself belongs to the ended line
+        if (token.type == TOKEN_EOL) {
+            token.line = conf->line - 1;
+        } else {
+            token.line = conf->line;
+        }
+
+        // Remember whether a line break inside parentheses preceded this token
+        token.newline_before = conf->newline_seen;
+        conf->newline_seen = false;
         // Finally return token to parser
         return token;
     }
