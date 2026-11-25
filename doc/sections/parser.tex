@@ -13,92 +13,96 @@ Parser postupně přebírá tokeny od scanneru a podle gramatiky kontroluje jeji
 
 Neterminál tedy syntaktický znak, který se dá ještě rozdělit je zapsány kurzívou (\nt{neterminál}), terminál tedy tokeny z lexikálního analyzátoru je zapsán písmem (\tm{terminál}) ,prázdný řetězec symbolem $\varepsilon$, symbol \tm{\$} označuje konec vstupu (\texttt{TOKEN\_EOF}) ,symbol \nt{expr} představuje předání neterminálu precedenční analýze výrazů (\texttt{parse\_expression}), symbol \nt{expr\_cont} značí vrácení dříve načteného tokenu zpět do bufferu (\texttt{unread\_token}) a následné vyhodnocení celého výrazu precedenční analýzou.
 
+\begin{longtable}{r l c l}
+\caption{Přepisovací pravidla LL gramatiky} \label{tab:ll-gramatika}                                                                  \\
 \begin{longtable}{|r|l|c|l|}
-    \caption{Přepisovací pravidla LL gramatiky} \label{tab:ll-gramatika} \\
+    \caption{Přepisovací pravidla LL gramatiky} \label{tab:ll-gramatika}                                                                  \\
     \toprule
-    \textbf{Č.} & \textbf{Neterminál} & & \textbf{Pravá strana pravidla} \\
+    \textbf{Č.} & \textbf{Neterminál}        &       & \textbf{Pravá strana pravidla}                                                     \\
     \midrule
     \endfirsthead
 
-    \multicolumn{4}{|l|}{\textit{Pokračování tabulky \ref{tab:ll-gramatika}}} \\
+    \multicolumn{4}{l}{\textit{Pokračování tabulky \ref{tab:ll-gramatika}}}                                                               \\
+    \multicolumn{4}{|l|}{\textit{Pokračování tabulky \ref{tab:ll-gramatika}}}                                                             \\
     \toprule
-    \textbf{Č.} & \textbf{Neterminál} & & \textbf{Pravá strana pravidla} \\
+    \textbf{Č.} & \textbf{Neterminál}        &       & \textbf{Pravá strana pravidla}                                                     \\
     \midrule
     \endhead
 
     \midrule
-    \multicolumn{4}{|r|}{\textit{Pokračování na další straně}} \\
+    \multicolumn{4}{r}{\textit{Pokračování na další straně}}                                                                              \\
+    \multicolumn{4}{|r|}{\textit{Pokračování na další straně}}                                                                            \\
     \endfoot
 
     \bottomrule
     \endlastfoot
 
-1.  & \nt{program}           & $\to$ & \nt{eols} \nt{prolog} \nt{after\_prolog} \tm{\$} \\
-2.  & \nt{prolog}            & $\to$ & \tm{import} \tm{id} \tm{.} \tm{*} \\
-3.  & \nt{after\_prolog}     & $\to$ & \tm{EOL} \nt{eols} \nt{fun\_list} \\
-4.  & \nt{after\_prolog}     & $\to$ & $\varepsilon$ \\
+    1.          & \nt{program}               & $\to$ & \nt{eols} \nt{prolog} \nt{after\_prolog} \tm{\$}                                   \\
+    2.          & \nt{prolog}                & $\to$ & \tm{import} \tm{id} \tm{.} \tm{*}                                                  \\
+    3.          & \nt{after\_prolog}         & $\to$ & \tm{EOL} \nt{eols} \nt{fun\_list}                                                  \\
+    4.          & \nt{after\_prolog}         & $\to$ & $\varepsilon$                                                                      \\
 
-5.  & \nt{fun\_list}         & $\to$ & \nt{fun\_entry} \\
-6.  & \nt{fun\_list}         & $\to$ & $\varepsilon$ \\
-7.  & \nt{fun\_entry}        & $\to$ & \tm{@main} \nt{eols} \nt{fun\_def} \\
-8.  & \nt{fun\_entry}        & $\to$ & \nt{fun\_def} \\
-9.  & \nt{fun\_def}          & $\to$ & \tm{def} \tm{id} \tm{(} \nt{param\_list} \nt{optional\_type} \tm{=} \nt{fun\_body} \\
-10. & \nt{fun\_body}         & $\to$ & \tm{EOL} \nt{block} \nt{eols} \nt{fun\_list} \\
-11. & \nt{fun\_body}         & $\to$ & \nt{expr} \nt{after\_fun\_expr} \\
-12. & \nt{after\_fun\_expr}  & $\to$ & \tm{EOL} \nt{eols} \nt{fun\_list} \\
-13. & \nt{after\_fun\_expr}  & $\to$ & $\varepsilon$ \\
+    5.          & \nt{fun\_list}             & $\to$ & \nt{fun\_entry}                                                                    \\
+    6.          & \nt{fun\_list}             & $\to$ & $\varepsilon$                                                                      \\
+    7.          & \nt{fun\_entry}            & $\to$ & \tm{@main} \nt{eols} \nt{fun\_def}                                                 \\
+    8.          & \nt{fun\_entry}            & $\to$ & \nt{fun\_def}                                                                      \\
+    9.          & \nt{fun\_def}              & $\to$ & \tm{def} \tm{id} \tm{(} \nt{param\_list} \nt{optional\_type} \tm{=} \nt{fun\_body} \\
+    10.         & \nt{fun\_body}             & $\to$ & \tm{EOL} \nt{block} \nt{eols} \nt{fun\_list}                                       \\
+    11.         & \nt{fun\_body}             & $\to$ & \nt{expr} \nt{after\_fun\_expr}                                                    \\
+    12.         & \nt{after\_fun\_expr}      & $\to$ & \tm{EOL} \nt{eols} \nt{fun\_list}                                                  \\
+    13.         & \nt{after\_fun\_expr}      & $\to$ & $\varepsilon$                                                                      \\
 
-14. & \nt{param\_list}       & $\to$ & \nt{eols} \nt{param\_list\_body} \\
-15. & \nt{param\_list\_body} & $\to$ & \tm{)} \\
-16. & \nt{param\_list\_body} & $\to$ & \nt{param} \nt{param\_list\_tail} \\
-17. & \nt{param}             & $\to$ & \tm{id} \tm{:} \nt{type} \\
-18. & \nt{param\_list\_tail} & $\to$ & \tm{)} \\
-19. & \nt{param\_list\_tail} & $\to$ & \tm{,} \nt{eols} \nt{param\_after\_comma} \\
-20. & \nt{param\_after\_comma} & $\to$ & \tm{)} \\
-21. & \nt{param\_after\_comma} & $\to$ & \nt{param} \nt{param\_list\_tail} \\
-22. & \nt{optional\_type}    & $\to$ & \tm{:} \nt{type} \\
-23. & \nt{optional\_type}    & $\to$ & $\varepsilon$ \\
-24. & \nt{type}              & $\to$ & \tm{Int} \\
-25. & \nt{type}              & $\to$ & \tm{Double} \\
-26. & \nt{type}              & $\to$ & \tm{String} \\
-27. & \nt{type}              & $\to$ & \tm{Unit} \\
+    14.         & \nt{param\_list}           & $\to$ & \nt{eols} \nt{param\_list\_body}                                                   \\
+    15.         & \nt{param\_list\_body}     & $\to$ & \tm{)}                                                                             \\
+    16.         & \nt{param\_list\_body}     & $\to$ & \nt{param} \nt{param\_list\_tail}                                                  \\
+    17.         & \nt{param}                 & $\to$ & \tm{id} \tm{:} \nt{type}                                                           \\
+    18.         & \nt{param\_list\_tail}     & $\to$ & \tm{)}                                                                             \\
+    19.         & \nt{param\_list\_tail}     & $\to$ & \tm{,} \nt{eols} \nt{param\_after\_comma}                                          \\
+    20.         & \nt{param\_after\_comma}   & $\to$ & \tm{)}                                                                             \\
+    21.         & \nt{param\_after\_comma}   & $\to$ & \nt{param} \nt{param\_list\_tail}                                                  \\
+    22.         & \nt{optional\_type}        & $\to$ & \tm{:} \nt{type}                                                                   \\
+    23.         & \nt{optional\_type}        & $\to$ & $\varepsilon$                                                                      \\
+    24.         & \nt{type}                  & $\to$ & \tm{Int}                                                                           \\
+    25.         & \nt{type}                  & $\to$ & \tm{Double}                                                                        \\
+    26.         & \nt{type}                  & $\to$ & \tm{String}                                                                        \\
+    27.         & \nt{type}                  & $\to$ & \tm{Unit}                                                                          \\
 
-28. & \nt{block}             & $\to$ & \nt{eols} \tm{INDENT} \nt{eols} \nt{statement\_seq} \tm{DEDENT} \\
-29. & \nt{statement\_seq}    & $\to$ & \nt{if\_statement} \nt{statement\_list} \\
-30. & \nt{statement\_seq}    & $\to$ & \nt{while\_statement} \nt{statement\_list} \\
-31. & \nt{statement\_seq}    & $\to$ & \nt{simple\_statement} \nt{after\_simple} \\
-32. & \nt{after\_simple}     & $\to$ & \tm{EOL} \nt{statement\_list} \\
-33. & \nt{after\_simple}     & $\to$ & \tm{;} \nt{statement\_list} \\
-34. & \nt{after\_simple}     & $\to$ & $\varepsilon$ \\
-35. & \nt{statement\_list}   & $\to$ & \nt{eols} \nt{statement\_list\_tail} \\
-36. & \nt{statement\_list\_tail} & $\to$ & \nt{statement\_seq} \\
-37. & \nt{statement\_list\_tail} & $\to$ & $\varepsilon$ \\
+    28.         & \nt{block}                 & $\to$ & \nt{eols} \tm{INDENT} \nt{eols} \nt{statement\_seq} \tm{DEDENT}                    \\
+    29.         & \nt{statement\_seq}        & $\to$ & \nt{if\_statement} \nt{statement\_list}                                            \\
+    30.         & \nt{statement\_seq}        & $\to$ & \nt{while\_statement} \nt{statement\_list}                                         \\
+    31.         & \nt{statement\_seq}        & $\to$ & \nt{simple\_statement} \nt{after\_simple}                                          \\
+    32.         & \nt{after\_simple}         & $\to$ & \tm{EOL} \nt{statement\_list}                                                      \\
+    33.         & \nt{after\_simple}         & $\to$ & \tm{;} \nt{statement\_list}                                                        \\
+    34.         & \nt{after\_simple}         & $\to$ & $\varepsilon$                                                                      \\
+    35.         & \nt{statement\_list}       & $\to$ & \nt{eols} \nt{statement\_list\_tail}                                               \\
+    36.         & \nt{statement\_list\_tail} & $\to$ & \nt{statement\_seq}                                                                \\
+    37.         & \nt{statement\_list\_tail} & $\to$ & $\varepsilon$                                                                      \\
 
-38. & \nt{simple\_statement} & $\to$ & \nt{var\_decl} \\
-39. & \nt{simple\_statement} & $\to$ & \nt{return\_statement} \\
-40. & \nt{simple\_statement} & $\to$ & \tm{id} \nt{id\_statement\_tail} \\
-41. & \nt{simple\_statement} & $\to$ & \nt{expr} \\
-42. & \nt{id\_statement\_tail} & $\to$ & \tm{=} \nt{expr} \\
-43. & \nt{id\_statement\_tail} & $\to$ & \nt{expr\_cont} \\
-44. & \nt{var\_decl}         & $\to$ & \nt{var\_type} \tm{id} \nt{optional\_type} \tm{=} \nt{expr} \\
-45. & \nt{var\_type}         & $\to$ & \tm{var} \\
-46. & \nt{var\_type}         & $\to$ & \tm{val} \\
-47. & \nt{if\_statement}     & $\to$ & \tm{if} \nt{expr} \tm{then} \nt{block} \nt{eols} \tm{else} \nt{block} \\
-48. & \nt{while\_statement}  & $\to$ & \tm{while} \nt{expr} \nt{do} \nt{block} \\
-49. & \nt{return\_statement} & $\to$ & \tm{return} \nt{return\_val} \\
-50. & \nt{return\_val}       & $\to$ & \nt{expr} \\
-51. & \nt{return\_val}       & $\to$ & $\varepsilon$ \\
+    38.         & \nt{simple\_statement}     & $\to$ & \nt{var\_decl}                                                                     \\
+    39.         & \nt{simple\_statement}     & $\to$ & \nt{return\_statement}                                                             \\
+    40.         & \nt{simple\_statement}     & $\to$ & \tm{id} \nt{id\_statement\_tail}                                                   \\
+    41.         & \nt{simple\_statement}     & $\to$ & \nt{expr}                                                                          \\
+    42.         & \nt{id\_statement\_tail}   & $\to$ & \tm{=} \nt{expr}                                                                   \\
+    43.         & \nt{id\_statement\_tail}   & $\to$ & \nt{expr\_cont}                                                                    \\
+    44.         & \nt{var\_decl}             & $\to$ & \nt{var\_type} \tm{id} \nt{optional\_type} \tm{=} \nt{expr}                        \\
+    45.         & \nt{var\_type}             & $\to$ & \tm{var}                                                                           \\
+    46.         & \nt{var\_type}             & $\to$ & \tm{val}                                                                           \\
+    47.         & \nt{if\_statement}         & $\to$ & \tm{if} \nt{expr} \tm{then} \nt{block} \nt{eols} \tm{else} \nt{block}              \\
+    48.         & \nt{while\_statement}      & $\to$ & \tm{while} \nt{expr} \nt{do} \nt{block}                                            \\
+    49.         & \nt{return\_statement}     & $\to$ & \tm{return} \nt{return\_val}                                                       \\
+    50.         & \nt{return\_val}           & $\to$ & \nt{expr}                                                                          \\
+    51.         & \nt{return\_val}           & $\to$ & $\varepsilon$                                                                      \\
 
-52. & \nt{arg\_list}         & $\to$ & \nt{eols} \nt{arg\_list\_body} \\
-53. & \nt{arg\_list\_body}   & $\to$ & \tm{)} \\
-54. & \nt{arg\_list\_body}   & $\to$ & \nt{expr} \nt{arg\_list\_tail} \\
-55. & \nt{arg\_list\_tail}   & $\to$ & \tm{)} \\
-56. & \nt{arg\_list\_tail}   & $\to$ & \tm{,} \nt{eols} \nt{arg\_after\_comma} \\
-57. & \nt{arg\_after\_comma} & $\to$ & \tm{)} \\
-58. & \nt{arg\_after\_comma} & $\to$ & \nt{expr} \nt{arg\_list\_tail} \\
+    52.         & \nt{arg\_list}             & $\to$ & \nt{eols} \nt{arg\_list\_body}                                                     \\
+    53.         & \nt{arg\_list\_body}       & $\to$ & \tm{)}                                                                             \\
+    54.         & \nt{arg\_list\_body}       & $\to$ & \nt{expr} \nt{arg\_list\_tail}                                                     \\
+    55.         & \nt{arg\_list\_tail}       & $\to$ & \tm{)}                                                                             \\
+    56.         & \nt{arg\_list\_tail}       & $\to$ & \tm{,} \nt{eols} \nt{arg\_after\_comma}                                            \\
+    57.         & \nt{arg\_after\_comma}     & $\to$ & \tm{)}                                                                             \\
+    58.         & \nt{arg\_after\_comma}     & $\to$ & \nt{expr} \nt{arg\_list\_tail}                                                     \\
 
-59. & \nt{eols}              & $\to$ & \tm{EOL} \nt{eols} \\
-60. & \nt{eols}              & $\to$ & $\varepsilon$ \\
+    59.         & \nt{eols}                  & $\to$ & \tm{EOL} \nt{eols}                                                                 \\
+    60.         & \nt{eols}                  & $\to$ & $\varepsilon$                                                                      \\
 \end{longtable}
 
 \subsection{LL tabulka}
@@ -119,76 +123,146 @@ Neterminál tedy syntaktický znak, který se dá ještě rozdělit je zapsány 
     \renewcommand{\arraystretch}{1.05}
 
     \resizebox{\linewidth}{!}{
-    \begin{tabular}{|l|*{31}{c|}}
-        \toprule
-        \textbf{Neterminál \textbackslash{} Token}
-            & \rotatebox{90}{\tm{import}}
-            & \rotatebox{90}{\tm{.}}
-            & \rotatebox{90}{\tm{*}}
-            & \rotatebox{90}{\tm{@main}}
-            & \rotatebox{90}{\tm{def}}
-            & \rotatebox{90}{\tm{id}}
-            & \rotatebox{90}{\tm{(}}
-            & \rotatebox{90}{\tm{)}}
-            & \rotatebox{90}{\tm{,}}
-            & \rotatebox{90}{\tm{:}}
-            & \rotatebox{90}{\tm{=}}
-            & \rotatebox{90}{\tm{Int}}
-            & \rotatebox{90}{\tm{Double}}
-            & \rotatebox{90}{\tm{String}}
-            & \rotatebox{90}{\tm{Unit}}
-            & \rotatebox{90}{\tm{var}}
-            & \rotatebox{90}{\tm{val}}
-            & \rotatebox{90}{\tm{if}}
-            & \rotatebox{90}{\tm{then}}
-            & \rotatebox{90}{\tm{else}}
-            & \rotatebox{90}{\tm{while}}
-            & \rotatebox{90}{\tm{do}}
-            & \rotatebox{90}{\tm{return}}
-            & \rotatebox{90}{\tm{;}}
-            & \rotatebox{90}{\tm{INDENT}}
-            & \rotatebox{90}{\tm{DEDENT}}
-            & \rotatebox{90}{\tm{EOL}}
-            & \rotatebox{90}{\tm{literal}}
-            & \rotatebox{90}{\tm{+,-}}
-            & \rotatebox{90}{\tm{operator}}
-            & \rotatebox{90}{\tm{\$}} \\
-        \midrule
-        \nt{program}           & 1 &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  & 1 &  &  &  &  \\
-        \nt{prolog}            & 2 &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  \\
-        \nt{after\_prolog}     &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  & 3 &  &  &  & 4 \\
-        \nt{fun\_list}         &  &  &  & 5 & 5 &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  & 6 \\
-        \nt{fun\_entry}        &  &  &  & 7 & 8 &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  \\
-        \nt{fun\_def}          &  &  &  &  & 9 &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  \\
-        \nt{fun\_body}         &  &  &  &  &  & 11 & 11 &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  & 10 & 11 & 11 &  &  \\
-        \nt{after\_fun\_expr}  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  & 12 &  &  &  & 13 \\
-        \nt{param\_list}       &  &  &  &  &  & 14 &  & 14 &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  & 14 &  &  &  &  \\
-        \nt{param\_list\_body} &  &  &  &  &  & 16 &  & 15 &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  \\
-        \nt{param}             &  &  &  &  &  & 17 &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  \\
-        \nt{param\_list\_tail} &  &  &  &  &  &  &  & 18 & 19 &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  \\
-        \nt{param\_after\_comma} &  &  &  &  &  & 21 &  & 20 &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  \\
-        \nt{optional\_type}    &  &  &  &  &  &  &  &  &  & 22 & 23 &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  \\
-        \nt{type}              &  &  &  &  &  &  &  &  &  &  &  & 24 & 25 & 26 & 27 &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  \\
-        \nt{block}             &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  & 28 &  & 28 &  &  &  &  \\
-        \nt{statement\_seq}    &  &  &  &  &  & 31 & 31 &  &  &  &  &  &  &  &  & 31 & 31 & 29 &  &  & 30 &  & 31 &  &  &  &  & 31 & 31 &  &  \\
-        \nt{after\_simple}     &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  & 33 &  & 34 & 32 &  &  &  & 34 \\
-        \nt{statement\_list}   &  &  &  &  &  & 35 & 35 &  &  &  &  &  &  &  &  & 35 & 35 & 35 &  &  & 35 &  & 35 &  &  & 35 & 35 & 35 & 35 &  & 35 \\
-        \nt{statement\_list\_tail} &  &  &  &  &  & 36 & 36 &  &  &  &  &  &  &  &  & 36 & 36 & 36 &  &  & 36 &  & 36 &  &  & 37 &  & 36 & 36 &  & 37 \\
-        \nt{simple\_statement} &  &  &  &  &  & 40 & 41 &  &  &  &  &  &  &  &  & 38 & 38 &  &  &  &  &  & 39 &  &  &  &  & 41 & 41 &  &  \\
-        \nt{id\_statement\_tail} &  &  & 43 &  &  &  & 43 &  &  &  & 42 &  &  &  &  &  &  &  &  &  &  &  &  & 43 &  & 43 & 43 &  & 43 & 43 & 43 \\
-        \nt{var\_decl}         &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  & 44 & 44 &  &  &  &  &  &  &  &  &  &  &  &  &  &  \\
-        \nt{var\_type}         &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  & 45 & 46 &  &  &  &  &  &  &  &  &  &  &  &  &  &  \\
-        \nt{if\_statement}     &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  & 47 &  &  &  &  &  &  &  &  &  &  &  &  &  \\
-        \nt{while\_statement}  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  & 48 &  &  &  &  &  &  &  &  &  &  \\
-        \nt{return\_statement} &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  & 49 &  &  &  &  &  &  &  &  \\
-        \nt{return\_val}       &  &  &  &  &  & 50 & 50 &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  & 51 &  & 51 & 51 & 50 & 50 &  & 51 \\
-        \nt{arg\_list}         &  &  &  &  &  & 52 & 52 & 52 &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  & 52 & 52 & 52 &  &  \\
-        \nt{arg\_list\_body}   &  &  &  &  &  & 54 & 54 & 53 &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  & 54 & 54 &  &  \\
-        \nt{arg\_list\_tail}   &  &  &  &  &  &  &  & 55 & 56 &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  \\
-        \nt{arg\_after\_comma} &  &  &  &  &  & 58 & 58 & 57 &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  & 58 & 58 &  &  \\
-        \nt{eols}              & 60 &  &  & 60 & 60 & 60 & 60 & 60 &  &  &  &  &  &  &  & 60 & 60 & 60 &  & 60 & 60 &  & 60 &  & 60 & 60 & 59 & 60 & 60 &  & 60 \\
-        \bottomrule
-    \end{tabular}
+        \begin{tabular}{l | *{31}{c}}
+            \toprule
+            \textbf{Neterminál \textbackslash{} Token}
+                                       & \rotatebox{90}{\tm{import}}
+                                       & \rotatebox{90}{\tm{.}}
+                                       & \rotatebox{90}{\tm{*}}
+                                       & \rotatebox{90}{\tm{@main}}
+                                       & \rotatebox{90}{\tm{def}}
+                                       & \rotatebox{90}{\tm{id}}
+                                       & \rotatebox{90}{\tm{(}}
+                                       & \rotatebox{90}{\tm{)}}
+                                       & \rotatebox{90}{\tm{,}}
+                                       & \rotatebox{90}{\tm{:}}
+                                       & \rotatebox{90}{\tm{=}}
+                                       & \rotatebox{90}{\tm{Int}}
+                                       & \rotatebox{90}{\tm{Double}}
+                                       & \rotatebox{90}{\tm{String}}
+                                       & \rotatebox{90}{\tm{Unit}}
+                                       & \rotatebox{90}{\tm{var}}
+                                       & \rotatebox{90}{\tm{val}}
+                                       & \rotatebox{90}{\tm{if}}
+                                       & \rotatebox{90}{\tm{then}}
+                                       & \rotatebox{90}{\tm{else}}
+                                       & \rotatebox{90}{\tm{while}}
+                                       & \rotatebox{90}{\tm{do}}
+                                       & \rotatebox{90}{\tm{return}}
+                                       & \rotatebox{90}{\tm{;}}
+                                       & \rotatebox{90}{\tm{INDENT}}
+                                       & \rotatebox{90}{\tm{DEDENT}}
+                                       & \rotatebox{90}{\tm{EOL}}
+                                       & \rotatebox{90}{\tm{literal}}
+                                       & \rotatebox{90}{\tm{+,-}}
+                                       & \rotatebox{90}{\tm{operator}}
+                                       & \rotatebox{90}{\tm{\$}}                                                                                                                                                       \\
+            \midrule
+            \nt{program}               & 1                             &  &    &    &    &    &    &    &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    & 1  &    &    &    &    \\
+            \nt{prolog}                & 2                             &  &    &    &    &    &    &    &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    &    &    &    &    &    \\
+            \nt{after\_prolog}         &                               &  &    &    &    &    &    &    &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    & 3  &    &    &    & 4  \\
+            \nt{fun\_list}             &                               &  &    & 5  & 5  &    &    &    &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    &    &    &    &    & 6  \\
+            \nt{fun\_entry}            &                               &  &    & 7  & 8  &    &    &    &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    &    &    &    &    &    \\
+            \nt{fun\_def}              &                               &  &    &    & 9  &    &    &    &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    &    &    &    &    &    \\
+            \nt{fun\_body}             &                               &  &    &    &    & 11 & 11 &    &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    & 10 & 11 & 11 &    &    \\
+            \nt{after\_fun\_expr}      &                               &  &    &    &    &    &    &    &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    & 12 &    &    &    & 13 \\
+            \nt{param\_list}           &                               &  &    &    &    & 14 &    & 14 &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    & 14 &    &    &    &    \\
+            \nt{param\_list\_body}     &                               &  &    &    &    & 16 &    & 15 &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    &    &    &    &    &    \\
+            \nt{param}                 &                               &  &    &    &    & 17 &    &    &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    &    &    &    &    &    \\
+            \nt{param\_list\_tail}     &                               &  &    &    &    &    &    & 18 & 19 &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    &    &    &    &    &    \\
+            \nt{param\_after\_comma}   &                               &  &    &    &    & 21 &    & 20 &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    &    &    &    &    &    \\
+            \nt{optional\_type}        &                               &  &    &    &    &    &    &    &    & 22 & 23 &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    &    &    &    &    &    \\
+            \nt{type}                  &                               &  &    &    &    &    &    &    &    &    &    & 24 & 25 & 26 & 27 &    &    &    &  &    &    &  &    &    &    &    &    &    &    &    &    \\
+            \nt{block}                 &                               &  &    &    &    &    &    &    &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    & 28 &    & 28 &    &    &    &    \\
+            \nt{statement\_seq}        &                               &  &    &    &    & 31 & 31 &    &    &    &    &    &    &    &    & 31 & 31 & 29 &  &    & 30 &  & 31 &    &    &    &    & 31 & 31 &    &    \\
+            \nt{after\_simple}         &                               &  &    &    &    &    &    &    &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    & 33 &    & 34 & 32 &    &    &    & 34 \\
+            \nt{statement\_list}       &                               &  &    &    &    & 35 & 35 &    &    &    &    &    &    &    &    & 35 & 35 & 35 &  &    & 35 &  & 35 &    &    & 35 & 35 & 35 & 35 &    & 35 \\
+            \nt{statement\_list\_tail} &                               &  &    &    &    & 36 & 36 &    &    &    &    &    &    &    &    & 36 & 36 & 36 &  &    & 36 &  & 36 &    &    & 37 &    & 36 & 36 &    & 37 \\
+            \nt{simple\_statement}     &                               &  &    &    &    & 40 & 41 &    &    &    &    &    &    &    &    & 38 & 38 &    &  &    &    &  & 39 &    &    &    &    & 41 & 41 &    &    \\
+            \nt{id\_statement\_tail}   &                               &  & 43 &    &    &    & 43 &    &    &    & 42 &    &    &    &    &    &    &    &  &    &    &  &    & 43 &    & 43 & 43 &    & 43 & 43 & 43 \\
+            \nt{var\_decl}             &                               &  &    &    &    &    &    &    &    &    &    &    &    &    &    & 44 & 44 &    &  &    &    &  &    &    &    &    &    &    &    &    &    \\
+            \nt{var\_type}             &                               &  &    &    &    &    &    &    &    &    &    &    &    &    &    & 45 & 46 &    &  &    &    &  &    &    &    &    &    &    &    &    &    \\
+            \nt{if\_statement}         &                               &  &    &    &    &    &    &    &    &    &    &    &    &    &    &    &    & 47 &  &    &    &  &    &    &    &    &    &    &    &    &    \\
+            \nt{while\_statement}      &                               &  &    &    &    &    &    &    &    &    &    &    &    &    &    &    &    &    &  &    & 48 &  &    &    &    &    &    &    &    &    &    \\
+            \nt{return\_statement}     &                               &  &    &    &    &    &    &    &    &    &    &    &    &    &    &    &    &    &  &    &    &  & 49 &    &    &    &    &    &    &    &    \\
+            \nt{return\_val}           &                               &  &    &    &    & 50 & 50 &    &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    & 51 &    & 51 & 51 & 50 & 50 &    & 51 \\
+            \nt{arg\_list}             &                               &  &    &    &    & 52 & 52 & 52 &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    & 52 & 52 & 52 &    &    \\
+            \nt{arg\_list\_body}       &                               &  &    &    &    & 54 & 54 & 53 &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    &    & 54 & 54 &    &    \\
+            \nt{arg\_list\_tail}       &                               &  &    &    &    &    &    & 55 & 56 &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    &    &    &    &    &    \\
+            \nt{arg\_after\_comma}     &                               &  &    &    &    & 58 & 58 & 57 &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    &    & 58 & 58 &    &    \\
+            \nt{eols}                  & 60                            &  &    & 60 & 60 & 60 & 60 & 60 &    &    &    &    &    &    &    & 60 & 60 & 60 &  & 60 & 60 &  & 60 &    & 60 & 60 & 59 & 60 & 60 &    & 60 \\
+            \bottomrule
+        \end{tabular}
+        \begin{tabular}{|l|*{31}{c|}}
+            \toprule
+            \textbf{Neterminál \textbackslash{} Token}
+                                       & \rotatebox{90}{\tm{import}}
+                                       & \rotatebox{90}{\tm{.}}
+                                       & \rotatebox{90}{\tm{*}}
+                                       & \rotatebox{90}{\tm{@main}}
+                                       & \rotatebox{90}{\tm{def}}
+                                       & \rotatebox{90}{\tm{id}}
+                                       & \rotatebox{90}{\tm{(}}
+                                       & \rotatebox{90}{\tm{)}}
+                                       & \rotatebox{90}{\tm{,}}
+                                       & \rotatebox{90}{\tm{:}}
+                                       & \rotatebox{90}{\tm{=}}
+                                       & \rotatebox{90}{\tm{Int}}
+                                       & \rotatebox{90}{\tm{Double}}
+                                       & \rotatebox{90}{\tm{String}}
+                                       & \rotatebox{90}{\tm{Unit}}
+                                       & \rotatebox{90}{\tm{var}}
+                                       & \rotatebox{90}{\tm{val}}
+                                       & \rotatebox{90}{\tm{if}}
+                                       & \rotatebox{90}{\tm{then}}
+                                       & \rotatebox{90}{\tm{else}}
+                                       & \rotatebox{90}{\tm{while}}
+                                       & \rotatebox{90}{\tm{do}}
+                                       & \rotatebox{90}{\tm{return}}
+                                       & \rotatebox{90}{\tm{;}}
+                                       & \rotatebox{90}{\tm{INDENT}}
+                                       & \rotatebox{90}{\tm{DEDENT}}
+                                       & \rotatebox{90}{\tm{EOL}}
+                                       & \rotatebox{90}{\tm{literal}}
+                                       & \rotatebox{90}{\tm{+,-}}
+                                       & \rotatebox{90}{\tm{operator}}
+                                       & \rotatebox{90}{\tm{\$}}                                                                                                                                                       \\
+            \midrule
+            \nt{program}               & 1                             &  &    &    &    &    &    &    &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    & 1  &    &    &    &    \\
+            \nt{prolog}                & 2                             &  &    &    &    &    &    &    &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    &    &    &    &    &    \\
+            \nt{after\_prolog}         &                               &  &    &    &    &    &    &    &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    & 3  &    &    &    & 4  \\
+            \nt{fun\_list}             &                               &  &    & 5  & 5  &    &    &    &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    &    &    &    &    & 6  \\
+            \nt{fun\_entry}            &                               &  &    & 7  & 8  &    &    &    &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    &    &    &    &    &    \\
+            \nt{fun\_def}              &                               &  &    &    & 9  &    &    &    &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    &    &    &    &    &    \\
+            \nt{fun\_body}             &                               &  &    &    &    & 11 & 11 &    &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    & 10 & 11 & 11 &    &    \\
+            \nt{after\_fun\_expr}      &                               &  &    &    &    &    &    &    &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    & 12 &    &    &    & 13 \\
+            \nt{param\_list}           &                               &  &    &    &    & 14 &    & 14 &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    & 14 &    &    &    &    \\
+            \nt{param\_list\_body}     &                               &  &    &    &    & 16 &    & 15 &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    &    &    &    &    &    \\
+            \nt{param}                 &                               &  &    &    &    & 17 &    &    &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    &    &    &    &    &    \\
+            \nt{param\_list\_tail}     &                               &  &    &    &    &    &    & 18 & 19 &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    &    &    &    &    &    \\
+            \nt{param\_after\_comma}   &                               &  &    &    &    & 21 &    & 20 &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    &    &    &    &    &    \\
+            \nt{optional\_type}        &                               &  &    &    &    &    &    &    &    & 22 & 23 &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    &    &    &    &    &    \\
+            \nt{type}                  &                               &  &    &    &    &    &    &    &    &    &    & 24 & 25 & 26 & 27 &    &    &    &  &    &    &  &    &    &    &    &    &    &    &    &    \\
+            \nt{block}                 &                               &  &    &    &    &    &    &    &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    & 28 &    & 28 &    &    &    &    \\
+            \nt{statement\_seq}        &                               &  &    &    &    & 31 & 31 &    &    &    &    &    &    &    &    & 31 & 31 & 29 &  &    & 30 &  & 31 &    &    &    &    & 31 & 31 &    &    \\
+            \nt{after\_simple}         &                               &  &    &    &    &    &    &    &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    & 33 &    & 34 & 32 &    &    &    & 34 \\
+            \nt{statement\_list}       &                               &  &    &    &    & 35 & 35 &    &    &    &    &    &    &    &    & 35 & 35 & 35 &  &    & 35 &  & 35 &    &    & 35 & 35 & 35 & 35 &    & 35 \\
+            \nt{statement\_list\_tail} &                               &  &    &    &    & 36 & 36 &    &    &    &    &    &    &    &    & 36 & 36 & 36 &  &    & 36 &  & 36 &    &    & 37 &    & 36 & 36 &    & 37 \\
+            \nt{simple\_statement}     &                               &  &    &    &    & 40 & 41 &    &    &    &    &    &    &    &    & 38 & 38 &    &  &    &    &  & 39 &    &    &    &    & 41 & 41 &    &    \\
+            \nt{id\_statement\_tail}   &                               &  & 43 &    &    &    & 43 &    &    &    & 42 &    &    &    &    &    &    &    &  &    &    &  &    & 43 &    & 43 & 43 &    & 43 & 43 & 43 \\
+            \nt{var\_decl}             &                               &  &    &    &    &    &    &    &    &    &    &    &    &    &    & 44 & 44 &    &  &    &    &  &    &    &    &    &    &    &    &    &    \\
+            \nt{var\_type}             &                               &  &    &    &    &    &    &    &    &    &    &    &    &    &    & 45 & 46 &    &  &    &    &  &    &    &    &    &    &    &    &    &    \\
+            \nt{if\_statement}         &                               &  &    &    &    &    &    &    &    &    &    &    &    &    &    &    &    & 47 &  &    &    &  &    &    &    &    &    &    &    &    &    \\
+            \nt{while\_statement}      &                               &  &    &    &    &    &    &    &    &    &    &    &    &    &    &    &    &    &  &    & 48 &  &    &    &    &    &    &    &    &    &    \\
+            \nt{return\_statement}     &                               &  &    &    &    &    &    &    &    &    &    &    &    &    &    &    &    &    &  &    &    &  & 49 &    &    &    &    &    &    &    &    \\
+            \nt{return\_val}           &                               &  &    &    &    & 50 & 50 &    &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    & 51 &    & 51 & 51 & 50 & 50 &    & 51 \\
+            \nt{arg\_list}             &                               &  &    &    &    & 52 & 52 & 52 &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    & 52 & 52 & 52 &    &    \\
+            \nt{arg\_list\_body}       &                               &  &    &    &    & 54 & 54 & 53 &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    &    & 54 & 54 &    &    \\
+            \nt{arg\_list\_tail}       &                               &  &    &    &    &    &    & 55 & 56 &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    &    &    &    &    &    \\
+            \nt{arg\_after\_comma}     &                               &  &    &    &    & 58 & 58 & 57 &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    &    & 58 & 58 &    &    \\
+            \nt{eols}                  & 60                            &  &    & 60 & 60 & 60 & 60 & 60 &    &    &    &    &    &    &    & 60 & 60 & 60 &  & 60 & 60 &  & 60 &    & 60 & 60 & 59 & 60 & 60 &    & 60 \\
+            \bottomrule
+        \end{tabular}
     }
 \end{table}
 \subsection{Precedenční analýza výrazů}
@@ -206,25 +280,25 @@ Neterminál tedy syntaktický znak, který se dá ještě rozdělit je zapsány 
     \begin{tabular}{|l|c|c|c|c|c|c|c|c|c|}
         \toprule
         \textbf{Zásobník \textbackslash{} Vstup}
-            & \tm{+,-}\textsubscript{un}
-            & \tm{*,/}
-            & \tm{+,-}
-            & \tm{<,<=,>,>=}
-            & \tm{==,!=}
-            & \tm{(}
-            & \tm{)}
-            & \tm{i}
-            & \tm{\$} \\
+                                   & \tm{+,-}\textsubscript{un}
+                                   & \tm{*,/}
+                                   & \tm{+,-}
+                                   & \tm{<,<=,>,>=}
+                                   & \tm{==,!=}
+                                   & \tm{(}
+                                   & \tm{)}
+                                   & \tm{i}
+                                   & \tm{\$}                                                                    \\
         \midrule
-        \tm{+,-}\textsubscript{un} & $<$ & $>$ & $>$ & $>$ & $>$ & $<$ & $>$ & $<$ & $>$ \\
-        \tm{*,/}                   & $<$ & $>$ & $>$ & $>$ & $>$ & $<$ & $>$ & $<$ & $>$ \\
-        \tm{+,-}                   & $<$ & $<$ & $>$ & $>$ & $>$ & $<$ & $>$ & $<$ & $>$ \\
-        \tm{<,<=,>,>=}             & $<$ & $<$ & $<$ &     & $>$ & $<$ & $>$ & $<$ & $>$ \\
-        \tm{==,!=}                 & $<$ & $<$ & $<$ & $<$ &     & $<$ & $>$ & $<$ & $>$ \\
-        \tm{(}                     & $<$ & $<$ & $<$ & $<$ & $<$ & $<$ & $=$ & $<$ &     \\
-        \tm{)}                     &     & $>$ & $>$ & $>$ & $>$ &     & $>$ &     & $>$ \\
-        \tm{i}                     &     & $>$ & $>$ & $>$ & $>$ &     & $>$ &     & $>$ \\
-        \tm{\$}                    & $<$ & $<$ & $<$ & $<$ & $<$ & $<$ &     & $<$ &     \\
+        \tm{+,-}\textsubscript{un} & $<$                        & $>$ & $>$ & $>$ & $>$ & $<$ & $>$ & $<$ & $>$ \\
+        \tm{*,/}                   & $<$                        & $>$ & $>$ & $>$ & $>$ & $<$ & $>$ & $<$ & $>$ \\
+        \tm{+,-}                   & $<$                        & $<$ & $>$ & $>$ & $>$ & $<$ & $>$ & $<$ & $>$ \\
+        \tm{<,<=,>,>=}             & $<$                        & $<$ & $<$ &     & $>$ & $<$ & $>$ & $<$ & $>$ \\
+        \tm{==,!=}                 & $<$                        & $<$ & $<$ & $<$ &     & $<$ & $>$ & $<$ & $>$ \\
+        \tm{(}                     & $<$                        & $<$ & $<$ & $<$ & $<$ & $<$ & $=$ & $<$ &     \\
+        \tm{)}                     &                            & $>$ & $>$ & $>$ & $>$ &     & $>$ &     & $>$ \\
+        \tm{i}                     &                            & $>$ & $>$ & $>$ & $>$ &     & $>$ &     & $>$ \\
+        \tm{\$}                    & $<$                        & $<$ & $<$ & $<$ & $<$ & $<$ &     & $<$ &     \\
         \bottomrule
     \end{tabular}
 \end{table}
