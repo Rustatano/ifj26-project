@@ -4,27 +4,30 @@
 \providecommand{\nt}[1]{\textit{#1}}
 \providecommand{\tm}[1]{\texttt{#1}}
 
+Parser je rozdělen do několika souborů podle toho, jakou část programu zpracovávají. Soubor \texttt{parser.c} řídí analýzu celého programu tedy definice funkcí, bloky, příkazy, deklarace a řídicí konstrukce zpracovávají moduly \texttt{parse\_function.c}, \texttt{parse\_block.c}, \texttt{parse\_statement.c}, \texttt{parse\_declaration.c} a \texttt{parse\_control.c}. Výrazy analyzují soubory \texttt{parse\_expression.c} a jeho pomocné moduly, společné funkce parseru jsou v \texttt{parser\_common.c}.
+
+Parser postupně přebírá tokeny od scanneru a podle gramatiky kontroluje jejich pořadí. Většinu programu zpracovává metodou rekurzivního sestupu tedy podle aktuálního tokenu zavolá funkci pro příslušnou konstrukci. Výrazy zpracuje zvlášť pomocí precedenční analýzy, která zohledňuje priority operátorů. Při úspěšném průchodu vytváří abstraktní syntaktický strom (AST) a při chybné posloupnosti tokenů analýzu ukončí s chybou.
 
 \subsection{LL gramatika}
 \label{subsec:ll-gramatika}
 
 Neterminál tedy syntaktický znak, který se dá ještě rozdělit je zapsány kurzívou (\nt{neterminál}), terminál tedy tokeny z lexikálního analyzátoru je zapsán písmem (\tm{terminál}) ,prázdný řetězec symbolem $\varepsilon$, symbol \tm{\$} označuje konec vstupu (\texttt{TOKEN\_EOF}) ,symbol \nt{expr} představuje předání neterminálu precedenční analýze výrazů (\texttt{parse\_expression}), symbol \nt{expr\_cont} značí vrácení dříve načteného tokenu zpět do bufferu (\texttt{unread\_token}) a následné vyhodnocení celého výrazu precedenční analýzou.
 
-\begin{longtable}{r l c l}
+\begin{longtable}{|r|l|c|l|}
     \caption{Přepisovací pravidla LL gramatiky} \label{tab:ll-gramatika} \\
     \toprule
     \textbf{Č.} & \textbf{Neterminál} & & \textbf{Pravá strana pravidla} \\
     \midrule
     \endfirsthead
 
-    \multicolumn{4}{l}{\textit{Pokračování tabulky \ref{tab:ll-gramatika}}} \\
+    \multicolumn{4}{|l|}{\textit{Pokračování tabulky \ref{tab:ll-gramatika}}} \\
     \toprule
     \textbf{Č.} & \textbf{Neterminál} & & \textbf{Pravá strana pravidla} \\
     \midrule
     \endhead
 
     \midrule
-    \multicolumn{4}{r}{\textit{Pokračování na další straně}} \\
+    \multicolumn{4}{|r|}{\textit{Pokračování na další straně}} \\
     \endfoot
 
     \bottomrule
@@ -116,7 +119,7 @@ Neterminál tedy syntaktický znak, který se dá ještě rozdělit je zapsány 
     \renewcommand{\arraystretch}{1.05}
 
     \resizebox{\linewidth}{!}{
-    \begin{tabular}{l | *{31}{c}}
+    \begin{tabular}{|l|*{31}{c|}}
         \toprule
         \textbf{Neterminál \textbackslash{} Token}
             & \rotatebox{90}{\tm{import}}
@@ -200,7 +203,7 @@ Neterminál tedy syntaktický znak, který se dá ještě rozdělit je zapsány 
     \setlength{\tabcolsep}{5pt}
     \renewcommand{\arraystretch}{1.2}
 
-    \begin{tabular}{l | c c c c c c c c c}
+    \begin{tabular}{|l|c|c|c|c|c|c|c|c|c|}
         \toprule
         \textbf{Zásobník \textbackslash{} Vstup}
             & \tm{+,-}\textsubscript{un}
@@ -236,11 +239,11 @@ Když tabulka určí redukci, parser vybere na zásobníku část k redukci tedy
 \end{itemize}
 
 \paragraph{Operátory:}
-Symbol \tm{i} zastupuje literál, proměnnou nebo volání funkce. Volání zpracuje \texttt{parse\_operand}; argumenty pak \texttt{parse\_argument\_list}. Prázdné závorky \tm{()} se převedou na výraz typu \tm{Unit}.
+Symbol \tm{i} zastupuje literál, proměnnou nebo volání funkce. Volání zpracuje \texttt{parse\_operand} a argumenty pak \texttt{parse\_argument\_list}. Prázdné závorky \tm{()} se převedou na výraz typu \tm{Unit}.
 
 Parser rozliší unární a binární \tm{+} a \tm{-} podle toho, co je před nimi na zásobníku. Po výrazu $E$, operandu \tm{i} nebo uzavírací závorce \tm{)} jde o binární operátor. Na začátku výrazu, po \tm{(} nebo po jiném operátoru jde o unární operátor. Unární operátory mají nejvyšší prioritu a vyhodnocují se zprava.
 
 Priorita operátorů je od nejvyšší po nejnižší: unární \tm{+,-}, násobení a dělení, sčítání a odčítání, relační operátory a operátory rovnosti. Relační operátory (\tm{<,<=,>,>=}) ani operátory rovnosti (\tm{==,!=}) nelze řetězit a proto prázdná políčka na diagonále tabulky takové výrazy odmítnou.
 
 \paragraph{Konec výrazu:}
-Token, který nepatří do výrazu, se pro parser považuje za zarážku \tm{\$}; může jít například o \tm{EOL}, \tm{;}, \tm{,}, \tm{then}, \tm{do}, \tm{DEDENT} nebo konec souboru. Uzavírací závorka \tm{)} se za konec výrazu považuje také tehdy, když parser dokončil výraz posledního argumentu funkce; závorku přitom nespotřebuje. Analýza je úspěšná, když je na zásobníku přesně \tm{\$} $E$ a na vstupu je zarážka \tm{\$} (\texttt{parser\_prec\_stack\_is\_reduced}).
+Token, který nepatří do výrazu, se pro parser považuje za zarážku \tm{\$} nebo může jít například o \tm{EOL}, \tm{;}, \tm{,}, \tm{then}, \tm{do}, \tm{DEDENT} nebo konec souboru. Uzavírací závorka \tm{)} se za konec výrazu považuje také tehdy, když parser dokončil výraz posledního argumentu funkce takže závorku přitom nespotřebuje. Analýza je úspěšná, když je na zásobníku přesně \tm{\$} $E$ a na vstupu je zarážka \tm{\$} (\texttt{parser\_prec\_stack\_is\_reduced}).
