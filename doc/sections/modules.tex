@@ -22,7 +22,7 @@ Implementace parsování klíčových slov (statement).
 Podle úvodního tokenu vybere správné parsování deklarace, podmínky, cyklu nebo výrazu. Pokud příkaz začíná identifikátorem, načte následující token, aby rozlišil přiřazení od výrazu. V obou případech pak předá zpracování příslušnému modulu.
 
 \subsection*{parse\_function.c + parse\_function.h}
-Implementace parsování funkce a navratových hodnot.
+Implementace parsování funkce a návratových hodnot.
 Zpracuje jméno funkce, seznam parametrů a jejich datových typů a případný návratový typ. Tělo funkce může být blok příkazů nebo jednořádkový výraz. Stejný modul zpracovává také příkaz \texttt{return}, který může obsahovat výraz.
 
 \subsection*{parse\_expression.c + parse\_expression.h}
@@ -38,14 +38,14 @@ Implementace redukování výrazů pomocí precedenční tabulky.
 Při redukci hledá část výrazu nad značkou hranice na zásobníku a podle její podoby vybere odpovídající pravidlo. Zpracovává operandy, prázdné a běžné závorky, unární operátory i binární operace. Výsledek každé úspěšné redukce vloží zpět na zásobník jako uzel AST.
 
 \subsection*{parse\_expression\_common.c + parse\_expression\_common.h}
-Základní pomocné funkce a struktur pro parsování výrazu jako je precedenční tabulka.
+Základní pomocné funkce a struktury pro parsování výrazu jako je precedenční tabulka.
 Tabulka popisuje, zda má parser další token posunout, provést redukci, nebo zda je daná kombinace chybná. Pomocná funkce převádí tokeny scanneru na skupiny použité v tabulce. Další funkce mapuje operátory na jejich odpovídající typy uzlů AST.
 
 \subsection*{parse\_declaration.c + parse\_declaration.h}
-Implementace parsování deklarace proměnné a přířazení do proměnné.
+Implementace parsování deklarace proměnné a přiřazení do proměnné.
 Při deklaraci zpracuje \texttt{var} nebo \texttt{val}, jméno proměnné, případný typ a počáteční výraz. Typ může být \texttt{Int}, \texttt{Double}, \texttt{String} nebo \texttt{Unit}. Přiřazení zpracuje jméno cílové proměnné, znak \texttt{=} a výraz, který se do ní ukládá.
 
-\subsection*{parse\_control.c + parse\_control}
+\subsection*{parse\_control.c + parse\_control.h}
 Implementace parsování kontrolních struktur jako jsou podmínky a cykly. Obsahuje parsování \texttt{import}.
 Podmínka musí obsahovat výraz, blok pro větev \texttt{then} i blok pro povinnou větev \texttt{else}. Cyklus \texttt{while} zpracuje podmínku a následný blok uvedený klíčovým slovem \texttt{do}. Tento modul také ověřuje, že úvodní import má přesný tvar \texttt{import ifj26.*}.
 
@@ -63,8 +63,8 @@ Konkrétní typ binárních stromů je AVL strom~\cite{ial_opora}. Každý strom
 Nejníže položený strom obsahuje identifikátory funkcí, ostatní neobsahují identifikátory funkcí, pouze proměnných.
 
 \subsection*{semantic.c + semantic.h}
-Sémantická analýza propojuje abstraktní syntaktický strom (ASS) s tabulkou symbolů.
-Postupně se zanořuje hlouběji do ASS a sekvenčně kontroluje sémantiku. V případech, kdy narazí na výraz, probíhá kontrola rekurzivně.
+Sémantická analýza propojuje abstraktní syntaktický strom (AST) s tabulkou symbolů.
+Postupně se zanořuje hlouběji do AST a sekvenčně kontroluje sémantiku. V případech, kdy narazí na výraz, probíhá kontrola rekurzivně.
 
 \subsection*{codegen.c + codegen.h}
-Generátor kódu, který generuje cílový kód procházením ASS. Pro mezivýsledky výrazů a volání funkcí a předávání parametrů používá zásobník.
+Generátor kódu, který generuje cílový kód procházením AST. Pro mezivýsledky výrazů a volání funkcí a předávání parametrů používá zásobník.

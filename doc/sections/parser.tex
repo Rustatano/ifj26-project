@@ -8,7 +8,7 @@
 \subsection{LL gramatika}
 \label{subsec:ll-gramatika}
 
-Neterminál tedy syntaktický znak, který se dá ještě rozdělit je zapsány kurzívou (\nt{neterminál}), terminál tedy tokeny z lexikálního analyzátoru je zapsán písmem (\tm{terminál}) ,prázdný řetězec symbolem $\varepsilon$, symbol \tm{\$} označuje konec vstupu (\texttt{TOKEN\_EOF}) ,symbol \nt{expr} představuje předání neterminálu precedenční analýze výrazů (\texttt{parse\_expression}), symbol \nt{expr\_cont} značí vrácení dříve načteného tokenu zpět do bufferu (\texttt{unread\_token}) a následné vyhodnocení celého výrazu precedenční analýzou.
+Neterminál tedy syntaktický znak, který se dá ještě rozdělit je zapsány kurzívou (\nt{neterminál}), terminál tedy tokeny z lexikálního analyzátoru je zapsán písmem (\tm{terminál}) , prázdný řetězec symbolem $\varepsilon$, symbol \tm{\$} označuje konec vstupu (\texttt{TOKEN\_EOF}) , symbol \nt{expr} představuje předání neterminálu precedenční analýze výrazů (\texttt{parse\_expression}), symbol \nt{expr\_cont} značí vrácení dříve načteného tokenu zpět do bufferu (\texttt{unread\_token}) a následné vyhodnocení celého výrazu precedenční analýzou.
 
 \begin{longtable}{r l c l}
     \caption{Přepisovací pravidla LL gramatiky} \label{tab:ll-gramatika}                                                                  \\
