@@ -1,7 +1,7 @@
 /*
 -------------------------------------------------------
 Name of project: Translator IFJ26
-Authors: Ondruška
+Authors: xondrus00 (Sebastian Ondruska)
 Creation date: 14.11.2026
 File: parse_function.c
 

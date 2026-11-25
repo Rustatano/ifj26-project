@@ -1,7 +1,7 @@
 /*
 -------------------------------------------------------
 Name of project: Translator IFJ26
-Authors: Ondruška
+Authors: xondrus00 (Sebastian Ondruska)
 Creation date: 23.10.2026
 File: ast.c
 
