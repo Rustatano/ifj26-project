@@ -19,7 +19,7 @@ který se na pull requestu nepodílel.
 Testování probíhá jako unit testy a integrační testy překladače jako celku.
 Unit testy kontrolují jednotlivé funkce každého modulu. Testují ideální použití i krajní případy nebo chybové použití.
 Integrační testy probíhají tak, že se přeloží kód, správný nebo chybový, poté se spustí výsledný kód interpretem ic26int a
-porovná se výstup s očekávaným výstupem. Pro unit testy se používá testovací framework pro jazyk C \texttt{cmocka} a integrační testy
+porovná se výstup s očekávaným výstupem. Pro unit testy se používá testovací framework pro jazyk C \texttt{cmocka}~\cite{cmocka} a integrační testy
 se provádí pomocí bash skriptu a nástroje \texttt{diff}.
 
 Zvolený styl formátování C kódu je pomocí \texttt{clang-format} verze v18.1.8 skrze nástroj \texttt{pre-commit}, základní styl je LLVM.
