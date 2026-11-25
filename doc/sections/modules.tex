@@ -67,4 +67,4 @@ Sémantická analýza propojuje abstraktní syntaktický strom (ASS) s tabulkou 
 Postupně se zanořuje hlouběji do ASS a sekvenčně kontroluje sémantiku. V případech, kdy narazí na výraz, probíhá kontrola rekurzivně.
 
 \subsection*{codegen.c + codegen.h}
-Generování kódu převádí abstraktní syntaktický strom na cílový kód.
+Generátor kódu, který generuje cílový kód procházením ASS. Pro mezivýsledky výrazů a volání funkcí a předávání parametrů používá zásobník.
