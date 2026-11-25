@@ -1,5 +1,8 @@
 \section{Moduly překladače}
 
+\subsection*{main.c}
+Obsahuje hlavní větvení do jednotlivých modulů a ošetření vyvřelých chyb.
+
 \subsection*{scanner.c + scanner.h}
 Implementace scanneru v podobě stavového automatu. Čte se postupně znak po znaku a mění se stav.
 Pokud se narazí na neočekávaný znak, tak to způsobí lexikální chybu. Pokud se za určitých podmínek skončí v koncovém stavu,
@@ -8,6 +11,36 @@ která vrací právě jeden token při zavolání, pokud nenastala chyba.
 
 \subsection*{parser.c + parser.h}
 Implementace parseru, konkrétně syntaktické analýzy pomocí LL gramatiky a přísluš\-ných přechodů.
+
+\subsection*{parser\_common.c + parser\_common.h}
+Základní pomocné funkce a struktury pro parser.
+
+\subsection*{parse\_statement.c + parse\_statement.h}
+Implementace parsování výroků (statement).
+
+\subsection*{parse\_function.c + parse\_function.h}
+Implementace parsování funkce a navratových výroků.
+
+\subsection*{parse\_expression.c + parse\_expression.h}
+Implementace parsování výrazů a větvení na jednotlivé výrazy.
+
+\subsection*{parse\_expression\_stack.c + parse\_expression\_stack.h}
+Implementace parsování výrazu pomocí zásobníku a precedenční tabulky.
+
+\subsection*{parse\_expression\_reduce.c + parse\_expression\_reduce.h}
+Implementace redukování výrazů pomocí precedenční tabulky.
+
+\subsection*{parse\_expression\_common.c + parse\_expression\_common.h}
+Základní pomocné funkce a struktur pro parsování výrazu jako je precedenční tabulka.
+
+\subsection*{parse\_declaration.c + parse\_declaration.h}
+Implementace parsování deklarace proměnné a přířazení do proměnné.
+
+\subsection*{parse\_control.c + parse\_control}
+Implementace parsování kontrolních struktur jako jsou podmínky a cykly. Obsahuje výrok \texttt{import}.
+
+\subsection*{parse\_block.c + parse\_block.h}
+Implementace parsování bloku kódu.
 
 \subsection*{ast.c + ast.h}
 Implementace abstraktního syntaktického stromu, který se využívá jako hierarchická reprezentace načteného kódu.

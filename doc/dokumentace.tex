@@ -2,22 +2,26 @@
 \usepackage{graphicx}
 \usepackage{geometry}
 \usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{pdflscape}
+\usepackage{float}
 \usepackage[provide=*,czech]{babel}
 \usepackage[utf8]{inputenc}
 
 \begin{document}
 
-\include{sections/intro.tex}
-
+\input{sections/intro.tex}
 \vspace{1em}
 \tableofcontents
-\vspace{1em}
 
 \include{sections/organization.tex}
 
 \include{sections/architecture.tex}
 
 \include{sections/modules.tex}
+
+\include{sections/parser.tex}
 
 \include{sections/ai_usage.tex}
 
