@@ -1,20 +1,39 @@
 \section{Architektura}
 
-\begin{figure}[htbp]
-    \includegraphics[width=\textwidth]{figures/compiler_scheme.png}
-    \caption{Blokové schéma překladače}
-    \label{obr:compiler_scheme}
-\end{figure}
+\subsection{Blokové schéma překladače}
 
 V \texttt{main.c} se zavolá parser, který volá scanner vždy, když potřebuje nový \texttt{token\_t}. Scanner čte postupně znak po znaku \texttt{stdin} a podle stavového automatu vytvoří odpovídající \texttt{token\_t}, který vrátí parseru.
 Parser postupně vytváří abstraktní syntaktický strom (AST) a přiřazuje typy, které ví s jistotou. Soubor \texttt{main.c} zachytí případné chyby, které by vypsal na \texttt{stderr} ze scanneru a parseru, jinak volá semantickou analýzu s argumentem AST.
 Semantická analýza zjištuje sémantickou správnost a typy, které doplní do tabulky symbolů a AST. Případně vytvoří nový uzel AST určený pro signalizaci implicitní konverze. Zpět v \texttt{main.c} se zkontroluje zda nedošlo k chybě, kterou by vypsal na \texttt{stderr}, jinak se volá generátor kódu.
 Ten postupně čte z AST a podle něj vypisuje generovaný kód na \texttt{stdout}. Pokud dojde k chybě \texttt{main.c} vypíše chybu na \texttt{stderr}, jinak se skončí s návratovým kódem 0.
 
+
 \begin{figure}[htbp]
-    \includegraphics[width=\textwidth]{figures/subautomata_comments.png}
-    \caption{Schéma části automatu scanneru řešící komentáře}
-    \label{obr:subautomata_comments}
+    \includegraphics[width=\textwidth]{figures/compiler_scheme.png}
+    \caption{Blokové schéma překladače}
+    \label{obr:compiler_scheme}
+\end{figure}
+
+\subsection{Lexikální analýza a rozšíření konečného automatu}
+
+Ačkoliv je scanner navržen na bázi deterministického konečného automatu (viz schémata \ref{obr:subautomata_identifiers}--\ref{obr:subautomata_indentation}), z~důvodu lexikálních a syntaktických vlastností jazyka IFJ26 se nejedná o~čistý bezpaměťový automat,
+nýbrž o~automat rozšířený o~pomocnou paměť a zásobníky. K~vyhodnocování blokové struktury řízené odsazením využívá scanner zásobník úrovní odsazení (\texttt{indent\_stack}),
+který umožňuje generovat posloupnosti tokenů \texttt{TOKEN\_INDENT} a \texttt{TOKEN\_DEDENT} a detekovat nekonzistentní odsazení. Kontextové čítače pak slouží ke sledování hloubky vnořených blokových komentářů (\texttt{comment\_depth}) a
+otevřených kulatých závorek (\texttt{paren\_depth}), uvnitř kterých se zalomení řádku ignoruje. Pro zpracování víceznakových přechodů a postupné uzavírání více bloků na jednom řádku je automat dále vybaven zásobníkem
+vrácených znaků (\texttt{unread\_chars\_stack}) a dynamicky alokovaným bufferem pro načítání řetězců a identifikátorů libovolné délky.
+
+Následující obrázky znázorňují stavový automat lexikálního analyzátoru rozdělený podle jednotlivých lexikálních kategorií:
+
+\begin{figure}[htbp]
+    \includegraphics[width=\textwidth]{figures/subautomata_identifiers.png}
+    \caption{Schéma části automatu scanneru řešící identifikátory}
+    \label{obr:subautomata_identifiers}
+\end{figure}
+
+\begin{figure}[htbp]
+    \includegraphics[width=\textwidth]{figures/subautomata_ints.png}
+    \caption{Schéma části automatu scanneru řešící celá čísla}
+    \label{obr:subautomata_ints}
 \end{figure}
 
 \begin{figure}[htbp]
@@ -24,21 +43,9 @@ Ten postupně čte z AST a podle něj vypisuje generovaný kód na \texttt{stdou
 \end{figure}
 
 \begin{figure}[htbp]
-    \includegraphics[width=\textwidth]{figures/subautomata_identifiers.png}
-    \caption{Schéma části automatu scanneru řešící identifikátory}
-    \label{obr:subautomata_identifiers}
-\end{figure}
-
-\begin{figure}[htbp]
-    \includegraphics[width=\textwidth]{figures/subautomata_indentation.png}
-    \caption{Schéma části automatu scanneru řešící odsazení}
-    \label{obr:subautomata_indentation}
-\end{figure}
-
-\begin{figure}[htbp]
-    \includegraphics[width=\textwidth]{figures/subautomata_ints.png}
-    \caption{Schéma části automatu scanneru řešící celá čísla}
-    \label{obr:subautomata_ints}
+    \includegraphics[width=\textwidth]{figures/subautomata_strings.png}
+    \caption{Schéma části automatu scanneru řešící řetězce}
+    \label{obr:subautomata_strings}
 \end{figure}
 
 \begin{figure}[htbp]
@@ -54,7 +61,13 @@ Ten postupně čte z AST a podle něj vypisuje generovaný kód na \texttt{stdou
 \end{figure}
 
 \begin{figure}[htbp]
-    \includegraphics[width=\textwidth]{figures/subautomata_strings.png}
-    \caption{Schéma části automatu scanneru řešící řetězce}
-    \label{obr:subautomata_strings}
+    \includegraphics[width=\textwidth]{figures/subautomata_comments.png}
+    \caption{Schéma části automatu scanneru řešící komentáře}
+    \label{obr:subautomata_comments}
+\end{figure}
+
+\begin{figure}[htbp]
+    \includegraphics[width=\textwidth]{figures/subautomata_indentation.png}
+    \caption{Schéma části automatu scanneru řešící odsazení}
+    \label{obr:subautomata_indentation}
 \end{figure}
