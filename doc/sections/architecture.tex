@@ -6,6 +6,11 @@
     \label{obr:compiler_scheme}
 \end{figure}
 
+V \texttt{main.c} se zavolá parser, který volá scanner vždy, když potřebuje nový \texttt{token\_t}. Scanner čte postupně znak po znaku \texttt{stdin} a podle stavového automatu vytvoří odpovídající \texttt{token\_t}, který vrátí parseru.
+Parser postupně vytváří abstraktní syntaktický strom (AST) a přiřazuje typy, které ví s jistotou. Soubor \texttt{main.c} zachytí případné chyby, které by vypsal na \texttt{stderr} ze scanneru a parseru, jinak volá semantickou analýzu s argumentem AST.
+Semantická analýza zjištuje sémantickou správnost a typy, které doplní do tabulky symbolů a AST. Případně vytvoří nový uzel AST určený pro signalizaci implicitní konverze. Zpět v \texttt{main.c} se zkontroluje zda nedošlo k chybě, kterou by vypsal na \texttt{stderr}, jinak se volá generátor kódu.
+Ten postupně čte z AST a podle něj vypisuje generovaný kód na \texttt{stdout}. Pokud dojde k chybě \texttt{main.c} vypíše chybu na \texttt{stderr}, jinak se skončí s návratovým kódem 0.
+
 \begin{figure}[htbp]
     \includegraphics[width=\textwidth]{figures/subautomata_comments.png}
     \caption{Schéma části automatu scanneru řešící komentáře}
