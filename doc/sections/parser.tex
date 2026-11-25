@@ -4,16 +4,13 @@
 \providecommand{\nt}[1]{\textit{#1}}
 \providecommand{\tm}[1]{\texttt{#1}}
 
-Parser je rozdělen do několika souborů podle toho, jakou část programu zpracovávají. Soubor \texttt{parser.c} řídí analýzu celého programu tedy definice funkcí, bloky, příkazy, deklarace a řídicí konstrukce zpracovávají moduly \texttt{parse\_function.c}, \texttt{parse\_block.c}, \texttt{parse\_statement.c}, \texttt{parse\_declaration.c} a \texttt{parse\_control.c}. Výrazy analyzují soubory \texttt{parse\_expression.c} a jeho pomocné moduly, společné funkce parseru jsou v \texttt{parser\_common.c}.
-
-Parser postupně přebírá tokeny od scanneru a podle gramatiky kontroluje jejich pořadí. Většinu programu zpracovává metodou rekurzivního sestupu tedy podle aktuálního tokenu zavolá funkci pro příslušnou konstrukci. Výrazy zpracuje zvlášť pomocí precedenční analýzy, která zohledňuje priority operátorů. Při úspěšném průchodu vytváří abstraktní syntaktický strom (AST) a při chybné posloupnosti tokenů analýzu ukončí s chybou.
 
 \subsection{LL gramatika}
 \label{subsec:ll-gramatika}
 
 Neterminál tedy syntaktický znak, který se dá ještě rozdělit je zapsány kurzívou (\nt{neterminál}), terminál tedy tokeny z lexikálního analyzátoru je zapsán písmem (\tm{terminál}) ,prázdný řetězec symbolem $\varepsilon$, symbol \tm{\$} označuje konec vstupu (\texttt{TOKEN\_EOF}) ,symbol \nt{expr} představuje předání neterminálu precedenční analýze výrazů (\texttt{parse\_expression}), symbol \nt{expr\_cont} značí vrácení dříve načteného tokenu zpět do bufferu (\texttt{unread\_token}) a následné vyhodnocení celého výrazu precedenční analýzou.
 
-\begin{longtable}{|r|l|c|l|}
+\begin{longtable}{r l c l}
     \caption{Přepisovací pravidla LL gramatiky} \label{tab:ll-gramatika}                                                                  \\
     \toprule
     \textbf{Č.} & \textbf{Neterminál}        &       & \textbf{Pravá strana pravidla}                                                     \\
@@ -21,7 +18,6 @@ Neterminál tedy syntaktický znak, který se dá ještě rozdělit je zapsány 
     \endfirsthead
 
     \multicolumn{4}{l}{\textit{Pokračování tabulky \ref{tab:ll-gramatika}}}                                                               \\
-    \multicolumn{4}{|l|}{\textit{Pokračování tabulky \ref{tab:ll-gramatika}}}                                                             \\
     \toprule
     \textbf{Č.} & \textbf{Neterminál}        &       & \textbf{Pravá strana pravidla}                                                     \\
     \midrule
@@ -29,7 +25,6 @@ Neterminál tedy syntaktický znak, který se dá ještě rozdělit je zapsány 
 
     \midrule
     \multicolumn{4}{r}{\textit{Pokračování na další straně}}                                                                              \\
-    \multicolumn{4}{|r|}{\textit{Pokračování na další straně}}                                                                            \\
     \endfoot
 
     \bottomrule
@@ -191,76 +186,6 @@ Neterminál tedy syntaktický znak, který se dá ještě rozdělit je zapsány 
             \nt{eols}                  & 60                            &  &    & 60 & 60 & 60 & 60 & 60 &    &    &    &    &    &    &    & 60 & 60 & 60 &  & 60 & 60 &  & 60 &    & 60 & 60 & 59 & 60 & 60 &    & 60 \\
             \bottomrule
         \end{tabular}
-        \begin{tabular}{|l|*{31}{c|}}
-            \toprule
-            \textbf{Neterminál \textbackslash{} Token}
-                                       & \rotatebox{90}{\tm{import}}
-                                       & \rotatebox{90}{\tm{.}}
-                                       & \rotatebox{90}{\tm{*}}
-                                       & \rotatebox{90}{\tm{@main}}
-                                       & \rotatebox{90}{\tm{def}}
-                                       & \rotatebox{90}{\tm{id}}
-                                       & \rotatebox{90}{\tm{(}}
-                                       & \rotatebox{90}{\tm{)}}
-                                       & \rotatebox{90}{\tm{,}}
-                                       & \rotatebox{90}{\tm{:}}
-                                       & \rotatebox{90}{\tm{=}}
-                                       & \rotatebox{90}{\tm{Int}}
-                                       & \rotatebox{90}{\tm{Double}}
-                                       & \rotatebox{90}{\tm{String}}
-                                       & \rotatebox{90}{\tm{Unit}}
-                                       & \rotatebox{90}{\tm{var}}
-                                       & \rotatebox{90}{\tm{val}}
-                                       & \rotatebox{90}{\tm{if}}
-                                       & \rotatebox{90}{\tm{then}}
-                                       & \rotatebox{90}{\tm{else}}
-                                       & \rotatebox{90}{\tm{while}}
-                                       & \rotatebox{90}{\tm{do}}
-                                       & \rotatebox{90}{\tm{return}}
-                                       & \rotatebox{90}{\tm{;}}
-                                       & \rotatebox{90}{\tm{INDENT}}
-                                       & \rotatebox{90}{\tm{DEDENT}}
-                                       & \rotatebox{90}{\tm{EOL}}
-                                       & \rotatebox{90}{\tm{literal}}
-                                       & \rotatebox{90}{\tm{+,-}}
-                                       & \rotatebox{90}{\tm{operator}}
-                                       & \rotatebox{90}{\tm{\$}}                                                                                                                                                       \\
-            \midrule
-            \nt{program}               & 1                             &  &    &    &    &    &    &    &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    & 1  &    &    &    &    \\
-            \nt{prolog}                & 2                             &  &    &    &    &    &    &    &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    &    &    &    &    &    \\
-            \nt{after\_prolog}         &                               &  &    &    &    &    &    &    &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    & 3  &    &    &    & 4  \\
-            \nt{fun\_list}             &                               &  &    & 5  & 5  &    &    &    &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    &    &    &    &    & 6  \\
-            \nt{fun\_entry}            &                               &  &    & 7  & 8  &    &    &    &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    &    &    &    &    &    \\
-            \nt{fun\_def}              &                               &  &    &    & 9  &    &    &    &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    &    &    &    &    &    \\
-            \nt{fun\_body}             &                               &  &    &    &    & 11 & 11 &    &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    & 10 & 11 & 11 &    &    \\
-            \nt{after\_fun\_expr}      &                               &  &    &    &    &    &    &    &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    & 12 &    &    &    & 13 \\
-            \nt{param\_list}           &                               &  &    &    &    & 14 &    & 14 &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    & 14 &    &    &    &    \\
-            \nt{param\_list\_body}     &                               &  &    &    &    & 16 &    & 15 &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    &    &    &    &    &    \\
-            \nt{param}                 &                               &  &    &    &    & 17 &    &    &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    &    &    &    &    &    \\
-            \nt{param\_list\_tail}     &                               &  &    &    &    &    &    & 18 & 19 &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    &    &    &    &    &    \\
-            \nt{param\_after\_comma}   &                               &  &    &    &    & 21 &    & 20 &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    &    &    &    &    &    \\
-            \nt{optional\_type}        &                               &  &    &    &    &    &    &    &    & 22 & 23 &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    &    &    &    &    &    \\
-            \nt{type}                  &                               &  &    &    &    &    &    &    &    &    &    & 24 & 25 & 26 & 27 &    &    &    &  &    &    &  &    &    &    &    &    &    &    &    &    \\
-            \nt{block}                 &                               &  &    &    &    &    &    &    &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    & 28 &    & 28 &    &    &    &    \\
-            \nt{statement\_seq}        &                               &  &    &    &    & 31 & 31 &    &    &    &    &    &    &    &    & 31 & 31 & 29 &  &    & 30 &  & 31 &    &    &    &    & 31 & 31 &    &    \\
-            \nt{after\_simple}         &                               &  &    &    &    &    &    &    &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    & 33 &    & 34 & 32 &    &    &    & 34 \\
-            \nt{statement\_list}       &                               &  &    &    &    & 35 & 35 &    &    &    &    &    &    &    &    & 35 & 35 & 35 &  &    & 35 &  & 35 &    &    & 35 & 35 & 35 & 35 &    & 35 \\
-            \nt{statement\_list\_tail} &                               &  &    &    &    & 36 & 36 &    &    &    &    &    &    &    &    & 36 & 36 & 36 &  &    & 36 &  & 36 &    &    & 37 &    & 36 & 36 &    & 37 \\
-            \nt{simple\_statement}     &                               &  &    &    &    & 40 & 41 &    &    &    &    &    &    &    &    & 38 & 38 &    &  &    &    &  & 39 &    &    &    &    & 41 & 41 &    &    \\
-            \nt{id\_statement\_tail}   &                               &  & 43 &    &    &    & 43 &    &    &    & 42 &    &    &    &    &    &    &    &  &    &    &  &    & 43 &    & 43 & 43 &    & 43 & 43 & 43 \\
-            \nt{var\_decl}             &                               &  &    &    &    &    &    &    &    &    &    &    &    &    &    & 44 & 44 &    &  &    &    &  &    &    &    &    &    &    &    &    &    \\
-            \nt{var\_type}             &                               &  &    &    &    &    &    &    &    &    &    &    &    &    &    & 45 & 46 &    &  &    &    &  &    &    &    &    &    &    &    &    &    \\
-            \nt{if\_statement}         &                               &  &    &    &    &    &    &    &    &    &    &    &    &    &    &    &    & 47 &  &    &    &  &    &    &    &    &    &    &    &    &    \\
-            \nt{while\_statement}      &                               &  &    &    &    &    &    &    &    &    &    &    &    &    &    &    &    &    &  &    & 48 &  &    &    &    &    &    &    &    &    &    \\
-            \nt{return\_statement}     &                               &  &    &    &    &    &    &    &    &    &    &    &    &    &    &    &    &    &  &    &    &  & 49 &    &    &    &    &    &    &    &    \\
-            \nt{return\_val}           &                               &  &    &    &    & 50 & 50 &    &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    & 51 &    & 51 & 51 & 50 & 50 &    & 51 \\
-            \nt{arg\_list}             &                               &  &    &    &    & 52 & 52 & 52 &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    & 52 & 52 & 52 &    &    \\
-            \nt{arg\_list\_body}       &                               &  &    &    &    & 54 & 54 & 53 &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    &    & 54 & 54 &    &    \\
-            \nt{arg\_list\_tail}       &                               &  &    &    &    &    &    & 55 & 56 &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    &    &    &    &    &    \\
-            \nt{arg\_after\_comma}     &                               &  &    &    &    & 58 & 58 & 57 &    &    &    &    &    &    &    &    &    &    &  &    &    &  &    &    &    &    &    & 58 & 58 &    &    \\
-            \nt{eols}                  & 60                            &  &    & 60 & 60 & 60 & 60 & 60 &    &    &    &    &    &    &    & 60 & 60 & 60 &  & 60 & 60 &  & 60 &    & 60 & 60 & 59 & 60 & 60 &    & 60 \\
-            \bottomrule
-        \end{tabular}
     }
 \end{table}
 \subsection{Precedenční analýza výrazů}
@@ -275,7 +200,7 @@ Neterminál tedy syntaktický znak, který se dá ještě rozdělit je zapsány 
     \setlength{\tabcolsep}{5pt}
     \renewcommand{\arraystretch}{1.2}
 
-    \begin{tabular}{|l|c|c|c|c|c|c|c|c|c|}
+    \begin{tabular}{l | c c c c c c c c c}
         \toprule
         \textbf{Zásobník \textbackslash{} Vstup}
                                    & \tm{+,-}\textsubscript{un}
@@ -311,11 +236,11 @@ Když tabulka určí redukci, parser vybere na zásobníku část k redukci tedy
 \end{itemize}
 
 \paragraph{Operátory:}
-Symbol \tm{i} zastupuje literál, proměnnou nebo volání funkce. Volání zpracuje \texttt{parse\_operand} a argumenty pak \texttt{parse\_argument\_list}. Prázdné závorky \tm{()} se převedou na výraz typu \tm{Unit}.
+Symbol \tm{i} zastupuje literál, proměnnou nebo volání funkce. Volání zpracuje \texttt{parse\_operand}; argumenty pak \texttt{parse\_argument\_list}. Prázdné závorky \tm{()} se převedou na výraz typu \tm{Unit}.
 
 Parser rozliší unární a binární \tm{+} a \tm{-} podle toho, co je před nimi na zásobníku. Po výrazu $E$, operandu \tm{i} nebo uzavírací závorce \tm{)} jde o binární operátor. Na začátku výrazu, po \tm{(} nebo po jiném operátoru jde o unární operátor. Unární operátory mají nejvyšší prioritu a vyhodnocují se zprava.
 
 Priorita operátorů je od nejvyšší po nejnižší: unární \tm{+,-}, násobení a dělení, sčítání a odčítání, relační operátory a operátory rovnosti. Relační operátory (\tm{<,<=,>,>=}) ani operátory rovnosti (\tm{==,!=}) nelze řetězit a proto prázdná políčka na diagonále tabulky takové výrazy odmítnou.
 
 \paragraph{Konec výrazu:}
-Token, který nepatří do výrazu, se pro parser považuje za zarážku \tm{\$} nebo může jít například o \tm{EOL}, \tm{;}, \tm{,}, \tm{then}, \tm{do}, \tm{DEDENT} nebo konec souboru. Uzavírací závorka \tm{)} se za konec výrazu považuje také tehdy, když parser dokončil výraz posledního argumentu funkce takže závorku přitom nespotřebuje. Analýza je úspěšná, když je na zásobníku přesně \tm{\$} $E$ a na vstupu je zarážka \tm{\$} (\texttt{parser\_prec\_stack\_is\_reduced}).
+Token, který nepatří do výrazu, se pro parser považuje za zarážku \tm{\$}; může jít například o \tm{EOL}, \tm{;}, \tm{,}, \tm{then}, \tm{do}, \tm{DEDENT} nebo konec souboru. Uzavírací závorka \tm{)} se za konec výrazu považuje také tehdy, když parser dokončil výraz posledního argumentu funkce; závorku přitom nespotřebuje. Analýza je úspěšná, když je na zásobníku přesně \tm{\$} $E$ a na vstupu je zarážka \tm{\$} (\texttt{parser\_prec\_stack\_is\_reduced}).
