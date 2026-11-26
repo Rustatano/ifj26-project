@@ -4,7 +4,7 @@ DOC_MAIN = dokumentace
 DOC_BUILD_DIR = build
 
 # archivation variables
-ARCHIVE = xsvoboj01
+ARCHIVE = xsvoboj01.zip
 
 # source code variables
 # detecting gcc-16 as a priority, then gcc-16.2 as second choice (located on Merlin server), fallback to default gcc
