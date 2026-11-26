@@ -10,7 +10,7 @@ vrátí se série načtených znaků jako jeden token. Hlavní funkcí modulu je
 která vrací právě jeden token při zavolání, pokud nenastala chyba.
 
 \subsection*{parser.c + parser.h}
-Implementace hlavní funkce parseru pomocí rekurzivního sestupu. Funkce \texttt{parse} se volá z hlavního modulu a postupně se volají jednotlivé funkce pro parsování jednotlivých částí kódu.
+Implementace hlavní funkce parseru pomocí rekurzivního sestupu~\cite{ifj_prednasky}. Funkce \texttt{parse} se volá z hlavního modulu a postupně se volají jednotlivé funkce pro parsování jednotlivých částí kódu.
 Na začátku zpracuje povinný prolog (import) a poté načítá definice funkcí až do konce souboru. Při parsování vytváří kořenový uzel AST a přidává do něj načtené části programu. Pokud narazí na chybu, vrátí její typ, řádek a zprávu.
 
 \subsection*{parser\_common.c + parser\_common.h}
@@ -30,7 +30,7 @@ Implementace parsování výrazů a větvení na jednotlivé výrazy.
 Výrazy zpracovává pomocí zásobníku a precedenční tabulky, která určuje pořadí vyhodnocování operátorů. Operandy mohou být literály, proměnné nebo volání funkcí. Při úspěšném parsování vznikají uzly výrazů v AST.
 
 \subsection*{parse\_expression\_stack.c + parse\_expression\_stack.h}
-Implementace parsování výrazu pomocí zásobníku a precedenční tabulky.
+Implementace parsování výrazu pomocí zásobníku a precedenční tabulky~\cite{ifj_prednasky}.
 Zásobník uchovává terminály, již zpracované části výrazu i značku hranice pro redukci. Pomocné funkce umožňují vložit a odebrat položky, najít nejbližší terminál a uvolnit zásobník. Modul také pomáhá určit, zda jsou \texttt{+} a \texttt{-} v daném místě unární, nebo binární.
 
 \subsection*{parse\_expression\_reduce.c + parse\_expression\_reduce.h}
